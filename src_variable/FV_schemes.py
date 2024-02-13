@@ -29,6 +29,7 @@ def LxF_flux(rho, dx, dt, gamma):
     return 0.5*(flux(left, gamma) + flux(right, gamma)) - 0.5*dx/dt * (right - left)
 
 def Rusanov_Flux(rho, gamma):
+    # This is not being used...
     left = rho[:-1]
     right = rho[1:]
 
@@ -176,7 +177,7 @@ def total_flux_out(rho_dict, order):
         f1 = flux(rho_dict[times[i-1]][-order-1])
         f2 = flux(rho_dict[times[i]][-order-1])
 
-        Integral += (f1 + f2) * dt/2 # Area of trapezoid
+        Integral = Integral + (f1 + f2) * dt/2 # Area of trapezoid
 
     return Integral
 

@@ -141,6 +141,8 @@ class Bus:
         '''
         Returns the lengths of the stops
         '''
+        # stop_lengths is not a torch variable so inplace operation is fine
+
         stop_lengths = [0 for _ in range(len(stops)+1)]
         for i, stop in enumerate(stops):
             stop_length = 0
@@ -176,6 +178,7 @@ class Bus:
         Returns the id of the road at the current length of the route
         as well as the remaining length of the road and the id of the next road
         '''
+        # tot_length is not a torch tensor, so inplace operations is fine
         tot_length = 0
         for i, length in enumerate(self.lengths):
             tot_length += length
@@ -191,6 +194,7 @@ class Bus:
         '''
         Returns the id of the road at the given length of the route
         '''
+        # inplace operation is fine
         tot_length = 0
         for i, length in enumerate(self.lengths):
             tot_length += length
@@ -252,7 +256,10 @@ class Bus:
                 if activation >= 0.5:
                     self.length_travelled = self.length_travelled + speed * moving_dt
                 else:
-                    self.length_travelled = self.length_travelled + min(speed * moving_dt, length)
+                    try:
+                        self.length_travelled = self.length_travelled + torch.min(speed * moving_dt, length)
+                    except:
+                        self.length_travelled = self.length_travelled + min(speed * moving_dt, length)
                 
         else:
             # Check if the bus should stop at the next stop
@@ -271,6 +278,7 @@ class Bus:
                     # Calculate delay time
                     if self.next_stop < len(self.times):
                         self.delays[self.next_stop] = torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                        # inplace is fine
                         self.next_stop += 1
                     self.length_travelled = self.length_travelled + speed * actual_dt # Could set equal to length_of_next_stop, but
                     # then it would not be possible to differentiate
@@ -296,7 +304,10 @@ class Bus:
 
                 else:
                     # Bus could be stopped at the junction
-                    self.length_travelled = self.length_travelled + min(speed * dt, length)
+                    try:
+                        self.length_travelled = self.length_travelled + torch.min(speed * dt, length)
+                    except:
+                        self.length_travelled = self.length_travelled + min(speed * dt, length)
         
 
 

@@ -334,7 +334,7 @@ class Road:
                 gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
 
                 # Update queue length using the difference between actual and desired flux in
-                self.queue_length += dt * (f_in - gamma_in)
+                self.queue_length = self.queue_length + dt * (f_in - gamma_in)
                 # if f_in != gamma_in:
                 #     print(f"Desired: {f_in}")
                 #     print(f"Actual: {gamma_in}")
