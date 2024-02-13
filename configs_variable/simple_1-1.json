@@ -1,0 +1,40 @@
+{
+    "T" : 60,
+    "roads" : [
+        {
+            "L" : 1000,
+            "b" : 1,
+            "Vmax" : [50, 40, 50],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 50,
+            "Scheme" : 3,
+            "Init_dens" : 1.0,
+            "Init_distr" : 1,
+            "Inflow" : 0.4
+        }, 
+        {
+            "L" : 1000,
+            "b" : 2,
+            "Vmax" : [50, 40, 35],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 50,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1
+        }
+    ],
+    "Junctions" : [
+        {
+            "Roads" : [0,1],
+            "Entering" : [0],
+            "Leaving" : [1],
+            "Distribution" : [1.0],
+            "Trafficlights" : [],
+            "CoupledTrafficlights" : []
+        }
+    ],
+    "ControlPoints" : [10, 40]
+}

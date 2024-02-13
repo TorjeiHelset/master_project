@@ -1,0 +1,149 @@
+{
+    "T" : 1000,
+    "roads" : [
+        {
+            "L" : 200,
+            "b" : 2,
+            "Vmax" : [80, 80],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : 0.06,
+            "ControlPoints" : [500],
+            "max_dens" : 2,
+            "left_pos" : [-1,1],
+            "right_pos" : [-0.3,0.05]
+        }, 
+        {
+            "L" : 200,
+            "b" : 2,
+            "Vmax" : [80, 80],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : 0.06,
+            "ControlPoints" : [500],
+            "max_dens" : 1,
+            "left_pos" : [-1,-1],
+            "right_pos" : [-0.3,-0.05]
+        },
+        {
+            "L" : 200,
+            "b" : 1,
+            "Vmax" : [80],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.05,
+            "f_in" : 0.05,
+            "ControlPoints" : [],
+            "max_dens" : 2,
+            "left_pos" : [-0.2,0],
+            "right_pos" : [0.2,0]
+        }, 
+        {
+            "L" : 200,
+            "b" : 1,
+            "Vmax" : [50],
+            "Vlow" : 50,
+            "Vhigh" : 50,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : 0.1,
+            "ControlPoints" : [],
+            "max_dens" : 1,
+            "left_pos" : [-0.25,1],
+            "right_pos" : [0.2,0.05]
+        },
+        {
+            "L" : 200,
+            "b" : 1,
+            "Vmax" : [50],
+            "Vlow" : 50,
+            "Vhigh" : 50,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : 0.1,
+            "ControlPoints" : [],
+            "max_dens" : 1,
+            "left_pos" : [0.3,0.05],
+            "right_pos" : [1,1]
+        },
+        {
+            "L" : 200,
+            "b" : 1,
+            "Vmax" : [50],
+            "Vlow" : 50,
+            "Vhigh" : 50,
+            "N" : 4,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : 0.1,
+            "ControlPoints" : [],
+            "max_dens" : 1,
+            "left_pos" : [0.3,-0.05],
+            "right_pos" : [1,-1]
+        }
+    ],
+    "Junctions" : [
+        {
+            "Roads" : [0,1,2],
+            "Entering" : [0,1],
+            "Leaving" : [2],
+            "Distribution" : [
+                                [1.0],
+                                [1.0]
+                            ],
+            "Trafficlights" : [],
+            "CoupledTrafficlights" : [
+                {
+                    "StartingState" : "Green",
+                    "aEntering" : [0],
+                    "aLeaving" : [2],
+                    "bEntering" : [1],
+                    "bLeaving" : [2],
+                    "Cycle" : [80.0, 60.0]
+                }
+            ]
+        },
+        {
+            "Roads" : [2,3,4,5],
+            "Entering" : [0,1],
+            "Leaving" : [2,3],
+            "Distribution" : [
+                                [0.5, 0.5],
+                                [0.7, 0.3]
+                            ],
+            "Trafficlights" : [],
+            "CoupledTrafficlights" : [
+                {
+                    "StartingState" : "Green",
+                    "aEntering" : [0],
+                    "aLeaving" : [2,3],
+                    "bEntering" : [1],
+                    "bLeaving" : [2,3],
+                    "Cycle" : [100.0, 100.0]
+                }
+            ]
+        }
+    ]
+}

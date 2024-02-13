@@ -1,0 +1,46 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xmajorgrids,
+xmin=-0.35, xmax=7.35,
+xtick style={color=black},
+y grid style={darkgray176},
+ymajorgrids,
+ymin=12464.9317871094, ymax=14577.9168457031,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180, mark=*, mark size=3, mark options={solid}]
+table {%
+0 14481.583984375
+1 13397.3525390625
+2 13228.3369140625
+3 12597.9677734375
+4 12560.9765625
+};
+\addlegendentry{A}
+\addplot [semithick, darkorange25512714, mark=*, mark size=3, mark options={solid}]
+table {%
+0 14481.8720703125
+1 13784.9912109375
+2 13541.39453125
+3 13512.1904296875
+4 13304.9931640625
+5 13208.75
+6 13056.1435546875
+7 12961.8642578125
+};
+\addlegendentry{B}
+\end{axis}
+
+\end{tikzpicture}

@@ -1,0 +1,19 @@
+{
+    "T" : 60,
+    "roads" : [
+        {
+            "L" : 1000,
+            "b" : 1,
+            "Vmax" : [50, 40, 50],
+            "Vlow" : 30,
+            "Vhigh" : 80,
+            "N" : 50,
+            "Scheme" : 3,
+            "Init_dens" : 0.8,
+            "Init_distr" : 0,
+            "Inflow" : 0.8
+        }
+    ],
+    "Junctions" : [],
+    "ControlPoints" : [10, 40]
+}

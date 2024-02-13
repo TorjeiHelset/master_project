@@ -1,0 +1,73 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{forestgreen4416044}{RGB}{44,160,44}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xmajorgrids,
+xmin=-0.6, xmax=12.6,
+xtick style={color=black},
+y grid style={darkgray176},
+ymajorgrids,
+ymin=1226.08870849609, ymax=1835.50455322266,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180, mark=*, mark size=3, mark options={solid}]
+table {%
+0 1456.62231445312
+1 1375.83532714844
+2 1337.607421875
+3 1319.65649414062
+4 1290.33715820312
+5 1275.43579101562
+6 1272.88500976562
+7 1272.75671386719
+8 1270.73901367188
+9 1269.61389160156
+};
+\addlegendentry{A}
+\addplot [semithick, darkorange25512714, mark=*, mark size=3, mark options={solid}]
+table {%
+0 1807.80383300781
+1 1733.55249023438
+2 1601.42578125
+3 1506.44018554688
+4 1457.14270019531
+5 1450.97631835938
+6 1397.37170410156
+7 1343.67724609375
+8 1305.06457519531
+9 1290.986328125
+10 1276.59924316406
+11 1274.51623535156
+};
+\addlegendentry{B}
+\addplot [semithick, forestgreen4416044, mark=*, mark size=3, mark options={solid}]
+table {%
+0 1427.01733398438
+1 1358.255859375
+2 1335.01245117188
+3 1327.3837890625
+4 1301.36669921875
+5 1297.986328125
+6 1273.09399414062
+7 1269.77807617188
+8 1255.85437011719
+9 1255.1142578125
+10 1254.00915527344
+11 1253.87805175781
+12 1253.78942871094
+};
+\addlegendentry{C}
+\end{axis}
+
+\end{tikzpicture}

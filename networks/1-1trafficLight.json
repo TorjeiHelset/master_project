@@ -1,0 +1,54 @@
+{
+    "T" : 2000,
+    "roads" : [
+        {
+            "L" : 1000,
+            "b" : 1,
+            "Vmax" : [50],
+            "Vlow" : 50,
+            "Vhigh" : 50,
+            "N" : 20,
+            "Scheme" : 3,
+            "Init_dens" : 0.8,
+            "Init_distr" : 1,
+            "Inflow" : 0.6,
+            "f_in" : -1,
+            "ControlPoints" : [],
+            "left_pos" : [-1,0],
+            "right_pos" : [-0.1,0]
+        }, 
+        {
+            "L" : 1000,
+            "b" : 1,
+            "Vmax" : [50],
+            "Vlow" : 50,
+            "Vhigh" : 50,
+            "N" : 20,
+            "Scheme" : 3,
+            "Init_dens" : 0.1,
+            "Init_distr" : 1,
+            "Inflow" : 0.1,
+            "f_in" : -1,
+            "ControlPoints" : [],
+            "left_pos" : [0.1,0],
+            "right_pos" : [1,0]
+        }
+    ],
+    "Junctions" : [
+        {
+            "Roads" : [0,1],
+            "Entering" : [0],
+            "Leaving" : [1],
+            "Distribution" : [[1.0]],
+            "Trafficlights" : [
+                {
+                   "StartingState" : "Green",
+                   "Entering" : [0],
+                   "Leaving" : [1],
+                   "Cycle" : [120.0, 10.0]
+                }
+            ],
+            "CoupledTrafficlights" : []
+        }
+    ]
+}

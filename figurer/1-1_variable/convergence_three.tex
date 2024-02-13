@@ -1,0 +1,106 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{crimson2143940}{RGB}{214,39,40}
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{forestgreen4416044}{RGB}{44,160,44}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{mediumpurple148103189}{RGB}{148,103,189}
+\definecolor{orchid227119194}{RGB}{227,119,194}
+\definecolor{sienna1408675}{RGB}{140,86,75}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xmajorgrids,
+xmin=-0.5, xmax=10.5,
+xtick style={color=black},
+y grid style={darkgray176},
+ymajorgrids,
+ymin=2025.67044677734, ymax=2664.88887939453,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2122.65942382812
+1 2104.83227539062
+2 2085.62768554688
+3 2068.77661132812
+4 2056.02685546875
+};
+\addlegendentry{A}
+\addplot [semithick, darkorange25512714, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2122.65942382812
+1 2104.85620117188
+2 2086.138671875
+3 2069.83935546875
+4 2057.93212890625
+5 2056.76513671875
+6 2054.72583007812
+};
+\addlegendentry{B}
+\addplot [semithick, forestgreen4416044, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2360.61303710938
+1 2236.72216796875
+2 2197.42993164062
+3 2138.634765625
+4 2087.32250976562
+5 2085.115234375
+6 2076.54223632812
+7 2074.48754882812
+8 2058.81201171875
+9 2058.1044921875
+};
+\addlegendentry{C}
+\addplot [semithick, crimson2143940, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2359.02612304688
+1 2235.34448242188
+2 2115.59375
+3 2113.892578125
+4 2081.55908203125
+5 2059.6943359375
+};
+\addlegendentry{D}
+\addplot [semithick, mediumpurple148103189, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2080.02490234375
+1 2065.67236328125
+2 2055.91284179688
+3 2055.4599609375
+};
+\addlegendentry{E}
+\addplot [semithick, sienna1408675, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2122.65942382812
+1 2104.83227539062
+2 2085.62768554688
+3 2068.77661132812
+4 2056.02685546875
+};
+\addlegendentry{F}
+\addplot [semithick, orchid227119194, dotted, mark=*, mark size=3, mark options={solid}]
+table {%
+0 2635.83349609375
+1 2480.97119140625
+2 2360.12768554688
+3 2225.05786132812
+4 2223.89526367188
+5 2155.55322265625
+6 2132.9248046875
+7 2104.95239257812
+8 2087.31909179688
+9 2076.05053710938
+10 2064.4833984375
+};
+\addlegendentry{G}
+\end{axis}
+
+\end{tikzpicture}
