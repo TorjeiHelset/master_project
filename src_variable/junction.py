@@ -72,84 +72,6 @@ class Junction:
         self.coupled_trafficlights = coupled_trafficlights
         self.road_in = [self.roads[i] for i in self.entering]
         self.road_out = [self.roads[i] for i in self.leaving]
-    
-    
-    
-
-    def divide_flux2(self, t):
-        '''
-        When comparing the fluxes from different roads, use 
-        gamma * f(rho) instead of f(rho)
-        idx is index of speed limit to be used
-        '''
-        road_in = [self.roads[i] for i in self.entering]
-        road_out = [self.roads[i] for i in self.leaving]
-
-        rho_in = [road.rho[-road.pad] for road in road_in]
-        gamma_in = [road.gamma[road.idx] for road in road_in]
-        max_dens_in = [road.max_dens for road in road_in]
-        rho_out = [road.rho[road.pad-1] for road in road_out]
-        gamma_out = [road.gamma[road.idx] for road in road_out]
-        max_dens_out = [road.max_dens for road in road_out]
-
-
-        # print("Checking Junction")
-        # print(f"Gamma in {gamma_in}")
-        # print(f"Gamma out {gamma_out}")
-
-        n = len(self.entering)
-        m = len(self.leaving)
-
-        active = torch.ones((n,m))
-        for light in self.trafficlights:
-            for i in range(n):
-                for j in range(m):
-                    if self.entering[i] in light.entering and self.leaving[j] in light.leaving:
-                        active[i,j] = light.activation_func(t)
-        
-        for light in self.coupled_trafficlights:
-            for i in range(n):
-                for j in range(m):
-                    if self.entering[i] in light.a_entering and self.leaving[j] in light.a_leaving:
-                        active[i,j] = light.a_activation(t)
-
-                    if self.entering[i] in light.b_entering and self.leaving[j] in light.b_leaving:
-                        active[i,j] = light.b_activation(t)
-
-        #####################################################################
-        # The distribution should be replaced by a 2d array
-        #
-        # The flux into the junction should be scaled by the relative maximum 
-        # capacity. 
-        # This should be done for flux into junction as f = f*rho_max
-        # and it should be scaled back when updating the densities of the roads
-        # I.e. the output from this function should not be f but f/rho_max since
-        # each lane is scaled to have density between 0 and 1.
-        #
-        # Priority should also probably be a 2d matrix that should be found by
-        # solving small optimization step 
-        ######################################################################
-        fluxes = torch.zeros((n, m))
-        for i in range(n):
-            for j in range(m):
-                fluxes[i,j] = min(active[i,j]*self.distribution[i][j] * max_dens_in[i] * fv.D(rho_in[i].clone(), gamma_in[i]),
-                                self.priority[i]* max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j]))
-                # fluxes[i,j] = min(active[i,j]*self.distribution[i][j] * fv.D(rho_in[i].clone(), gamma_in[i]),
-                #                 self.priority[i]* fv.S(rho_out[j].clone(),  gamma_out[j]))
-                
-        fluxes_in = [0]*n
-        fluxes_out = [0]*m
-
-        for i in range(n):
-            # Scaling flux back to correspond to maximum density equal to 1
-            fluxes_in[i] = sum([fluxes[i,j] for j in range(m)]) / max_dens_in[i]
-
-        for j in range(m):
-            # Scaling flux back to correspond to maximum density equal to 1
-            fluxes_out[j] = sum([fluxes[i,j] for i in range(n)]) / max_dens_out[j]
-        
-        return fluxes_in, fluxes_out
-    
 
     def divide_flux(self, t):
         '''
@@ -168,22 +90,13 @@ class Junction:
         This is difficult to optimize
         '''
 
-        # Below probably needs list comprehension (?)
-        # road_in = [self.roads[i] for i in self.entering]
-        # road_out = [self.roads[i] for i in self.leaving]
-
-        # Some of these probably also don't need to be created every time
+        # Some of these probably also don't need to be created every time...
         rho_in = [road.rho[-road.pad] for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
         max_dens_in = [road.max_dens for road in self.road_in]
         rho_out = [road.rho[road.pad-1] for road in self.road_out]
         gamma_out = [road.gamma[road.idx] for road in self.road_out]
         max_dens_out = [road.max_dens for road in self.road_out]
-
-
-        # print("Checking Junction")
-        # print(f"Gamma in {gamma_in}")
-        # print(f"Gamma out {gamma_out}")
 
         # Can below code be optimized in any meaningfull way(?)
         # Would maybe make it very unreadable...
@@ -210,7 +123,6 @@ class Junction:
         # Instead of returning fluxes, return beta parameters
         # Use beta parameters to calculate fluxes
         #####################################################
-        # returns beta, fluxes
         beta, _ = opt.find_parameters(rho_in, rho_out, self.distribution, gamma_in, gamma_out, active,
                                         max_dens_in, max_dens_out)
         fluxes = torch.zeros((n, m))
@@ -234,10 +146,6 @@ class Junction:
 
     # @torch.jit.script
     def divide_flux_wo_opt(self, t):
-        # Is all of the below necessary? 
-        # road_in = [self.roads[i] for i in self.entering]
-        # road_out = [self.roads[i] for i in self.leaving]
-
         rho_in = [road.rho[-road.pad] for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
         max_dens_in = torch.tensor([road.max_dens for road in self.road_in])
@@ -251,22 +159,8 @@ class Junction:
         n = len(self.entering)
         m = len(self.leaving)
         active = torch.ones((n,m))
-        # for light in self.trafficlights:
-        #     for i in range(n):
-        #         for j in range(m):
-        #             if self.entering[i] in light.entering and self.leaving[j] in light.leaving:
-        #                 active[i,j] = light.activation_func(t)
-        
-        # for light in self.coupled_trafficlights:
-        #     for i in range(n):
-        #         for j in range(m):
-        #             if self.entering[i] in light.a_entering and self.leaving[j] in light.a_leaving:
-        #                 active[i,j] = light.a_activation(t)
 
-        #             if self.entering[i] in light.b_entering and self.leaving[j] in light.b_leaving:
-        #                 active[i,j] = light.b_activation(t)
-
-        # Probably quicker - need to check that the functionality is the same
+        # Probably quicker - need to check that the functionality is the same!
         for light in self.trafficlights:
             for i in range(n):
                 if self.entering[i] in light.entering:
@@ -290,9 +184,6 @@ class Junction:
         # fluxes[i,j] is the flux from road i to road j
         fluxes = torch.zeros((n, m))
 
-        # capacities[j] is the capacity of road j
-        #capacities = torch.zeros(m)
-
         # Calculate the desired flux from each road i to road j
         for i in range(n):
             # move D to be here to reduce the number of calls
@@ -301,13 +192,8 @@ class Junction:
                 fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
         
         
-        # Skip this part to check if error is here...
-        fluxes[0,0] = torch.tensor(0.4)
-                
-        # calculate the capacity of each road j
-        # capacities = torch.zeros(m)
-        # sum_influxes = torch.zeros(m)
-
+        cloned_fluxes = fluxes.clone()
+    
         for j in range(m):
             capacity = max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j])
 
@@ -315,133 +201,26 @@ class Junction:
             sum_influx = torch.sum(fluxes[:,j])
             if sum_influx > capacity:
                 # If the sum of the fluxes is larger than the capacity, scale down the fluxes
-                # fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
-                for i in range(n):
-                    fluxes[i,j] = fluxes[i,j] * capacity / sum_influx
+                cloned_fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
+                # for i in range(n):
+                #     cloned_fluxes[i,j] = fluxes[i,j] * capacity / sum_influx
 
 
         fluxes_in = [0]*n
         fluxes_out = [0]*m
 
-        # fluxes_in = torch.sum(fluxes, dim=1) / max_dens_in
-        # fluxes_out = torch.sum(fluxes, dim=0) / max_dens_out
-
-        # fluxes = active.unsqueeze(2) * self.distribution.unsqueeze(0) * max_dens_in.unsqueeze(1) * i_flux.unsqueeze(2)
-
-        # capacity = max_dens_out * fv.S(rho_out.clone(), gamma_out)
-
-        # sum_influx = torch.sum(fluxes, dim=0)
-        # mask = sum_influx > capacity
-        # scaling_factor = torch.where(mask, capacity / sum_influx, torch.ones_like(sum_influx))
-
-        # fluxes *= scaling_factor.unsqueeze(0)
-
-        # fluxes_in = torch.sum(fluxes, dim=1) / max_dens_in
-        # fluxes_out = torch.sum(fluxes, dim=0) / max_dens_out
 
         for i in range(n):
             # Scaling flux back to correspond to maximum density equal to 1
-            fluxes_in[i] = torch.sum(fluxes[i]) / max_dens_in[i]
+            fluxes_in[i] = torch.sum(cloned_fluxes[i]) / max_dens_in[i]
 
-            # fluxes_in[i] = sum([fluxes[i][j] for j in range(m)]) / max_dens_in[i]
 
         for j in range(m):
             # Scaling flux back to correspond to maximum density equal to 1
-            fluxes_out[j] = torch.sum(fluxes[:,j]) / max_dens_out[j]
-            # fluxes_out[j] = sum([fluxes[i][j] for i in range(n)]) / max_dens_out[j]
+            fluxes_out[j] = torch.sum(cloned_fluxes[:,j]) / max_dens_out[j]
         
         return fluxes_in, fluxes_out
     
-
-    def divide_flux_wo_opt_list(self, t):
-        # Is all of the below necessary? 
-        # road_in = [self.roads[i] for i in self.entering]
-        # road_out = [self.roads[i] for i in self.leaving]
-
-        rho_in = [road.rho[-road.pad] for road in self.road_in]
-        gamma_in = [road.gamma[road.idx] for road in self.road_in]
-        max_dens_in = torch.tensor([road.max_dens for road in self.road_in])
-        rho_out = [road.rho[road.pad-1] for road in self.road_out]
-        gamma_out = [road.gamma[road.idx] for road in self.road_out]
-        max_dens_out = torch.tensor([road.max_dens for road in self.road_out])
-
-
-        # If sentences can be moved outside of j for loop and split into two if-sentences
-        # Would reducde the number of times the if-sentence is evaluated
-        n = len(self.entering)
-        m = len(self.leaving)
-        # active = torch.ones((n,m))
-        active = [[torch.tensor(0.0) for _ in range(m)] for _ in range(n)]
-
-        # Probably quicker - need to check that the functionality is the same
-        for light in self.trafficlights:
-            for i in range(n):
-                if self.entering[i] in light.entering:
-                    for j in range(m):
-                        if self.leaving[j] in light.leaving:
-                            active[i][j] = light.activation_func(t)
-
-        
-        for light in self.coupled_trafficlights:
-            for i in range(n):
-                if self.entering[i] in light.a_entering:
-                    for j in range(m):
-                        if self.leaving[j] in light.a_leaving:
-                            active[i][j] = light.a_activation(t)
-
-                if self.entering[i] in light.b_entering:
-                    for j in range(m):
-                        if self.leaving[j] in light.b_leaving:
-                            active[i][j] = light.b_activation(t)
-        
-        # fluxes[i,j] is the flux from road i to road j
-        fluxes = [[torch.tensor(0.0) for _ in range(m)] for _ in range(n)]
-
-        # Calculate the desired flux from each road i to road j
-        for i in range(n):
-            # move D to be here to reduce the number of calls
-            i_flux = fv.D(rho_in[i].clone(), gamma_in[i])            
-            for j in range(m):
-                fluxes[i][j] = active[i][j]*self.distribution[i][j]*max_dens_in[i] * i_flux
-        
-        
-        # Skip this part to check if error is here...
-
-        for j in range(m):
-            capacity = max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j])
-
-            # Update the flux from all roads into road j
-            sum_influx = torch.tensor(0.0)
-            for i in range(n):
-                sum_influx = sum_influx +  fluxes[i][j]
-
-            if sum_influx > capacity:
-                # If the sum of the fluxes is larger than the capacity, scale down the fluxes
-                # fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
-                for i in range(n):
-                    fluxes[i][j] = fluxes[i][j] * capacity / sum_influx
-
-
-        fluxes_in = [0]*n
-        fluxes_out = [0]*m
-
-        for i in range(n):
-            # Scaling flux back to correspond to maximum density equal to 1
-            influx = torch.tensor(0.0)
-            for j in range(m):
-                influx = influx + fluxes[i][j]
-            fluxes_in[i] = influx / max_dens_in[i]
-
-
-        for j in range(m):
-            # Scaling flux back to correspond to maximum density equal to 1
-            outflux = torch.tensor(0.0)
-            for i in range(n):
-                outflux = outflux + fluxes[i][j]
-            fluxes_out[j] = outflux / max_dens_out[j]
-            # fluxes_out[j] = sum([fluxes[i][j] for i in range(n)]) / max_dens_out[j]
-        
-        return fluxes_in, fluxes_out
 
     def apply_bc(self, dt, t):
         '''
@@ -450,16 +229,9 @@ class Junction:
         Actual flux is gamma*f(rho) instad of just f(rho)
         ...
         '''
-        # Needed to add clone when calculating flux - is this correct???
-
-        
-        # road_in = [self.roads[i] for i in self.entering]
-        # road_out = [self.roads[i] for i in self.leaving]
-        
         #--------------------------------
         # Dividing flux need to somehow take into account gamma of each road
         # --------------------------------
-        # fluxes_in, fluxes_out = self.divide_flux2(t)
 
         # Need to change divide_flux3 so that the fluxes depend on parameter, i.e. are differentiable
         fluxes_in, fluxes_out = self.divide_flux(t)
@@ -503,13 +275,10 @@ class Junction:
             mid_f = fv.flux(out_mid.clone(), road.gamma[road.idx])
             right_f = fv.flux(right.clone(), road.gamma[road.idx])
             right_flux = 0.5 * (mid_f + right_f) - 0.5 * s * (right - out_mid)
-            #print(right_flux)
-            #print(right_flux - flux)
 
             road.rho[road.pad-1] = road.rho[road.pad-1] - dt / road.dx * (right_flux - flux)
             if road.pad > 1:
                 road.rho[0] = road.rho[1]
-            #road.rho = (0.05 - road.rho) * road.Vmax**2 + 0.01 * fluxes_out[0]
 
     # @torch.jit.script
     def apply_bc_wo_opt(self, dt, t):
@@ -519,12 +288,8 @@ class Junction:
         '''
         # Also not necessary to create every time, instead store as member
         # variable!
-        # road_in = [self.roads[i] for i in self.entering]
-        # road_out = [self.roads[i] for i in self.leaving]
 
-        # fluxes_in, fluxes_out = self.divide_flux_wo_opt(t)
-        fluxes_in, fluxes_out = self.divide_flux_wo_opt_list(t)
-        # print(f"influx/outflux: {fluxes_in}, {fluxes_out}")
+        fluxes_in, fluxes_out = self.divide_flux_wo_opt(t)
 
         # Ideally want to reduce the number of calls to d_flux and flux
         # The code below is rather slow, but difficult to optimize
@@ -552,8 +317,6 @@ class Junction:
             mid_f = fv.flux(out_mid.clone(), road.gamma[road.idx])
             right_f = fv.flux(right.clone(), road.gamma[road.idx])
             right_flux = 0.5 * (mid_f + right_f) - 0.5 * s * (right - out_mid)
-            #print(right_flux)
-            #print(right_flux - flux)
 
             road.rho[road.pad-1] = road.rho[road.pad-1] - dt / road.dx * (right_flux - flux)
             if road.pad > 1:
@@ -658,9 +421,7 @@ class Junction:
 
                 if in_idx in light.b_entering and out_idx in light.b_leaving:
                     activation = light.b_activation(t)
-                    # print("Coupled traffic light, state b")
                     return True, activation
-        # print("No traffic light")
         return True, activation
     
     def get_speed(self, t, id_1, id_2):
@@ -712,10 +473,6 @@ class Junction:
                             active[i,j] = light.b_activation(t)
 
         fluxes = torch.zeros((n, m))
-        # print(f"Densities in to the junction: {rho_in}")
-        # print(f"Densities out of the junction: {rho_out}")
-        # capacities[j] is the capacity of road j
-        #capacities = torch.zeros(m)
 
         # Calculate the desired flux from each road i to road j
         for i in range(n):
@@ -726,7 +483,7 @@ class Junction:
                 # print(f"Flux scaled with traffic light from road {i} to road {j}: {active[i,j]*self.distribution[i][j] * i_flux * max_dens_in[i]}")
                 fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
         
-        
+        cloned_fluxes = fluxes.clone()
         # calculate the capacity of each road j
         for j in range(m):
             # print(f"Capacity of road {j}: {max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j])}")
@@ -737,9 +494,8 @@ class Junction:
             # print(f"Total sum of fluxes into road {j}: {sum_influx}")
             if sum_influx > capacity:
                 # If the sum of the fluxes is larger than the capacity, scale down the fluxes
-                fluxes[:,j] = fluxes[:,j] * capacity / sum_influx # is this the inplace in question?
+                cloned_fluxes[:,j] = fluxes[:,j] * capacity / sum_influx # is this the inplace in question?
                 
-        flux = fluxes[idx_1, idx_2] / max_dens_in[idx_1]
+        flux = cloned_fluxes[idx_1, idx_2] / max_dens_in[idx_1]
         speed = flux / rho_in[idx_1] * self.road_in[idx_1].L
         return speed
-        

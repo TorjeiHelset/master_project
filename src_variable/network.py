@@ -198,19 +198,11 @@ class RoadNetwork:
                                 road_pos[i][f"J {j+1}"] = None
 
         pos = nx.spring_layout(G)
-        # print(pos)
 
         for i in range(len(self.roads)):
             for key in road_pos[i].keys():
-                # print(key)
-                # print(pos[key])
+
                 road_pos[i][key] = pos[key]
-        # print(road_pos)
-
-        # nx.draw(G, pos, with_labels=True, node_color="skyblue", font_size=10)
-
-        # plt.margins(0.2)
-        # plt.show()
 
         return road_pos
 
@@ -249,7 +241,6 @@ class RoadNetwork:
         while t < self.T:
             # Iterate untill time limit is reached
             controlpoint = self.T
-            # print(f"Time {t}")
             for road in self.roads:
                 # Update index of controlpoint in use for each road
                 # Get the first controlpoint reached and use as upper limit of 
@@ -267,13 +258,14 @@ class RoadNetwork:
 
             for j in self.junctions:
                 controlpoint= min(controlpoint, j.get_next_control_point(t))
-                # print(f"road index {road.idx}")
-                # print(f"Speed limit on road {road.Vmax[road.idx]}")
-                # print(f"Gamma parameter {road.gamma[road.idx]}")
+                
             if self.print_control_points:
                 print("\n-----------------------------------------")
                 print(f"Controlpoint: {controlpoint}")
                 print("-----------------------------------------\n")
+                print(f"road index {road.idx}")
+                print(f"Speed limit on road {road.Vmax[road.idx]}")
+                print(f"Gamma parameter {road.gamma[road.idx]}")
             while t < controlpoint:
                 #-------------------------------------
                 # STEP 1: Find appropriate timestep

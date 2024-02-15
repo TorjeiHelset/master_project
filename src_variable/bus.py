@@ -106,7 +106,6 @@ class Bus:
 
     Need a list of the lengths at which the stops are located
 
-
     Can also take in a list of times the bus should be at each stop - sometimes the bus will
     stop for a longer period of time at a stop
 
@@ -245,7 +244,6 @@ class Bus:
 
 
         if self.at_stop:
-            # print(f"t = {t}, bus is at busstop")
             if printing:
                 print(f"Bus is at stop!")
 
@@ -313,11 +311,11 @@ class Bus:
                     actual_dt = (length_of_next_stop - self.length_travelled)/speed
                     # The bus should stop at the next stop
                     self.at_stop = True
-                    self.remaining_stop_time = 30 - (dt - actual_dt) # This might be requiring gradient
+                    self.remaining_stop_time = min(30, self.times[self.next_stop])  - (dt - actual_dt) # This might be requiring gradient
+                    
                     # Calculate delay time
                     if self.next_stop < len(self.times):
                         # At least one stop left
-
                         self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
                         # inplace is fine
                         self.next_stop += 1
@@ -365,8 +363,7 @@ if __name__ == "__main__":
     match option:
         case 0:
             network = gk.generate_kvadraturen_small(10.0)
-            # for road in network.roads:
-            #     print(road.id)
+
             ids = ["v_strand_1fw", "v_strand_2fw", "v_strand_3fw", "h_w_2", "h_w_3",
                 "h_w_4", "festning_4fw", "festning_5fw", "festning_6fw", "festning_7fw",
                 "tollbod_4fw", "tollbod_5fw", "tollbod_6fw", "elvegata_fw", "lundsbro_fw"]
@@ -394,12 +391,10 @@ if __name__ == "__main__":
             T = 400
             network = gk.generate_kvadraturen_small(T)
 
-
             ids_bw = ["lundsbro_bw", "elvegata_bw", "tollbod_6bw", "tollbod_5bw", "tollbod_4bw", 
                    "tollbod_3bw", "tollbod_2bw", "tollbod_1bw", "v_strand_7bw", "v_strand_6bw",
                      "v_strand_5bw", "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw"]            
             
-
             stops_bw = [("tollbod_6bw", 50), ("tollbod_3bw", 90), ("tollbod_1bw", 30), ("v_strand_3bw", 25)]
             times_bw = [40, 130, 190, 250]
             bus_bw = Bus(ids_bw, stops_bw, times_bw, network)
@@ -423,8 +418,6 @@ if __name__ == "__main__":
             _, _, bus_lengths, bus_delays = bus_network.solve_cons_law()
 
             print("Solved conservation law!")
-
-            # print(bus_lengths)
 
             print("\nDelays:")
             print(bus_delays)

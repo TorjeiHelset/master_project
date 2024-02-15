@@ -33,8 +33,6 @@ def Rusanov_Flux(rho, gamma):
     left = rho[:-1]
     right = rho[1:]
 
-    
-
     # Can this be done quicker, i.e. without using for -- maybe, look at numlinalg numpy idx method....
     s = torch.tensor([max(abs(d_flux(rho[j], gamma)), abs(d_flux(rho[j+1], gamma))) for j in range(len(rho)-1)]) 
 
@@ -51,14 +49,11 @@ def Lax_Wendroff_Flux(rho, dx, dt, gamma):
     a = d_flux(0.5*(left + right))
     return 0.5 * (flux(left, gamma) + flux(right, gamma)) - a*0.5*dt/dx * (flux(right, gamma) - flux(left, gamma))
 
-        
-
 @torch.jit.script
 def minmod(a1, a2):
     '''
     Limiter that satisfies the TVD requirement
     '''
-
     return torch.tensor(.5) * (torch.sign(a1) + torch.sign(a2)) * torch.minimum(torch.abs(a1), torch.abs(a2))
 
 @torch.jit.script 
@@ -66,7 +61,6 @@ def maxmod(a1, a2):
     '''
     Limiter that satisfies the TVD requirement
     '''
-
     return torch.tensor(.5) * (torch.sign(a1) + torch.sign(a2)) * torch.maximum(torch.abs(a1), torch.abs(a2))
 
 @torch.jit.script
@@ -117,32 +111,22 @@ def Rusanov_Flux_2(left, right, gamma):
     # Without for loop below??
     # Gamma moved out of torch.tensor and torch.max so that derivative depends on it
     
-    #s = gamma * torch.tensor([torch.max(torch.abs(d_flux(left[j], 1.)), torch.abs(d_flux(right[j], 1.))) for j in range(len(left))])
     s = gamma * torch.max(torch.abs(d_flux(left, torch.tensor(1.))), 
                           torch.abs(d_flux(right, torch.tensor(1.))))
     
-    # print(f"s: {s}")
     return 0.5*(flux(left, gamma) + flux(right, gamma)) - 0.5 * s * (right - left)
 
 @torch.jit.script
 def L_operator(rho, dx, limiter, gamma):
     sigma = slope(rho, limiter)
-    # print(f"sigma = {sigma}")
     left = torch.zeros(len(rho)-2)
     right = torch.zeros(len(rho)-2)
 
     left = rho[1:-1] + torch.tensor(.5)  * sigma 
     right = rho[1:-1] - torch.tensor(.5) * sigma
-    # print(f"left: {left}")
-    # print(f"right: {right}")
-
-
     F = Rusanov_Flux_2(left[:-1], right[1:], gamma)
-    # print(f"F: {F}")
-    #print(F[1:] - F[:-1])
     L_out = torch.zeros_like(rho)
-    L_out[2:-2] = -1/dx * (F[1:] - F[:-1]) # Check dividing by dx here, in sigma or both - at this point alpha variable need to be introduced
-    # print(f"L: {L_out}")
+    L_out[2:-2] = -1/dx * (F[1:] - F[:-1])
     return L_out
 
 @torch.jit.script
@@ -155,11 +139,7 @@ def SSP_RK(rho, dx, limiter, dt, gamma):
     return rho_new
     
 def Euler(rho, dx, limiter, dt, gamma):
-    # Alpha parameter
-    # rho_new = rho + dt * L_operator(rho, dx, limiter, gamma)
-    # print(f" Rho 0: {rho}")
     rho_new = rho + dt * L_operator(rho, dx, limiter, gamma)
-    # print(f" Rho 1: {rho_new}")
     return rho_new
 
 def total_flux_out(rho_dict, order):
@@ -181,14 +161,10 @@ def total_flux_out(rho_dict, order):
 
     return Integral
 
-
-
 sigma = torch.tensor(0.5)
 
 def fmax(gamma):
     return flux(sigma, gamma)
-# fmax =  flux(sigma, gamma)
-
 
 def D(rho, gamma):
     if rho <= sigma:
@@ -201,8 +177,6 @@ def S(rho, gamma):
         return fmax(gamma)
     else:
         return flux(rho, gamma)
-    
-
 
 def D_non_torchscript(rho, gamma):
     if rho <= sigma:
