@@ -270,23 +270,12 @@ class RoadNetwork:
                 #-------------------------------------
                 # STEP 1: Find appropriate timestep
                 #-------------------------------------                
-                # dt = torch.tensor(controlpoint - t)
                 dt = controlpoint - t
                 
-
                 for road in self.roads:
                     dt = torch.min(dt, road.max_dt())
-                
-                ###############################################
-                # Only for testing convergence order in space
-                ###############################################
-                #dt = min(dt, 1/1280)
             
                 t = t + dt
-                # if t > 190:
-                #     # Print to find potential error location
-                #     printing = True
-                #     print(f"t = {t}, dt = {dt}")
 
                 #-------------------------------------
                 # STEP 2: Update positions of busses
@@ -296,10 +285,6 @@ class RoadNetwork:
                     road_id, length, next_id = bus.get_road_id()
                     if printing:
                         print(f"Bus {i} is on road {road_id} at length {length} and next road is {next_id}")
-
-                    # print(f"Current length travelled: {bus.length_travelled}")
-                    # print(f"Current length travelled on road: {length}")
-                    # print("Current and next road:")
                     
 
                     if road_id == "":
@@ -330,24 +315,16 @@ class RoadNetwork:
                             print(f"Version of activation function: {activation._version}")
                         except:
                             pass
-                    # if activation < 0.5:
-                    #     # Red light between the two roads
-                    #     print("\n###############################################")
 
-                    #     print(road_id, next_id)
-                    #     print(f"Current length travelled on road: {length}")
 
 
                     # 3. Using the road id and length, find the speed of the bus
                     # Okay to use local speed here?
                     road = self.get_road(road_id)
-                    # print("Speed of bus")
                     if length >= road.L*road.b:
                         if printing:
                             print("calculating speed using the junction")
                         # Bus has reached the end of the road
-                        # print("Bus has reached the end of the road")
-                        # print("Bus is at the junction!")
                         # Calculate speed differently...
                         if activation >= 0.5:
                             speed = j.get_speed(t, road_id, next_id) 
@@ -356,28 +333,18 @@ class RoadNetwork:
                     else:
                         if printing:
                             print("calculating speed using nodes of road")
-                        # print("Calculating speed using nodes of road")
                         new_length = length / road.L
                         speed = road.get_speed(new_length, printing) * road.L # Need to multiply with L to get actual speed in m/s
-                    # print(speed)
-                    # prev_length = bus.length_travelled
-                    # if activation < 0.5:
-                    #     prev_length = bus.length_travelled.clone()
-                    # print(f"t = {t}, activation = {activation}")
-                    # print(f"t = {t},speed = {speed}, dt = {dt}, activation = {activation}, road length = {road.L*road.b}, bus length = {length}, road id = {road_id}")
+                    
                     if printing:
                         print(f"Speed of bus is {speed}")
 
                     relative_length = road.L*road.b - length
                     bus.update_position(t, dt, speed, activation, relative_length, printing=printing)
-                    # print(f"New length travelled: {bus.length_travelled}")
-                    # if activation < 0.5:
-                    #     print(f"New length on road: {bus.length_travelled - prev_length}" )
 
                 #-------------------------------------
                 # STEP 3: Solve internal system for each road
                 #-------------------------------------
-                # if t < 1000:
                 for road in self.roads:
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
@@ -406,18 +373,6 @@ class RoadNetwork:
                     # Add boundary conditions to remaining roads
                     road.apply_bc(t, dt)
 
-                
-                #-------------------------------------
-                # STEP 5.5: Check version of densities
-                #-------------------------------------
-                # if t > 195:
-                #     for i, road in enumerate(self.roads):
-                #         for j, rho in enumerate(road.rho):
-                #             print(f"Density of node {i} on road {j} has version {rho._version}")
-
-
-                # Is cycle times being updated?????
-
                 #-------------------------------------
                 # STEP 6: Store solution after time t
                 # Maybe a bit too much to store the solution at all times
@@ -438,7 +393,6 @@ class RoadNetwork:
                 if self.debugging:
                     i_count += 1
                     if i_count >= self.iters:
-                        # print(f"Last t: {t}")
                         t = self.T+1
 
                 

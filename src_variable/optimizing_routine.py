@@ -244,34 +244,6 @@ def project2(params, Lower, Upper):
     return out
 
 
-# def initialize_road_network(T, roads, junctions, vmaxes):
-#     '''
-#     Initializing a road network given a time, roads and junctions as well as the speed limits
-#     vmaxes.
-#     Could probably instead just update densities and speed limits of existing system...
-
-#     Need to be updated to take in vmaxes that may vary for each road
-#     '''
-
-#     n_speeds = len(control_points) + 1 # Number of different speed limits for each road
-
-#     loaded_roads = []
-#     loaded_junctions = []
-#     for l, r in enumerate(roads):
-#         # print(Vmax[l])
-#         idx = l * n_speeds
-#         loaded_roads.append(rn.Road(b=r['b'], L = r['L'], N = r['N'], Vmax=[float(vmaxes[i]) for i in range(idx, idx+n_speeds)],
-#                     scheme=r['Scheme'], limiter="minmod",
-#                     initial = r["Init_distr"], inflow = r["Inflow"]))
-
-#     for j in junctions:
-#         loaded_junctions.append(rn.Junction(roads = [loaded_roads[i] for i in j["j_roads"]],
-#                                         entering = j["entering"], leaving = j["leaving"],
-#                                         distribution=j["distribution"], redlights=[]))
-#     network = rn.RoadNetwork(loaded_roads, loaded_junctions, T, control_points)
-
-#     return loaded_roads, loaded_junctions, network
-
 def initialize_road_network(T, roads, junctions, vmaxes):
     # T, roads, junctions = read_json(filename)
 
@@ -457,21 +429,9 @@ def optimize_gradient_armijo(filename, objective_type, tol = 0.1, maxiter=10, c1
             new_loaded_roads, new_loaded_junctions, new_network = loaded_roads, loaded_junctions, network
             step_taken = True
 
-        # keep_iterating = False
-        # for i in remaining:
-        #     if abs(grad[i]) > 0.0001:
-        #         print("iter")
-        #         keep_iterating = True
-        
-        # if keep_iterating:
-        #     for i in finished:
-        #         grad[i] = 0
-        
-        # print(grad)
-        # print(remaining)
         alpha = 10 / max([abs(g) for g in grad])
         print(alpha * grad)
-        # print(alpha)
+
         new_loaded_roads, new_loaded_junctions, new_network = None, None, None
         new_history, new_objective = None, None
         new_params, new_grad = None, None
@@ -779,16 +739,6 @@ def optimize_gradient_armijo2(filename, objective_type, tol = 0.1, maxiter=10, c
 
         # Performing gradient descent step
         step_taken = False
-        # for i in range(len(grad)):
-        #     if i < len(Vmax):
-        #         # Setting gradient of speeds equal to 0 if boundary already reached
-        #         if all_params[i] >= VUpper[i] and grad[i] < 0:
-        #             # Cannot update this speed with 5 km/h
-        #             grad[i] = 0
-
-        #         elif all_params[i] <= Vlower[i] and grad[i] > 0:
-        #             # Cannot update this speed with 5 km/h
-        #             grad[i] = 0
         for i in range(len(grad)):
             if all_params[i] >= upperBounds[i] and grad[i] < 0:
                 grad[i] = 0
@@ -988,19 +938,11 @@ if __name__ == "__main__":
     
             loaded_roads, loaded_junctions, network = initialize_road_network2(1000, roads, junctions, all_params)
 
-            # # Solve conservation law
-            # for j in network.junctions:
-            #     for light in j.trafficlights:
-            #         print(light.starting_state)
-            #         for c in light.cycle:
-            #             print(c)
             history, queues = network.solve_cons_law()
             print(len(history[0].keys()))
             objective = total_travel_time_queue(history, queues, network)
             print(objective)
 
-            # for j in network.junctions:
-            #     print(j.get_next_control_point(20.3))
 
         case 6:
             # Simple 1-1 junction with fixed speed limits only looking at traffic lights
@@ -1008,8 +950,6 @@ if __name__ == "__main__":
             # time is also changed slightly in the direction of the change of the first
             # Problem arises if dominant cycle time reaches upper/lower bound. Then the 
             # less dominant may be changed in the wrong direction so that no updating is performed.
-            # print("Starting time")
-            # print(time.time())
             speed_times, objectives, final_speeds = optimize_gradient_armijo2('networks/2-2_coupledlights.json',4, tol=0.01, maxiter=10)
             # print("End time")
             # print(time.time())

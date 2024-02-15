@@ -149,7 +149,6 @@ class Road:
         # Determine initial denisty according to some density function
         # Note that x < 0 at some points for higher order schemes
         self.rho = initial(x)
-        # print(x, self.rho)
 
         # limiter is used if the scheme is of second order
         match limiter:
@@ -159,7 +158,6 @@ class Road:
                 self.limiter = torch.tensor(2.0)
             case "superbee":
                 self.limiter = torch.tensor(3.0)
-        #self.limiter = limiter
         # Inflow determines boundary condition in to road
         self.inflow = torch.tensor(inflow)
 
@@ -188,7 +186,6 @@ class Road:
         For now T is not in the variable
         Instead let t go from 0 to T to easier compare with traffic ligths
         '''
-        #self.gamma = self.Vmax * T / self.L 
         self.gamma = [v / self.L for v in self.Vmax]
 
 
@@ -238,28 +235,17 @@ class Road:
             case 0:
                 # Lax-Friedrich scheme
                 F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
-                # print("Internal Flux")
-                # print(F)
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 1:
                 # Rusanov scheme
                 F = fv.Rusanov_Flux(self.rho, self.gamma[self.idx])
-                # print("Internal Flux")
-                # print(F)
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 2:
                 F = fv.Lax_Wendroff_Flux(self.rho, self.dx, dt, self.gamma[self.idx])
-                # print("Internal Flux")
-                # print(F)
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 3:
-                # 2. order in time and space
-                ###########
-                # SSP_RK and Euler must be redefined to take in gamma instead of vmax
-                ###########
                 self.rho = fv.SSP_RK(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
             case 4:
-                # 2. order in space, 1. order in time
                 self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
 
     def apply_bc(self, t, dt):
@@ -299,9 +285,6 @@ class Road:
                 else:
                     inflow = self.inflow
 
-                # self.rho[:self.pad] = 0
-                # if t > 1600:
-                #     inflow = 0
                 if self.flux_in >= 0:
                     # Inflow is given as flux
                     # For now this is only allowed to be constant
@@ -313,15 +296,10 @@ class Road:
                         f_in = self.flux_in
                 else:
                     # Inflow is given as density
-                    # print("VOOM")
                     if 300 < t < 600:
                         f_in = fv.D(inflow, self.gamma[self.idx]) * 0.5
                     else:
                         f_in = fv.D(inflow, self.gamma[self.idx]) # Caclulate inflow
-                #gamma_in = min(f_in, fv.S(self.rho[self.pad-1]))
-
-                # Left if actual influx, right is maximum influx
-                # print(f_in, fv.flux(0.5, self.gamma[self.idx].clone()))
 
                 if self.queue_length > 0:
                     # Set the influx to the maximum possible
@@ -335,13 +313,6 @@ class Road:
 
                 # Update queue length using the difference between actual and desired flux in
                 self.queue_length = self.queue_length + dt * (f_in - gamma_in)
-                # if f_in != gamma_in:
-                #     print(f"Desired: {f_in}")
-                #     print(f"Actual: {gamma_in}")
-
-
-                #self.rho[:self.pad] = inflow
-
 
                 # Update density according to flux in
                 right, out_mid = self.rho[self.pad], self.rho[self.pad-1]
@@ -416,15 +387,10 @@ class Road:
         if length == 0:
             length = torch.tensor(0.0)
 
-        # print("Calculating speed of bus at a specific length:")
-        # print(length, self.b)
-
         n = self.rho.shape[0] - 2
         a = (n-1) / self.b
         
         pos = a * length + 1
-        # print("Position of bus on road:")
-        # print(pos)
 
         prev = torch.floor(pos)
         next = prev + 1
