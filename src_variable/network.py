@@ -281,6 +281,9 @@ class RoadNetwork:
                 # STEP 2: Update positions of busses
                 #-------------------------------------
                 for i, bus in enumerate(self.busses):
+                    if t < bus.start_time:
+                        continue
+                    
                     # 1. Find the road the bus is on
                     road_id, length, next_id = bus.get_road_id()
                     if printing:

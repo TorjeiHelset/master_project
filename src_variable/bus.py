@@ -113,7 +113,7 @@ class Bus:
 
     
 
-    def __init__(self, ids, stops, times, network):
+    def __init__(self, ids, stops, times, network, start_time = 0.0):
         '''
         Needs to have a check to ensure that all id's in route are in the network and not empty strings
         '''
@@ -134,6 +134,7 @@ class Bus:
         self.stop_lengths = self.get_stop_lengs(stops)
         self.next_stop = 0
         self.delays = [torch.tensor(0.0) for _ in range(len(stops))]
+        self.start_time = start_time
 
 
     def get_stop_lengs(self, stops):

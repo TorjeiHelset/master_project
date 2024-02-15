@@ -1,6 +1,6 @@
 import torch
 import FV_schemes as fv
-import src_old_code.optimize_flux as opt
+import optimize_flux as opt
 
 # Maybe want to use torch.jit.script to speed up code, but not possible for member functions
 # In that case, it would be necessary to define a function outside of the class, call it 
