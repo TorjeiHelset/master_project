@@ -300,8 +300,14 @@ class Junction:
             for j in range(m):
                 fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
         
-
+        
+        # Skip this part to check if error is here...
+        fluxes[0,0] = torch.tensor(0.4)
+                
         # calculate the capacity of each road j
+        # capacities = torch.zeros(m)
+        # sum_influxes = torch.zeros(m)
+
         for j in range(m):
             capacity = max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j])
 
@@ -309,7 +315,9 @@ class Junction:
             sum_influx = torch.sum(fluxes[:,j])
             if sum_influx > capacity:
                 # If the sum of the fluxes is larger than the capacity, scale down the fluxes
-                fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
+                # fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
+                for i in range(n):
+                    fluxes[i,j] = fluxes[i,j] * capacity / sum_influx
 
 
         fluxes_in = [0]*n
@@ -340,6 +348,97 @@ class Junction:
         for j in range(m):
             # Scaling flux back to correspond to maximum density equal to 1
             fluxes_out[j] = torch.sum(fluxes[:,j]) / max_dens_out[j]
+            # fluxes_out[j] = sum([fluxes[i][j] for i in range(n)]) / max_dens_out[j]
+        
+        return fluxes_in, fluxes_out
+    
+
+    def divide_flux_wo_opt_list(self, t):
+        # Is all of the below necessary? 
+        # road_in = [self.roads[i] for i in self.entering]
+        # road_out = [self.roads[i] for i in self.leaving]
+
+        rho_in = [road.rho[-road.pad] for road in self.road_in]
+        gamma_in = [road.gamma[road.idx] for road in self.road_in]
+        max_dens_in = torch.tensor([road.max_dens for road in self.road_in])
+        rho_out = [road.rho[road.pad-1] for road in self.road_out]
+        gamma_out = [road.gamma[road.idx] for road in self.road_out]
+        max_dens_out = torch.tensor([road.max_dens for road in self.road_out])
+
+
+        # If sentences can be moved outside of j for loop and split into two if-sentences
+        # Would reducde the number of times the if-sentence is evaluated
+        n = len(self.entering)
+        m = len(self.leaving)
+        # active = torch.ones((n,m))
+        active = [[torch.tensor(0.0) for _ in range(m)] for _ in range(n)]
+
+        # Probably quicker - need to check that the functionality is the same
+        for light in self.trafficlights:
+            for i in range(n):
+                if self.entering[i] in light.entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.leaving:
+                            active[i][j] = light.activation_func(t)
+
+        
+        for light in self.coupled_trafficlights:
+            for i in range(n):
+                if self.entering[i] in light.a_entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.a_leaving:
+                            active[i][j] = light.a_activation(t)
+
+                if self.entering[i] in light.b_entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.b_leaving:
+                            active[i][j] = light.b_activation(t)
+        
+        # fluxes[i,j] is the flux from road i to road j
+        fluxes = [[torch.tensor(0.0) for _ in range(m)] for _ in range(n)]
+
+        # Calculate the desired flux from each road i to road j
+        for i in range(n):
+            # move D to be here to reduce the number of calls
+            i_flux = fv.D(rho_in[i].clone(), gamma_in[i])            
+            for j in range(m):
+                fluxes[i][j] = active[i][j]*self.distribution[i][j]*max_dens_in[i] * i_flux
+        
+        
+        # Skip this part to check if error is here...
+
+        for j in range(m):
+            capacity = max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j])
+
+            # Update the flux from all roads into road j
+            sum_influx = torch.tensor(0.0)
+            for i in range(n):
+                sum_influx = sum_influx +  fluxes[i][j]
+
+            if sum_influx > capacity:
+                # If the sum of the fluxes is larger than the capacity, scale down the fluxes
+                # fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
+                for i in range(n):
+                    fluxes[i][j] = fluxes[i][j] * capacity / sum_influx
+
+
+        fluxes_in = [0]*n
+        fluxes_out = [0]*m
+
+        for i in range(n):
+            # Scaling flux back to correspond to maximum density equal to 1
+            influx = torch.tensor(0.0)
+            for j in range(m):
+                influx = influx + fluxes[i][j]
+            fluxes_in[i] = influx / max_dens_in[i]
+
+
+        for j in range(m):
+            # Scaling flux back to correspond to maximum density equal to 1
+            outflux = torch.tensor(0.0)
+            for i in range(n):
+                outflux = outflux + fluxes[i][j]
+            fluxes_out[j] = outflux / max_dens_out[j]
             # fluxes_out[j] = sum([fluxes[i][j] for i in range(n)]) / max_dens_out[j]
         
         return fluxes_in, fluxes_out
@@ -423,7 +522,8 @@ class Junction:
         # road_in = [self.roads[i] for i in self.entering]
         # road_out = [self.roads[i] for i in self.leaving]
 
-        fluxes_in, fluxes_out = self.divide_flux_wo_opt(t)
+        # fluxes_in, fluxes_out = self.divide_flux_wo_opt(t)
+        fluxes_in, fluxes_out = self.divide_flux_wo_opt_list(t)
         # print(f"influx/outflux: {fluxes_in}, {fluxes_out}")
 
         # Ideally want to reduce the number of calls to d_flux and flux
@@ -547,17 +647,20 @@ class Junction:
             for light in self.trafficlights:
                 if in_idx in light.entering and out_idx in light.leaving:
                     activation = light.activation_func(t)
+                    # print("Regular traffic light")
                     return True, activation
 
             for light in self.coupled_trafficlights:
                 if in_idx in light.a_entering and out_idx in light.a_leaving:
                     activation = light.a_activation(t)
+                    # print("Coupled traffic light, state a")
                     return True, activation
 
                 if in_idx in light.b_entering and out_idx in light.b_leaving:
                     activation = light.b_activation(t)
+                    # print("Coupled traffic light, state b")
                     return True, activation
-
+        # print("No traffic light")
         return True, activation
     
     def get_speed(self, t, id_1, id_2):
@@ -634,8 +737,8 @@ class Junction:
             # print(f"Total sum of fluxes into road {j}: {sum_influx}")
             if sum_influx > capacity:
                 # If the sum of the fluxes is larger than the capacity, scale down the fluxes
-                fluxes[:,j] = fluxes[:,j] * capacity / sum_influx
-
+                fluxes[:,j] = fluxes[:,j] * capacity / sum_influx # is this the inplace in question?
+                
         flux = fluxes[idx_1, idx_2] / max_dens_in[idx_1]
         speed = flux / rho_in[idx_1] * self.road_in[idx_1].L
         return speed

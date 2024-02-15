@@ -95,9 +95,9 @@ def test_smoothness_v1(v1, v2, cycle, T = 100):
         traffic_light = tl.TrafficLightContinous(True, [0], [1], cycle)
         junction = jn.Junction([in_road, out_road], [0], [1], [[1.0]], [traffic_light], [])
         network = nw.RoadNetwork([in_road, out_road], [junction], T)
-        densities, queues, _ = network.solve_cons_law()
+        densities, queues, _, _ = network.solve_cons_law()
         # print(objective_function(densities, network))
-        objectives[i] = objective_function_queues(densities, queues, network)
+        objectives[i] = objective_function_queues(densities, queues, network).detach()
     return objectives
 
 def test_smoothness_v2(v1, v2, cycle, T = 100):
@@ -108,9 +108,9 @@ def test_smoothness_v2(v1, v2, cycle, T = 100):
         traffic_light = tl.TrafficLightContinous(True, [0], [1], cycle)
         junction = jn.Junction([in_road, out_road], [0], [1], [[1.0]], [traffic_light], [])
         network = nw.RoadNetwork([in_road, out_road], [junction], T)
-        densities, queues, _ = network.solve_cons_law()
+        densities, queues, _, _ = network.solve_cons_law()
         # print(objective_function(densities, network))
-        objectives[i] = objective_function_queues(densities, queues, network)
+        objectives[i] = objective_function_queues(densities, queues, network).detach()
     return objectives
 
 def test_smoothness_t1(v1, v2, t1, t2, T = 100):
@@ -121,9 +121,9 @@ def test_smoothness_t1(v1, v2, t1, t2, T = 100):
         traffic_light = tl.TrafficLightContinous(True, [0], [1], [t, t2])
         junction = jn.Junction([in_road, out_road], [0], [1], [[1.0]], [traffic_light], [])
         network = nw.RoadNetwork([in_road, out_road], [junction], T)
-        densities, queues, _ = network.solve_cons_law()
+        densities, queues, _, _ = network.solve_cons_law()
         # print(objective_function(densities, network))
-        objectives[i] = objective_function_queues(densities, queues, network)
+        objectives[i] = objective_function_queues(densities, queues, network).detach()
     return objectives
 
 def test_smoothness_t2(v1, v2, t1, t2, T = 100):
@@ -134,9 +134,9 @@ def test_smoothness_t2(v1, v2, t1, t2, T = 100):
         traffic_light = tl.TrafficLightContinous(True, [0], [1], [t1, t])
         junction = jn.Junction([in_road, out_road], [0], [1], [[1.0]], [traffic_light], [])
         network = nw.RoadNetwork([in_road, out_road], [junction], T)
-        densities, queues, _ = network.solve_cons_law()
+        densities, queues, _, _ = network.solve_cons_law()
         # print(objective_function(densities, network))
-        objectives[i] = objective_function_queues(densities, queues, network)
+        objectives[i] = objective_function_queues(densities, queues, network).detach()
     return objectives
 
 

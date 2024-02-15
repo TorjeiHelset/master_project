@@ -226,7 +226,7 @@ class Bus:
                 return i, relative_length, next_idx
         return -1, 0, -1 # Road not found, stop updating...
 
-    def update_position(self, t, dt, speed, activation, length):
+    def update_position(self, t, dt, speed, activation, length, printing = False):
         '''
         Calculates the next position given the current position and the speed and the
         time step
@@ -246,10 +246,17 @@ class Bus:
 
         if self.at_stop:
             # print(f"t = {t}, bus is at busstop")
+            if printing:
+                print(f"Bus is at stop!")
+
             if self.remaining_stop_time > dt:
-                self.remaining_stop_time -= dt
+                if printing:
+                    print(f"Bus should wait for {self.remaining_stop_time} seconds, more than the next time step")
+                self.remaining_stop_time = self.remaining_stop_time - dt
                 # The bus does not move
             else:
+                if printing:
+                    print("The bus has waited long enough!")
                 moving_dt = dt - self.remaining_stop_time
                 self.remaining_stop_time = 0
                 self.at_stop = False
@@ -266,23 +273,60 @@ class Bus:
             length_of_next_stop = self.stop_lengths[self.next_stop]
 
             if activation >= 0.5:
-                # print(f"t = {t}, bus is allowed to cross the junction")
+                #print(f"t = {t}, bus is allowed to cross the junction")
                 # Bus can pass through the junction
 
                 if self.length_travelled + speed * dt >= length_of_next_stop:
+                    if printing:
+                        print("Bus should stop at the busstop in this time step")
+                        try:
+                            print(f"Length travelled verison: {self.length_travelled._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of timestep: {dt._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of speed: {speed._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of length: {length._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of length_of_next_stop: {length_of_next_stop._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of dt: {dt._version}")
+                        except:
+                            pass
+                        
                     # print(f"t = {t}, bus should stop at the busstop")
                     actual_dt = (length_of_next_stop - self.length_travelled)/speed
                     # The bus should stop at the next stop
                     self.at_stop = True
-                    self.remaining_stop_time = 30 - (dt - actual_dt)
+                    self.remaining_stop_time = 30 - (dt - actual_dt) # This might be requiring gradient
                     # Calculate delay time
                     if self.next_stop < len(self.times):
-                        self.delays[self.next_stop] = torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                        # At least one stop left
+
+                        self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
                         # inplace is fine
                         self.next_stop += 1
+
                     self.length_travelled = self.length_travelled + speed * actual_dt # Could set equal to length_of_next_stop, but
                     # then it would not be possible to differentiate
                 else:
+                    if printing:
+                        print(f"Bus should travel full distance of {speed*dt} meters")
                     # print(f"t = {t}, bus should travel full distance of {speed*dt} meters")
                     self.length_travelled = self.length_travelled + speed * dt
             else:
@@ -296,13 +340,15 @@ class Bus:
                         self.remaining_stop_time = 30 - (dt - actual_dt)
                         # Calculate delay time
                         if self.next_stop < len(self.times):
-                            self.delays[self.next_stop] = torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                            self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
                             self.next_stop += 1
                         self.length_travelled = self.length_travelled + speed * actual_dt
                     else:
                         self.length_travelled = self.length_travelled + speed * dt
 
                 else:
+                    if printing:
+                        print(f"Busshould stop at the junction!")
                     # Bus could be stopped at the junction
                     try:
                         self.length_travelled = self.length_travelled + torch.min(speed * dt, length)

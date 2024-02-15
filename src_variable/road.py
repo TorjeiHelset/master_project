@@ -402,7 +402,7 @@ class Road:
                 # (i+1)th time interval
                 return self.gamma[i]
         
-    def get_speed(self, length):
+    def get_speed(self, length, printing = False):
         '''
         Return the speed calculated at a given length
         For now, just use local speed
@@ -427,16 +427,37 @@ class Road:
         # print(pos)
 
         prev = torch.floor(pos)
-        next = torch.floor(pos+1.0)
+        next = prev + 1
 
+        if printing:
+            print(f"Position: {pos}")
+            print(f"Nodes: {prev} and {next}")
+            print(f"Closeness to nodes: {1 + prev - pos} and {1 + pos - next}")
+            print(f"Speed: {self.gamma[self.idx]}")
+        
         prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)])
         next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)])
+        if printing:
+            try:
+                print(f"Version of left density: {self.rho[int(prev)]._version}, {self.rho[int(prev)]}")
+            except:
+                pass
 
-        avg_speed = (1 + prev - pos) * prev_speed + (1 + pos - next) * next_speed
-        # print(f"Nodes: {prev} and {next}")
-        # print(f"Closeness to nodes: {1 + prev - pos} and {1 + pos - next}")
-        # print(f"Densities: {self.rho[int(prev)]} and {self.rho[int(next)]}")
-        # print(f"Speeds: {prev_speed} and {next_speed}")
-        # print(f"Average speed: {avg_speed}")
+            try:
+                print(f"Version of right density: {self.rho[int(next)]._version}, {self.rho[int(next)]}")
+            except:
+                pass
+
+            print(type(self.rho[int(prev)]))
+        
+        if printing:
+            print(f"Speeds: {prev_speed} and {next_speed}")
+            print(f"Densities: {self.rho[int(prev)]} and {self.rho[int(next)]}")
+            print(f"Speed limit: {self.Vmax[self.idx]}, version {self.Vmax[self.idx]._version}")
+        
+        avg_speed = (1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed
+        
+        if printing:
+            print(f"Average speed: {avg_speed}")
 
         return avg_speed
