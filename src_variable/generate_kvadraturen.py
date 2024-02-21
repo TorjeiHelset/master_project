@@ -91,6 +91,86 @@ def create_roads_small():
 
     return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, lundsbro_fw, lundsbro_bw
 
+def create_roads_small_w_params(v_strand_speed = 50, h_w_speed = 30, tollbod_speed = 30,
+                                elvegata_speed = 30, dronning_speed = 50, festning_speed = 50,
+                                lundsbro_speed = 50):
+    # Assume speed does not change along roads
+    # Parameters for all roads
+    L = 50
+    N = 5
+
+    # Vestre strandgate:
+    #   all roads are 2-way and equivalent, (although the junctions are not)
+    #   lengths are all 50 meters
+    v_strand_fw = [None] * 8
+    v_strand_bw = [None] * 8
+    for i in range(8):
+        v_strand_fw[i] = rd.Road(1, L, N, torch.tensor([v_strand_speed], requires_grad=True), [], left_pos=(0, i), right_pos=(0, i+1),
+                                inflow = 0.05, id="v_strand_" + str(i+1) + "fw")
+        v_strand_bw[i] = rd.Road(1, L, N, torch.tensor([v_strand_speed], requires_grad=True), [], left_pos=(0, i+1), right_pos=(0, i),
+                                inflow = 0.1, id="v_strand_" + str(i+1) + "bw")
+
+    # Henrik Wergelands:
+    #   all roads are 1-way and equivalent, (although the junctions are not)
+    #   lengths are all 100 meters
+    h_w = [None] * 4
+    for i in range(4):
+        h_w[i] = rd.Road(2, L, N, torch.tensor([h_w_speed], requires_grad=True), [], left_pos=(i-1, 3), right_pos=(i, 3),
+                                inflow = 0.1, id="h_w_" + str(i+1))
+
+    # Tollbodgata:
+    #   roads 1-3 are 1-way and equivalent, roads 4-6 are 2-way and equivalent
+    #   lengths are all 100 meters
+    tollbod_fw = [None] * 6
+    tollbod_bw = [None] * 6
+    for i in range(6):
+        tollbod_bw[i] = rd.Road(2, L, N, torch.tensor([tollbod_speed], requires_grad=True), [], left_pos=(i+1, 7), right_pos=(i, 7),
+                                inflow = 0.1, id="tollbod_" + str(i+1) + "bw")
+        if i >= 3:
+            tollbod_fw[i] = rd.Road(2, L, N, torch.tensor([tollbod_speed], requires_grad=True), [], left_pos=(i, 7), right_pos=(i+1, 7),
+                                inflow = 0.1, id="tollbod_" + str(i+1) + "fw")
+
+
+    # Elvegata:
+    #   only one 2-way road of length 50
+    elvegata_fw = [rd.Road(1, L, N, torch.tensor([elvegata_speed], requires_grad=True), [], left_pos=(6, 7), right_pos=(6, 8),
+                        inflow = 0.1, id="elvegata_fw")]
+    elvegata_bw = [rd.Road(1, L, N, torch.tensor([elvegata_speed], requires_grad=True), [], left_pos=(6, 8), right_pos=(6, 7),
+                        inflow = 0.1, id="elvegata_bw")]
+
+    # Dronningens gate:
+    #   all roads are 2-way and equivalent, (although the junctions are not)
+    #   lengths are all 100 meters
+    dronning_fw = [None] * 6
+    dronning_bw = [None] * 6
+    for i in range(6):
+        dronning_fw[i] = rd.Road(2, L, N, torch.tensor([dronning_speed], requires_grad=True), [], left_pos=(i, 8), right_pos=(i+1, 8),
+                                inflow = 0.1, id="dronning_" + str(i+1) + "fw")
+        dronning_bw[i] = rd.Road(2, L, N, torch.tensor([dronning_speed], requires_grad=True), [], left_pos=(i+1, 8), right_pos=(i, 8),
+                                inflow = 0.1, id="dronning_" + str(i+1) + "bw")
+
+    # Festningsgata:
+    #   all roads are 2-way and equivalent, (although the junctions are not)
+    #   lengths are all 50 meters
+    festning_fw = [None] * 9
+    festning_bw = [None] * 9
+    for i in range(9):
+        festning_fw[i] = rd.Road(1, L, N, torch.tensor([festning_speed], requires_grad=True), [], left_pos=(3, i), right_pos=(3, i+1),
+                                inflow = 0.05, id="festning_" + str(i+1) + "fw")
+        festning_bw[i] = rd.Road(1, L, N, torch.tensor([festning_speed], requires_grad=True), [], left_pos=(3, i+1), right_pos=(3, i),
+                                inflow = 0.1, id="festning_" + str(i+1) + "bw")
+
+    # Lundsbroa:
+    #   only one 2-way road of length 100
+    lundsbro_fw = [rd.Road(2, L, N, torch.tensor([lundsbro_speed], requires_grad=True), [], left_pos=(6, 8), right_pos=(7, 8),
+                        inflow = 0.1, id="lundsbro_fw")]
+    lundsbro_bw = [rd.Road(2, L, N, torch.tensor([lundsbro_speed], requires_grad=True), [], left_pos=(7, 8), right_pos=(6, 8),
+                        inflow = 0.05, id="lundsbro_bw")]
+
+
+
+    return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, lundsbro_fw, lundsbro_bw
+
 def create_junctions_small(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw,
                            elvegata_fw, elvegata_bw, dronning_fw, dronning_bw,
                            festning_fw, festning_bw, lundsbro_fw, lundsbro_bw):
@@ -534,4 +614,33 @@ def generate_minimal(T):
 
 
 
+def generate_kvadraturen_small_w_params(T, v_strand_speed = 50, h_w_speed = 30, tollbod_speed = 30,
+                                        elvegata_speed = 30, dronning_speed = 50, festning_speed = 50,
+                                        lundsbro_speed = 50):
+    '''
+    In the first iteration, do things manually
+    This is rather unfeasible for the large case, but is okay in this smaller network
+    '''
+
+    # Create the roads
+    v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
+    elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
+    lundsbro_fw, lundsbro_bw = create_roads_small_w_params(v_strand_speed, h_w_speed, tollbod_speed,
+                                                        elvegata_speed, dronning_speed, festning_speed,
+                                                        lundsbro_speed)
+
+    # Create the junctions
+    v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs = create_junctions_small(v_strand_fw, v_strand_bw, h_w,
+                                                                                                 tollbod_fw, tollbod_bw, elvegata_fw,
+                                                                                                 elvegata_bw, dronning_fw, dronning_bw,
+                                                                                                 festning_fw, festning_bw, lundsbro_fw,
+                                                                                                 lundsbro_bw)
+
+    # Create the network
+    roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[3:] + tollbod_bw + elvegata_fw + \
+            elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
+    junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
+
+    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
     
+    return network

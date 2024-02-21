@@ -266,6 +266,7 @@ class RoadNetwork:
                 print(f"road index {road.idx}")
                 print(f"Speed limit on road {road.Vmax[road.idx]}")
                 print(f"Gamma parameter {road.gamma[road.idx]}")
+                
             while t < controlpoint:
                 #-------------------------------------
                 # STEP 1: Find appropriate timestep

@@ -113,7 +113,7 @@ class Bus:
 
     
 
-    def __init__(self, ids, stops, times, network, start_time = 0.0):
+    def __init__(self, ids, stops, times, network, start_time = 0.0, id = ""):
         '''
         Needs to have a check to ensure that all id's in route are in the network and not empty strings
         '''
@@ -135,6 +135,7 @@ class Bus:
         self.next_stop = 0
         self.delays = [torch.tensor(0.0) for _ in range(len(stops))]
         self.start_time = start_time
+        self.id = id
 
 
     def get_stop_lengs(self, stops):
@@ -312,8 +313,8 @@ class Bus:
                     actual_dt = (length_of_next_stop - self.length_travelled)/speed
                     # The bus should stop at the next stop
                     self.at_stop = True
-                    self.remaining_stop_time = min(30, self.times[self.next_stop])  - (dt - actual_dt) # This might be requiring gradient
-                    
+                    self.remaining_stop_time = max(30, self.times[self.next_stop] - t)  - (dt - actual_dt) # This might be requiring gradient
+                    print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
                     # Calculate delay time
                     if self.next_stop < len(self.times):
                         # At least one stop left
@@ -326,6 +327,7 @@ class Bus:
                 else:
                     if printing:
                         print(f"Bus should travel full distance of {speed*dt} meters")
+                        
                     # print(f"t = {t}, bus should travel full distance of {speed*dt} meters")
                     self.length_travelled = self.length_travelled + speed * dt
             else:
@@ -336,7 +338,9 @@ class Bus:
                         actual_dt = (length_of_next_stop - self.length_travelled)/speed
                         # The bus should stop at the next stop
                         self.at_stop = True
-                        self.remaining_stop_time = 30 - (dt - actual_dt)
+                        self.remaining_stop_time = max(30, self.times[self.next_stop] - t) - (dt - actual_dt)
+                        print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
+                        
                         # Calculate delay time
                         if self.next_stop < len(self.times):
                             self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
