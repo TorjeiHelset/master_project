@@ -288,12 +288,14 @@ class Road:
                 if self.flux_in >= 0:
                     # Inflow is given as flux
                     # For now this is only allowed to be constant
-                    if 300 < t < 600:
-                        f_in = self.flux_in * 2.0#0.5
-                    elif t > 800:
-                        f_in = self.flux_in * 0.8
-                    else:
-                        f_in = self.flux_in
+                    # if 300 < t < 600:
+                    #     f_in = self.flux_in * 2.0#0.5
+                    # elif t > 800:
+                    #     f_in = self.flux_in * 0.8
+                    # else:
+                    #     f_in = self.flux_in
+
+                    f_in = self.flux_in
                 else:
                     # Inflow is given as density
                     if 300 < t < 600:

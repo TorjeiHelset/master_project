@@ -1,5 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
+from PIL import Image
+import sys
 import numpy as np
 import time as time
 import loading_json as load
@@ -209,15 +211,24 @@ class DensityRenderer:
         self.interval_seconds = interval_seconds
         self.last_update_time = time.time()
         self.is_rendering = True
+        self.images = []
 
     def display(self):
+        glClear(GL_COLOR_BUFFER_BIT)
         draw_colored_line(self.colors[self.current_idx], self.points[self.current_idx])
+
+        glutSwapBuffers()
+        # Read the content of the framebuffer and save as an image
+        data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (400, 300), data)
+        self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
 
     def timer(self, value):
 
         if self.current_idx >= len(self.colors)-1:
             print("End of simulation reached!")
             self.is_rendering = False
+            self.save_gif()
             glutLeaveMainLoop()
             return
         
@@ -234,8 +245,18 @@ class DensityRenderer:
 
         # Update the last update time
         self.last_update_time = time.time()
-
+    
+    def save_gif(self):
+        if len(self.images) == 0:
+            print("No images to save")
+            return
         
+        output_file = "density_animation.gif"
+        print("Saving GIF as:", output_file)
+        self.images[0].save(output_file, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
+        print("GIF saved.")
+
+
 def create_density_container(network, densities):
     # Create a container for the densities
     # Every element should be the 
@@ -743,14 +764,24 @@ class MultipleBusRenderer:
         self.interval_seconds = interval_seconds
         self.last_update_time = time.time()
         self.is_rendering = True
+        self.images = []
+
     def display(self):
+        glClear(GL_COLOR_BUFFER_BIT)
         draw_busses_network(self.road_points, [points[self.current_idx] for points in self.bus_points])
+        glutSwapBuffers()
+        # Read the content of the framebuffer and save as an image
+        data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (400, 300), data)
+        self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
     
     def timer(self, value):
         # Value could be used to set the new interval?
         # Stop updating index when end is reached
         if self.current_idx >= len(self.bus_points[0])-1:
+            print("End of simulation reached!")
             self.is_rendering = False
+            self.save_gif()
             glutLeaveMainLoop()
             return
 
@@ -767,6 +798,16 @@ class MultipleBusRenderer:
 
         # Update the last update time
         self.last_update_time = time.time()
+
+    def save_gif(self):
+        if len(self.images) == 0:
+            print("No images to save")
+            return
+        
+        output_file = "bus_animation.gif"
+        print("Saving GIF as:", output_file)
+        self.images[0].save(output_file, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
+        print("GIF saved.")
 
 def find_points(network, bus, bus_lengths):
     # For each timestep, find the coordinates of the bus, using the positions of the roads
@@ -910,7 +951,7 @@ def draw_busses_timed(bus_network, busses, bus_lengths, interval_seconds = 0.05)
     
     # Shift the road points
     # Get the road ids
-    ids = [road.id for road in network.roads]
+    ids = [road.id for road in bus_network.roads]
     
     # Shift the points
     road_points = shift_points(ids, road_points)

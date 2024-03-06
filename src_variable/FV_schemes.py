@@ -23,6 +23,7 @@ def d_flux(rho, gamma):
 def LxF_flux(rho, dx, dt, gamma):
     '''
     Return the Lax-Friedrich approximation of the flux
+    Maybe not correct? Should take left and right molecules, and not the current molecule in...
     '''
     left = rho[:-1]
     right = rho[1:]

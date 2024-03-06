@@ -235,6 +235,7 @@ class Junction:
             # Scaling flux back to correspond to maximum density equal to 1
             fluxes_out[j] = torch.sum(cloned_fluxes[:,j]) / max_dens_out[j]
         
+        
         return fluxes_in, fluxes_out
     
     def divide_flux_wo_opt_duty_to_gw(self, t):
@@ -284,9 +285,12 @@ class Junction:
                 fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
         # print("Fluxes:")
         # print(fluxes)
+        # print(f"T = {t}")
+        # print(f"Desired fluxed before scaling and duty to give way: {fluxes}")
 
         actual_fluxes = torch.zeros((n, m))
         remaining_capacities = [max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j]) for j in range(m)]
+        # print(f"Capacities of outgoing roads: {remaining_capacities}")
         
         for p in range(1, self.max_priority+1):
             # Go through all priorities
@@ -302,15 +306,19 @@ class Junction:
                         # All crossing connections should already be updated
                         if len(self.crossing_connections[i][j]) == 0:
                             # No crossing connections, use remaining out capacity to update flux
+                            # print(f"Connection {i}->{j} has priority {p} and no crossing connections")
                             try:
                                 actual_fluxes[i,j] = torch.min(remaining_capacities[j], fluxes[i,j])
                             except:
                                 actual_fluxes[i,j] = min(remaining_capacities[j], fluxes[i,j])
-
+                            # print(f"Actual flux from road {i} to road {j}: {actual_fluxes[i,j]}")
                             remaining_capacities[j] = remaining_capacities[j] - actual_fluxes[i,j]
+                            # print(f"Remaining capacity of road {j}: {remaining_capacities[j]}")
+
                         else:
                             # There is at least one crossing connection that should be used to update
                             # the flux
+                            # print(f"Connection {i}->{j} has priority {p} and at least crossing connections")
                             total_crossing_flux = torch.tensor(0.0)
                             for i_c, j_c in self.crossing_connections[i][j]:
                                 total_crossing_flux = total_crossing_flux + actual_fluxes[i_c,j_c]
@@ -319,13 +327,16 @@ class Junction:
                                                     max_dens_in[i]*fv.D(torch.tensor(1.0), gamma_in[i]) - total_crossing_flux)
                             # print(f"Total flux that needs to be crossed: {total_crossing_flux}")
                             # print(f"Maximum outflux from road {i}: {max_dens_in[i]*fv.D(torch.tensor(1.0), gamma_in[i])}")
-                            # print(f"Upper bound for road {i} to road {j}: {upper_bound}\n")
+                            # print(f"Upper bound for road {i} to road {j}: {upper_bound}")
                             try:
                                 actual_fluxes[i,j] = torch.min(remaining_capacities[j], fluxes[i,j], upper_bound)
                             except:
                                 actual_fluxes[i,j] = min(remaining_capacities[j], fluxes[i,j], upper_bound)
+            #                 print(f"Actual flux from road {i} to road {j}: {actual_fluxes[i,j]}")
+            #                 remaining_capacities[j] = remaining_capacities[j] - actual_fluxes[i,j]
+            #                 print(f"Remaining capacity of road {j}: {remaining_capacities[j]}")
                             
-                            remaining_capacities[j] = remaining_capacities[j] - actual_fluxes[i,j]
+            # print("-----------------------------\n")
 
 
         fluxes_in = [0]*n
@@ -339,6 +350,13 @@ class Junction:
             # Scaling flux back to correspond to maximum density equal to 1
             fluxes_out[j] = torch.sum(actual_fluxes[:,j]) / max_dens_out[j]
         
+        # print(f"Fluxes in: {fluxes_in}")
+        # print(f"Fluxes out: {fluxes_out}")
+        # print("****************************************************\n\n")
+        if abs(fluxes_in[2] - fluxes_out[2]) > 1e-4:
+            print(f"In and out fluxes to road 2 are not equal!")
+            print(f"Flux in: {fluxes_in[2]}, Flux out: {fluxes_out[2]}")
+            print(f"Time: {t}")
         return fluxes_in, fluxes_out
 
     def apply_bc(self, dt, t):
@@ -354,6 +372,10 @@ class Junction:
 
         # Need to change divide_flux3 so that the fluxes depend on parameter, i.e. are differentiable
         fluxes_in, fluxes_out = self.divide_flux(t)
+
+        # What happens if flux in/out is 0 -> Right now it looks like density can reach negative values, whic
+        # is unphysical...
+        
         # outputed fluxes should now be gamma*f(rho)
 
 
@@ -438,11 +460,16 @@ class Junction:
             mid_f = fv.flux(out_mid.clone(), road.gamma[road.idx])
             right_f = fv.flux(right.clone(), road.gamma[road.idx])
             right_flux = 0.5 * (mid_f + right_f) - 0.5 * s * (right - out_mid)
-
+            # if i == 2:
+            #     print(f"Dividing flux on outgoing road {i}")
+            #     print(f"Incoming flux: {flux}, Outgoing flux: {right_flux}")
+            #     print(f"Density on road before: {road.rho[road.pad-1]}")
             road.rho[road.pad-1] = road.rho[road.pad-1] - dt / road.dx * (right_flux - flux)
+            # if i == 2:
+            #     print(f"Density on road after: {road.rho[road.pad-1]}")
             if road.pad > 1:
                 road.rho[0] = road.rho[1]
-        
+
 
         
 

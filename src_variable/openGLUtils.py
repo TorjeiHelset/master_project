@@ -939,7 +939,7 @@ def draw_busses_timed(bus_network, busses, bus_lengths, interval_seconds = 0.05)
 if __name__ == "__main__":
     import generate_kvadraturen as gk
     
-    option = 2
+    option = 8
     match option:
         case 0:
             network = gk.generate_kvadraturen_small(10.0)
@@ -1163,4 +1163,18 @@ if __name__ == "__main__":
             _, _, bus_lengths, _ = bus_network.solve_cons_law()
 
             draw_busses_timed(bus_network, [bus_fw, bus_bw], bus_lengths, 0.1)
-            
+        
+        case 8:
+            optimal = False
+            if optimal:
+                loaded_roads, loaded_junctions, network = load.initialize_road_network("networks/2-2coupled_optimal.json")
+            else:
+                loaded_roads, loaded_junctions, network = load.initialize_road_network("networks/2-2coupled.json")
+            network.optimizing = False
+            densities, queues, _, _ = network.solve_cons_law()
+            print("##########################################")
+            print("Simulation finished!")
+            print("Creating animation...")
+            print("##########################################")
+
+            draw_timed(network, densities, interval_seconds = 0.02)
