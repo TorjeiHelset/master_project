@@ -204,7 +204,7 @@ def draw_network(network, densities):
     glutMainLoop()
 
 class DensityRenderer:
-    def __init__(self, colors, points, interval_seconds):
+    def __init__(self, colors, points, interval_seconds, output_name):
         self.colors = colors
         self.points = points
         self.current_idx = 0
@@ -212,6 +212,10 @@ class DensityRenderer:
         self.last_update_time = time.time()
         self.is_rendering = True
         self.images = []
+        assert type(output_name) == str
+        if not output_name.endswith('.gif'):
+            output_name += '.gif'
+        self.output_name = output_name
 
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT)
@@ -251,9 +255,9 @@ class DensityRenderer:
             print("No images to save")
             return
         
-        output_file = "density_animation.gif"
-        print("Saving GIF as:", output_file)
-        self.images[0].save(output_file, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
+        # output_file = "density_animation.gif"
+        print("Saving GIF as:", self.output_name)
+        self.images[0].save(self.output_name, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
         print("GIF saved.")
 
 
@@ -356,9 +360,10 @@ def create_density_container_with_shift(network, densities):
         # print(points)
     return colors, points
 
-def draw_timed(network, densities, interval_seconds=0.05):
+def draw_timed(network, densities, interval_seconds=0.05, output_name='density_animation.gif'):
     colors, points = create_density_container(network, densities)
-    renderer = DensityRenderer(colors, points, interval_seconds=interval_seconds)
+    renderer = DensityRenderer(colors, points, interval_seconds=interval_seconds,
+                               output_name=output_name)
 
     # Initialize display
     glutInit(sys.argv)
@@ -376,9 +381,10 @@ def draw_timed(network, densities, interval_seconds=0.05):
     
     glutMainLoop()
 
-def draw_timed_with_shift(network, densities, interval_seconds=0.05):
+def draw_timed_with_shift(network, densities, interval_seconds=0.05,output_name='density_animation.gif'):
     colors, points = create_density_container_with_shift(network, densities)
-    renderer = DensityRenderer(colors, points, interval_seconds=interval_seconds)
+    renderer = DensityRenderer(colors, points, interval_seconds=interval_seconds,
+                               output_name=output_name)
 
     # Initialize display
     glutInit(sys.argv)

@@ -1,12 +1,122 @@
 import torch
 import FV_schemes as fv
 import optimize_flux as opt
+import numpy as np
+import scipy.integrate as integrate
 
 # Maybe want to use torch.jit.script to speed up code, but not possible for member functions since self 
 # is an argument
 # In that case, it would be necessary to define a function outside of the class, call it 
 # from the member function and send more of the member variables as arguments to the 
 # function
+
+def h_00(t):
+    return 2*t**3 - 3*t**2 + 1
+
+def h_10(t):
+    return t**3 - 2*t**2 + t
+
+def h_01(t):
+    return -2*t**3 + 3*t**2
+
+def h_11(t):
+    return t**3 - t**2
+
+def p_1(rho, h0, rho_m, hmax, m0):
+    t_1 = rho/rho_m
+    return h_00(t_1)*h0 + h_10(t_1)*rho_m*m0 + h_01(t_1)*hmax
+
+def p_2(rho, h1, rho_m, hmax, m2):
+    t_2 = rho/rho_m
+    return h_00(t_2)*hmax + h_01(t_2)*h1 + h_11(t_2)*(1-rho_m)*m2
+
+
+def priority_fnc(rho, h0=0.6, hmax=0.9, h1=0.6, rho_m=0.6):
+    '''
+    Cubic Hermite interpolation of the points (0, h0), (rho_m, hmax), (1, h1)
+    with tangent slopes (hmax - h0)/rho_m, 0 and (h1 - hmax)/(1 - rho_m) at the three points
+    '''
+
+    if rho < rho_m:
+        return p_1(rho, h0, rho_m, hmax, (hmax - h0)/rho_m)
+    else:
+        return p_2(rho, h1, rho_m, hmax, (h1 - hmax)/(1 - rho_m))
+    
+
+def short_stick_prob(x, d):
+    '''
+    Probability of a point x in [0,1] being hit by a stick of length d <= 0.5
+    '''
+    if x <= d:
+        return x / (1 - d)
+    elif x <= 1 - d:
+        return d / (1 - d)
+    else:
+        return (1 - x) / (1 - d)
+    
+def long_stick_prob(x, d):
+    '''
+    Probability of a point x in [0,1] being hit by a stick of length d > 0.5
+    '''
+    if x <= 1 - d:
+        return x / (1 - d)
+    elif x <= d:
+        return 1
+    else:
+        return (1 - x) / (1 - d)
+    
+def stick_prob(x,d):
+    '''
+    Probability of a point x in [0,1] being hit by a stick of length d (> 0)
+    '''
+    if d <= 0.5:
+        return short_stick_prob(x,d)
+    else:
+        return long_stick_prob(x,d)
+    
+def two_short_explicit(d1, d2):
+    '''
+    Given two sticks of length d1 and d2, 0 < d1 <= d2 <= 0.5, 
+    this function returns the explicit value of the integral
+    int(0,1) 1 - p(x,d1) * p(x,d2) dx
+    '''
+    return 1 / ((1-d1)*(1-d2)) * (1/3*d1**3 + d1**2*d2 - d1**2 + 2*d1*d2**2 - 3*d1*d2 + d1 - d2**2 + d2)
+
+def trapezoidal_rule(f, a=0, b=1, n=4):
+    '''
+    Assuming equidistant spacing
+    '''
+    dx = (b-a) / n
+    xk = torch.linspace(a, b, n+1)
+    int = torch.tensor(0.0)
+    int += (f(xk[0]) + f(xk[-1]))
+    for i in range(1,n):
+        int += 2 * f(xk[i])
+    int = int * dx / 2
+    return int
+
+
+def two_stick_quadrature(d1, d2):
+    '''
+    Replace with manually implemented trapezoidal(?) rule
+    '''
+    # return integrate.quad(lambda x: 1 - (1-stick_prob(x,d1))*(1-stick_prob(x,d2)), 0, 1)[0]
+    return trapezoidal_rule(lambda x : 1 - (1-stick_prob(x,d1))*(1-stick_prob(x,d2)),
+                            0, 1, 4)
+
+def n_stick_quadrature(d_list):
+    '''
+    all lengths in d in d_list should satisfy 0 < d < 1
+    Replace with manually implemented trapezoidal(?) rule
+    '''
+    try:
+        # return integrate.quad(lambda x: 1 - torch.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])), 0, 1)[0]
+        return trapezoidal_rule(lambda x: 1 - torch.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])),
+                                0, 1, 4)
+    except:
+        # return integrate.quad(lambda x: 1 - np.prod([1-stick_prob(x,d) for d in d_list]), 0, 1)[0]
+        return trapezoidal_rule(lambda x: 1 - np.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])),
+                                0, 1, 4)
 
 class Junction:
     # Allow for roads to have different flux function
@@ -22,10 +132,8 @@ class Junction:
     duty_to_gw = False
     priorities = None
     crossing_connections = None
+    max_crossing_connections = 0
     
-
-
-
     def __init__(self, roads, entering, leaving, distribution, trafficlights, coupled_trafficlights,
                  duty_to_gw=False, priorities=None, crossing_connections=None):
         # Make sure roads are either entering or leaving
@@ -88,7 +196,11 @@ class Junction:
         if self.duty_to_gw:
             self.max_priority = max([max(row) for row in priorities])
         self.crossing_connections = crossing_connections
-
+        try:
+            self.max_crossing_connections = max([max([len(row) for row in row_list]) for row_list in crossing_connections])
+        except:
+            self.max_crossing_connections = 0
+            
     def divide_flux(self, t):
         '''
         When comparing the fluxes from different roads, use 
@@ -159,7 +271,206 @@ class Junction:
             fluxes_out[j] = sum([fluxes[i][j] for i in range(n)]) / max_dens_out[j]
         
         return fluxes_in, fluxes_out
+    
+    def calculate_activation(self, n, m, t):
+        active = torch.ones((n,m))
 
+        for light in self.trafficlights:
+            for i in range(n):
+                if self.entering[i] in light.entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.leaving:
+                            active[i,j] = light.activation_func(t)
+
+        
+        for light in self.coupled_trafficlights:
+            for i in range(n):
+                if self.entering[i] in light.a_entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.a_leaving:
+                            active[i,j] = light.a_activation(t)
+
+                if self.entering[i] in light.b_entering:
+                    for j in range(m):
+                        if self.leaving[j] in light.b_leaving:
+                            active[i,j] = light.b_activation(t)
+        return active
+    
+    def calculate_demand(self, rho_in, gamma_in, active, max_dens_in, n, m):
+        fluxes = torch.zeros((n, m))
+
+        # Calculate the desired flux from each road i to road j
+        # Scales the flux with the maximum density of the incoming road
+        # as well as the activation of potential traffic lights and the
+        # distribution of the traffic
+        for i in range(n):
+            # move D to be here to reduce the number of calls
+            # is clone needed?
+            i_flux = fv.D(rho_in[i].clone(), gamma_in[i])            
+            for j in range(m):
+                fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
+        return fluxes
+    
+    def calculate_priority_params(self, rho_in, n, m, h0=0.6, hmax=0.9, h1=0.6, rho_m=0.6):
+        '''
+        Calculates the priority parameters, given the parameters of the priority function, 
+        the densities of the incoming roads and a prirority list of the roads.
+        Ideally there should be a priority list for each outgoing road
+
+        Any edges with priority 0 in the priority list correspond to illegal edges - set
+        the priority parameter to 0 for these edges
+
+        Should not take in the actual rho_in, but rather the 
+
+        Parameters of the priority function could potentially be optimized
+        '''
+        priority_list = self.priorities
+        priority_params = [[0 for _ in range(len(self.leaving))] for _ in range(len(self.entering))]
+
+        for j in range(m):
+            non_zero = [i for i in range(n) if priority_list[i][j] != 0]
+            if len(non_zero) == 0:
+                # No legal edges into road j -> This should never happen, maybe throw an error
+                continue
+
+            incr_indexes = np.argsort(np.array(non_zero))
+            if len(incr_indexes) > 1:
+                # More than one one legal edge into road j -> need prirority parameters
+                density_in = self.distribution[incr_indexes[0]][j] * rho_in[incr_indexes[0]]
+                priority_params[incr_indexes[0]][j] = priority_fnc(density_in, h0, hmax,
+                                                                    h1, rho_m)
+
+                for i, idx in enumerate(incr_indexes[1:-1]):
+                    # Go through the indexes in decreasing order
+                    # Don't need the last index -> set to 1 - sum(previous)
+                    density_in = self.distribution[idx][j] * rho_in[idx]
+                    nu_factor = priority_fnc(density_in, h0, hmax, h1, rho_m)
+                    priority_params[idx][j] = (1 - sum([priority_params[l][j] for l in incr_indexes[:i+1]])) * nu_factor
+
+                priority_params[incr_indexes[-1]][j] = 1 - sum([priority_params[l][j] for l in incr_indexes[:-1]])
+            
+            elif len(incr_indexes) == 1:
+                # Only one legal edge into road j -> set priority parameter to 1
+                priority_params[incr_indexes[0]][j] = 1
+
+        return priority_params
+    
+    def calculate_xi_two_crossing(self, actual_fluxes, crossing_connections, max_flux_in):
+        # Two crossing connections
+        # I'm using scipy quadrature rule here
+        # This is maybe not supported by torch.autograd, so might
+        # have to implement this myself...
+        d1 = actual_fluxes[crossing_connections[0][0],crossing_connections[0][1]] / max_flux_in[crossing_connections[0][0]]
+        d2 = actual_fluxes[crossing_connections[1][0],crossing_connections[1][1]] / max_flux_in[crossing_connections[1][0]]
+        if d1 == 0 and d2 == 0:
+            return 1
+        elif d1 == 0:
+            return 1 - d2
+        elif d2 == 0:
+            return 1 - d1
+        elif d1 == 1 or d2 == 1:
+            return 0 # also maybe missing gradient
+        else:
+            if d1 <= 0.5 and d2 <= 0.5:
+                if d1 < d2:
+                    return 1 - two_short_explicit(d1, d2)
+                else:
+                    return 1 - two_short_explicit(d2, d1)
+            else:
+                return 1 - two_stick_quadrature(d1, d2)
+        
+    
+    def calculate_xi_n_crossing(self, actual_fluxes, crossing_connections, max_flux_in):
+        # Calculate the lengths of the sticks
+        # Sticks of length 0 can be ignored
+        # If any sticks have length 1, then xi = 0
+        lengths = []
+        for i_c, j_c in crossing_connections:
+            length = actual_fluxes[i_c,j_c] / max_flux_in[i_c]
+            if length == 1:
+                return 0
+            elif length == 0:
+                continue
+            lengths.append(length)
+        
+        if len(lengths) == 0:
+            return 1
+        else:
+            # Calculate using quadrature rule
+            return 1 - n_stick_quadrature(lengths)
+    
+    def calculate_upper_bound(self, actual_fluxes, crossing_connections, i, max_flux_in,
+                              demand_ij, epsilon=0.1):
+        '''
+        Calculates the upper bound determined by the flux on the crossing connections
+        Upper bound is never lower than epsilon*max_flux_in[i], i.e. a small percentage of the 
+        maximum flux, right now default is at 10%
+        '''
+        if len(crossing_connections) == 1:
+            # Only one crossing connection
+            xi = 1 - actual_fluxes[crossing_connections[0][0],crossing_connections[0][1]]/max_flux_in[crossing_connections[0][0]]
+
+        elif len(crossing_connections) == 2:
+            xi = self.calculate_xi_two_crossing(actual_fluxes, crossing_connections, max_flux_in)
+        else:
+            xi = self.calculate_xi_n_crossing(actual_fluxes, crossing_connections, max_flux_in)
+        epsilon = epsilon * max_flux_in[i]
+        return torch.min(demand_ij, epsilon + xi*(max_flux_in[i] - epsilon))
+
+    
+    def calculate_fluxes(self, demand, capacities, priorities, n, m, max_flux_in, 
+                         max_dens_in, max_dens_out):
+        #crossing_connections = self.crossing_connections
+        actual_fluxes = torch.zeros((n, m))
+
+        assigned_fluxes = []
+        upper_bounds = demand.clone()
+
+        for n_crossing in range(self.max_crossing_connections + 1):
+            for i in range(n):
+                for j in range(m):
+                    if len(self.crossing_connections[i][j]) == n_crossing and (i,j) not in assigned_fluxes:
+                        # Connection has not been assigned a flux, and it has the correct number of crossing connections
+                        if len(self.crossing_connections[i][j]) > 0:
+                            # Update upper bound
+                            upper_bounds[i,j] = self.calculate_upper_bound(actual_fluxes, 
+                                                                           self.crossing_connections[i][j],
+                                                                           i, max_flux_in, demand[i,j])
+                        # Calculate actual flux
+                        # upper_bound[i,j] should be less or equal to demand[i,j] and so
+                        # it should not be necessary to include upper_bounds[i,j] below
+                        demand_sum = torch.tensor(0.0)
+                        upper_bound_sum = torch.tensor(0.0)
+                        for l in range(n):
+                            if l != i:
+                                demand_sum += demand[l,j]
+                                upper_bound_sum += upper_bounds[l,j]
+
+                        actual_fluxes[i,j] = torch.min(torch.min(upper_bounds[i,j], demand[i,j]), 
+                                                    torch.max(priorities[i][j]*capacities[j],
+                                                        torch.max(
+                                                        capacities[j] - demand_sum,
+                                                        capacities[j] - upper_bound_sum
+                                                        )))
+                            
+
+                        assigned_fluxes.append((i,j))
+        
+        # Fluxes on edges i,j should now be calculated
+        # Calculate fluxes in and fluxes out
+        fluxes_in = [0]*n
+        fluxes_out = [0]*m
+
+        for i in range(n):
+            # Sum over all connections out of road i and scale with max density
+            fluxes_in[i] = torch.sum(actual_fluxes[i]) / max_dens_in[i]
+        
+        for j in range(m):
+            # Sum over all connections into road j and scale with max density
+            fluxes_out[j] = torch.sum(actual_fluxes[:,j]) / max_dens_out[j]
+
+        return fluxes_in, fluxes_out
+            
     # @torch.jit.script
     def divide_flux_wo_opt(self, t):
         rho_in = [road.rho[-road.pad] for road in self.road_in]
@@ -358,6 +669,55 @@ class Junction:
             print(f"Flux in: {fluxes_in[2]}, Flux out: {fluxes_out[2]}")
             print(f"Time: {t}")
         return fluxes_in, fluxes_out
+    
+    def divide_flux_wo_opt_right_of_way(self, t):
+        '''
+        Calculate how the flux is being distributed across a junction when there is merging or crossing traffic
+        In this case we need a priority function to determine the percentage of traffic going to the different outgoing roads
+        Each junction has n incoming roads and m outgoing roads. 
+
+        Whenever there is more than one outgoing road, a distribution matrix needs to be specified
+        Whenever there is more than one incoming road, some priority list needs to be specified.
+        This prirority list and the densities of the incoming roads will be used to find prirotiy
+        parameters.
+        '''
+
+        rho_in = [road.rho[-road.pad] for road in self.road_in]
+        gamma_in = [road.gamma[road.idx] for road in self.road_in]
+        max_flux_in = [fv.fmax(gamma) for gamma in gamma_in]
+        max_dens_in = torch.tensor([road.max_dens for road in self.road_in])
+        rho_out = [road.rho[road.pad-1] for road in self.road_out]
+        gamma_out = [road.gamma[road.idx] for road in self.road_out]
+        max_dens_out = torch.tensor([road.max_dens for road in self.road_out])
+
+        n = len(self.entering)
+        m = len(self.leaving)
+
+        # Steps of the algorithm:
+
+        # 1. Calculate how much of the demand is limited by traffic lights
+        activation = self.calculate_activation(n, m, t)
+
+        # 2. Calculate the actual desired flux from each road i to road j
+        demand = self.calculate_demand(rho_in, gamma_in, activation, max_dens_in, n, m)
+
+        # 3. Calculate the capacity of each road j
+        # Scaled with the maximum density of the outgoing road
+        capacities = [max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j]) for j in range(m)]
+
+        # 4. Determine a set of prirority parameters for each outgoing road j
+        priorities = self.calculate_priority_params(rho_in, n, m)
+        
+        # 5. Determine the actual flux between road i and road j:
+        # 5.1 Start with roads with no crossing connections
+        # 5.2 For roads with one crossing connection calculate upper bound
+        # 5.3 Calculate actual flux from road i to road j with one crossing connection
+        # 5.4 Repeat for roads with more crossing connections
+        # 6. Sum over fluxes from i to j to get fluxes in and fluxes out
+        fluxes_in, fluxes_out = self.calculate_fluxes(demand, capacities, priorities, n, m, 
+                                                      max_flux_in, max_dens_in, max_dens_out)
+
+        return fluxes_in, fluxes_out
 
     def apply_bc(self, dt, t):
         '''
@@ -430,7 +790,8 @@ class Junction:
         # Also not necessary to create every time, instead store as member
         # variable!
         if self.duty_to_gw:
-            fluxes_in, fluxes_out = self.divide_flux_wo_opt_duty_to_gw(t)
+            # fluxes_in, fluxes_out = self.divide_flux_wo_opt_duty_to_gw(t)
+            fluxes_in, fluxes_out = self.divide_flux_wo_opt_right_of_way(t)
         else:
             fluxes_in, fluxes_out = self.divide_flux_wo_opt(t)
 
@@ -469,9 +830,6 @@ class Junction:
             #     print(f"Density on road after: {road.rho[road.pad-1]}")
             if road.pad > 1:
                 road.rho[0] = road.rho[1]
-
-
-        
 
     def get_next_control_point(self, t):
         '''
@@ -647,3 +1005,4 @@ class Junction:
         flux = cloned_fluxes[idx_1, idx_2] / max_dens_in[idx_1]
         speed = flux / rho_in[idx_1] * self.road_in[idx_1].L
         return speed
+    
