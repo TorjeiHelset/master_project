@@ -82,7 +82,7 @@ def two_short_explicit(d1, d2):
     '''
     return 1 / ((1-d1)*(1-d2)) * (1/3*d1**3 + d1**2*d2 - d1**2 + 2*d1*d2**2 - 3*d1*d2 + d1 - d2**2 + d2)
 
-def trapezoidal_rule(f, a=0, b=1, n=4):
+def trapezoidal_rule(f, a=0, b=1, n=10):
     '''
     Assuming equidistant spacing
     '''
@@ -406,14 +406,15 @@ class Junction:
         Upper bound is never lower than epsilon*max_flux_in[i], i.e. a small percentage of the 
         maximum flux, right now default is at 10%
         '''
+        cloned_fluxes = actual_fluxes.clone()
         if len(crossing_connections) == 1:
             # Only one crossing connection
-            xi = 1 - actual_fluxes[crossing_connections[0][0],crossing_connections[0][1]]/max_flux_in[crossing_connections[0][0]]
+            xi = 1 - cloned_fluxes[crossing_connections[0][0],crossing_connections[0][1]]/max_flux_in[crossing_connections[0][0]]
 
         elif len(crossing_connections) == 2:
-            xi = self.calculate_xi_two_crossing(actual_fluxes, crossing_connections, max_flux_in)
+            xi = self.calculate_xi_two_crossing(cloned_fluxes, crossing_connections, max_flux_in)
         else:
-            xi = self.calculate_xi_n_crossing(actual_fluxes, crossing_connections, max_flux_in)
+            xi = self.calculate_xi_n_crossing(cloned_fluxes, crossing_connections, max_flux_in)
         epsilon = epsilon * max_flux_in[i]
         return torch.min(demand_ij, epsilon + xi*(max_flux_in[i] - epsilon))
 
@@ -445,13 +446,18 @@ class Junction:
                             if l != i:
                                 demand_sum += demand[l,j]
                                 upper_bound_sum += upper_bounds[l,j]
-
-                        actual_fluxes[i,j] = torch.min(torch.min(upper_bounds[i,j], demand[i,j]), 
-                                                    torch.max(priorities[i][j]*capacities[j],
-                                                        torch.max(
-                                                        capacities[j] - demand_sum,
-                                                        capacities[j] - upper_bound_sum
-                                                        )))
+                        interior_max = torch.max(capacities[j] - demand_sum,
+                                                        capacities[j] - upper_bound_sum)
+                        supply_max = torch.max(priorities[i][j]*capacities[j], interior_max)
+                        demand_max = torch.min(upper_bounds[i,j].clone(), demand[i,j].clone())
+                        actual_fluxes[i,j] = torch.min(demand_max, supply_max.clone())
+                        
+                        # actual_fluxes[i,j] = torch.min(torch.min(upper_bounds[i,j], demand[i,j]), 
+                        #                             torch.max(priorities[i][j]*capacities[j],
+                        #                                 torch.max(
+                        #                                 capacities[j] - demand_sum,
+                        #                                 capacities[j] - upper_bound_sum
+                        #                                 )))
                             
 
                         assigned_fluxes.append((i,j))

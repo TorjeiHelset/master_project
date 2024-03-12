@@ -7,9 +7,29 @@ import time as time
 import loading_json as load
 
 
-color_gradient = 2
+color_gradient = 3
+
+def draw_red_arrow(x, y):
+    # Draw two arrows for each road
+    glColor3f(1.0, 0.0, 0.0)
+    glBegin(GL_LINES)
+    glVertex2f(x, y)            # Arrow base
+    glVertex2f(x + 0.1, y + 0.2) # Arrow tip
+    glVertex2f(x, y)            # Arrow base
+    glVertex2f(x - 0.1, y + 0.2) # Arrow tip
+    glEnd()
 
 def draw_line_with_colors(colors, points, line_width):
+    # Draw black border aroung roads
+    glLineWidth(line_width + 1)
+    glBegin(GL_LINE_STRIP)
+    
+    for color, point in zip(colors, points):
+        glColor3f(0,0,0)
+        glVertex2f(*point)
+    glEnd()
+    
+    # Draw densities
     glLineWidth(line_width)
     glBegin(GL_LINE_STRIP)
     
@@ -17,6 +37,12 @@ def draw_line_with_colors(colors, points, line_width):
         glColor3f(*color)
         glVertex2f(*point)
     glEnd()
+
+    # Draw arrow(s)
+    draw_red_arrow(0.0, 0.0)
+
+
+
 
 def map_value_to_color(value):
     # Ensure the input value is within the valid range [0, 1]'
@@ -90,6 +116,11 @@ def map_value_to_color(value):
                 r = 2.0 * (value - 0.5)
                 g = 1.0 - 2.0 * (value - 0.5)
                 b = 0.0
+        case 3:
+            # Black/white scale:
+            r = 1.0 - value
+            g = 1.0 - value
+            b = 1.0 - value
 
     return (float(r), float(g), float(b))
 
@@ -220,6 +251,7 @@ class DensityRenderer:
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT)
         draw_colored_line(self.colors[self.current_idx], self.points[self.current_idx])
+        # draw_border
 
         glutSwapBuffers()
         # Read the content of the framebuffer and save as an image
