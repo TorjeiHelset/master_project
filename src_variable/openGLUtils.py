@@ -935,11 +935,65 @@ def draw_busses_timed(bus_network, busses, bus_lengths, interval_seconds = 0.05)
 
     glutMainLoop()
 
+def draw_two_lines():
+    # line 1, 0,0 to 1,0 width 8
+    # line 2, 0,0 to 1,0 width 4
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    # Set up the view and projection matrices
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glOrtho(-2, 2, -2, 2, -2, 2)  # Set the coordinate system to be [-2, 2]x[-2, 2]
+
+    glMatrixMode(GL_MODELVIEW)
+    
+    glLoadIdentity()
+
+
+    glLineWidth(8)
+    glBegin(GL_LINE_STRIP)
+    glColor3f(0.0, 0.0, 0.0)
+    glVertex2f(0.0, 0.0)
+    glColor3f(0.0, 0.0, 0.0)
+    glVertex2f(0.0, 1.0)
+    glEnd()
+
+    glLineWidth(4)
+    glBegin(GL_LINE_STRIP)
+    glColor3f(1.0, 0.0, 0.0)
+    glVertex2f(0.0, 0.0)
+    glColor3f(1.0, 0.0, 0.0)
+    glVertex2f(0.0, 1.0)
+    glEnd()
+
+    glutSwapBuffers()
+
+
+
+def test_line_widths():
+    # Creating window
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA)
+    glutCreateWindow(b"OpenGL Colored Line")
+
+    # Set the window size
+    glutInitWindowSize(800, 800)
+    
+    
+    
+
+    glutDisplayFunc(lambda: draw_two_lines())
+    glutIdleFunc(lambda: draw_two_lines())
+
+    glClearColor(1.0, 1.0, 1.0, 1.0)
+    
+    glutMainLoop()
+
 
 if __name__ == "__main__":
     import generate_kvadraturen as gk
     
-    option = 8
+    option = 9
     match option:
         case 0:
             network = gk.generate_kvadraturen_small(10.0)
@@ -1178,3 +1232,6 @@ if __name__ == "__main__":
             print("##########################################")
 
             draw_timed(network, densities, interval_seconds = 0.02)
+
+        case 9:
+            test_line_widths()

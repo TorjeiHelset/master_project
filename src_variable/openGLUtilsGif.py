@@ -11,6 +11,7 @@ color_gradient = 3
 
 def draw_red_arrow(x, y):
     # Draw two arrows for each road
+    # Oriented up to down
     glColor3f(1.0, 0.0, 0.0)
     glBegin(GL_LINES)
     glVertex2f(x, y)            # Arrow base
@@ -19,11 +20,100 @@ def draw_red_arrow(x, y):
     glVertex2f(x - 0.1, y + 0.2) # Arrow tip
     glEnd()
 
+def draw_red_arrows_with_orientation(start, end, line_width):
+    # Draws two red arrows in the orientation of the road
+    if start[0] < end[0]:
+        # Left to right
+        x1 = start[0] + 0.3*(end[0]-start[0])
+        y1 = start[1]
+        x2 = start[0] + 0.7*(end[0]-start[0])
+        y2 = start[1]
+        glColor3f(1.0, 0.0, 0.0)
+        glLineWidth(1)
+        glBegin(GL_LINES)
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 - 0.06, y1 + 0.03) # first tip
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 - 0.06, y1 - 0.03) # second tip
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 - 0.06, y2 + 0.03) # first tip
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 - 0.06, y2 - 0.03) # second tip
+        glEnd()
+
+    elif start[0] > end[0]:
+        # Right to left
+        x1 = start[0] + 0.3*(end[0]-start[0])
+        y1 = start[1]
+        x2 = start[0] + 0.7*(end[0]-start[0])
+        y2 = start[1]
+        glColor3f(1.0, 0.0, 0.0)
+        glLineWidth(1)
+        glBegin(GL_LINES)
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 + 0.06, y1 + 0.03) # first tip
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 + 0.06, y1 - 0.03) # second tip
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 + 0.06, y2 + 0.03) # first tip
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 + 0.06, y2 - 0.03) # second tip
+        glEnd()
+
+    elif start[1] < end[1]:
+        # down to up
+        x1 = start[0]
+        y1 = start[1] + 0.3*(end[1]-start[1])
+        x2 = start[0]
+        y2 = start[1] + 0.7*(end[1]-start[1])
+        glColor3f(1.0, 0.0, 0.0)
+        glLineWidth(1)
+        glBegin(GL_LINES)
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 - 0.03, y1 - 0.06) # first tip
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 + 0.03, y1 - 0.06) # second tip
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 - 0.03, y2 - 0.06) # first tip
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 + 0.03, y2 - 0.06) # second tip
+        glEnd()
+
+    else:
+        # up to down
+        x1 = start[0] 
+        y1 = start[1] + 0.3*(end[1]-start[1])
+        x2 = start[0]
+        y2 = start[1] + 0.7*(end[1]-start[1])
+        glColor3f(1.0, 0.0, 0.0)
+        glLineWidth(1)
+        glBegin(GL_LINES)
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 - 0.03, y1 + 0.06) # first tip
+        glVertex2f(x1, y1) # base
+        glVertex2f(x1 + 0.03, y1 + 0.06) # second tip
+        glEnd()
+
+        glBegin(GL_LINES)
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 - 0.03, y2 + 0.06) # first tip
+        glVertex2f(x2, y2) # base
+        glVertex2f(x2 + 0.03, y2 + 0.06) # second tip
+        glEnd()
+
 def draw_line_with_colors(colors, points, line_width):
     # Draw black border aroung roads
-    glLineWidth(line_width + 1)
+    glLineWidth(line_width + 2)
     glBegin(GL_LINE_STRIP)
-    
     for color, point in zip(colors, points):
         glColor3f(0,0,0)
         glVertex2f(*point)
@@ -38,8 +128,11 @@ def draw_line_with_colors(colors, points, line_width):
         glVertex2f(*point)
     glEnd()
 
-    # Draw arrow(s)
-    draw_red_arrow(0.0, 0.0)
+    start = points[0]
+    end = points[-1]
+    # Draw red arrows, oriented in the direction of the road
+    # Assume road either goes from left to right, right to left, up to down or down to up
+    draw_red_arrows_with_orientation(start, end, line_width)
 
 
 
@@ -165,7 +258,7 @@ def draw_colored_line(colors, points):
     
     glLoadIdentity()
 
-    line_width = 10.0  # Adjust the line width as needed
+    line_width = 6.0  # Adjust the line width as needed
     for i in range(len(colors)):
         draw_line_with_colors(colors[i], points[i], line_width)
 
@@ -334,26 +427,26 @@ def shift_single_point(id, left, right):
         if right[0] > left[0]:
             # Road goes from left to the right
             # Shift road down
-            shifted_left = (left[0], left[1] - 0.1)
-            shifted_right = (right[0], right[1] - 0.1)
+            shifted_left = (left[0], left[1] - 0.08)
+            shifted_right = (right[0], right[1] - 0.08)
         else:
             # Road goes from top to bottom
             # Shift road to the left
-            shifted_left = (left[0] - 0.05, left[1])
-            shifted_right = (right[0] - 0.05, right[1])
+            shifted_left = (left[0] - 0.08, left[1])
+            shifted_right = (right[0] - 0.08, right[1])
     elif id[-2:] == 'bw':
         # Shift road right or up depending on the direction
         # Find direction from x-values
         if right[0] < left[0]:
             # Road goes from right to left
             # Shift road up
-            shifted_left = (left[0], left[1] + 0.1)
-            shifted_right = (right[0], right[1] + 0.1)
+            shifted_left = (left[0], left[1] + 0.08)
+            shifted_right = (right[0], right[1] + 0.08)
         else:
             # Road goes from top to bottom
             # Shift road to the right
-            shifted_left = (left[0] + 0.05, left[1])
-            shifted_right = (right[0] + 0.05, right[1])
+            shifted_left = (left[0] + 0.08, left[1])
+            shifted_right = (right[0] + 0.08, right[1])
     else:
         shifted_left = left
         shifted_right = right
@@ -445,7 +538,7 @@ def draw_black_lines(points):
     glMatrixMode(GL_MODELVIEW)
     
     glLoadIdentity()
-    line_width = 5.0  # Adjust the line width as needed
+    line_width = 6.0  # Adjust the line width as needed
 
     for point in points:
         # For now only black line
@@ -589,13 +682,13 @@ def shift_points(ids, points):
             if point[1][0] > point[0][0]:
                 # Road goes from left to the right
                 # Shift road down
-                point[0] = (point[0][0], point[0][1] - 0.1)
-                point[1] = (point[1][0], point[1][1] - 0.1)
+                point[0] = (point[0][0], point[0][1] - 0.08)
+                point[1] = (point[1][0], point[1][1] - 0.08)
             else:
                 # Road goes from top to bottom
                 # Shift road to the left
-                point[0] = (point[0][0] - 0.05, point[0][1])
-                point[1] = (point[1][0] - 0.05, point[1][1])
+                point[0] = (point[0][0] - 0.08, point[0][1])
+                point[1] = (point[1][0] - 0.08, point[1][1])
 
 
         elif id[-2:] == 'bw':
@@ -604,13 +697,13 @@ def shift_points(ids, points):
             if point[1][0] > point[0][0]:
                 # Road goes from left to the right
                 # Shift road up
-                point[0] = (point[0][0], point[0][1] + 0.1)
-                point[1] = (point[1][0], point[1][1] + 0.1)
+                point[0] = (point[0][0], point[0][1] + 0.08)
+                point[1] = (point[1][0], point[1][1] + 0.08)
             else:
                 # Road goes from top to bottom
                 # Shift road to the right
-                point[0] = (point[0][0] + 0.05, point[0][1])
-                point[1] = (point[1][0] + 0.05, point[1][1])
+                point[0] = (point[0][0] + 0.08, point[0][1])
+                point[1] = (point[1][0] + 0.08, point[1][1])
     return points
 
 def draw_black_lines_container(ids, points):
@@ -652,7 +745,8 @@ def visualize_network(network):
     glutCreateWindow(b"OpenGL Colored Line")
 
     # Set the window size
-    glutInitWindowSize(800, 800)
+    # glutInitWindowSize(800, 800)
+    glutInitWindowSize(1600, 1600)
     glutDisplayFunc(lambda: draw_black_lines(points))
     glutIdleFunc(lambda: draw_black_lines(points))
 
@@ -671,7 +765,7 @@ def draw_bus_network(road_points, bus_position):
     glMatrixMode(GL_MODELVIEW)
     
     glLoadIdentity()
-    line_width = 5.0  # Adjust the line width as needed
+    line_width = 6.0  # Adjust the line width as needed
 
 
     for point in road_points:
@@ -809,8 +903,10 @@ class MultipleBusRenderer:
         draw_busses_network(self.road_points, [points[self.current_idx] for points in self.bus_points])
         glutSwapBuffers()
         # Read the content of the framebuffer and save as an image
-        data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
-        image = Image.frombytes("RGBA", (400, 300), data)
+        # data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
+        # image = Image.frombytes("RGBA", (400, 300), data)
+        data = glReadPixels(0, 0, 800, 600, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (800, 600), data)
         self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
     
     def timer(self, value):
@@ -869,20 +965,20 @@ def find_points(network, bus, bus_lengths):
             if left[0] < right[0]:
                 # Road goes from left to right
                 # Shift road down
-                y_shift[i] = -0.1
+                y_shift[i] = -0.08
             else:
                 # Road goes from top to bottom
                 # Shift road to the left
-                x_shift[i] = -0.05
+                x_shift[i] = -0.08
         elif road_id[-2:] == 'bw':
             if left[0] < right[0]:
                 # Road goes from right to the left
                 # Shift road up
-                y_shift[i] = 0.1
+                y_shift[i] = 0.08
             else:
                 # Road goes from bottom to left
                 # Shift road to the right
-                x_shift[i] = 0.05
+                x_shift[i] = 0.08
         
 
         # The bus has travelled length/road.L of the road
@@ -917,20 +1013,20 @@ def find_points_of_busses(network, busses, bus_lengths):
                 if left[0] < right[0]:
                     # Road goes from left to right
                     # Shift road down
-                    y_shift[i][j] = -0.1
+                    y_shift[i][j] = -0.08
                 else:
                     # Road goes from top to bottom
                     # Shift road to the left
-                    x_shift[i][j] = -0.05
+                    x_shift[i][j] = -0.08
             elif road_id[-2:] == 'bw':
                 if left[0] < right[0]:
                     # Road goes from right to the left
                     # Shift road up
-                    y_shift[i][j] = 0.1
+                    y_shift[i][j] = 0.08
                 else:
                     # Road goes from bottom to left
                     # Shift road to the right
-                    x_shift[i][j] = 0.05
+                    x_shift[i][j] = 0.08
         
 
             # The bus has travelled length/road.L of the road
@@ -1079,7 +1175,7 @@ if __name__ == "__main__":
             bus_fw = bus.Bus(ids, [], [], network)
 
             bus_network = nw.RoadNetwork(network.roads, network.junctions, network.T, [bus_fw])
-            draw_single_bus_timed(bus_network, bus_fw, bus_lengths['0'], 0.1)
+            draw_single_bus_timed(bus_network, bus_fw, bus_lengths['0'], 0.)
 
         case 3:
             import bus

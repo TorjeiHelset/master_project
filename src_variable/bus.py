@@ -135,6 +135,7 @@ class Bus:
         self.next_stop = 0
         self.delays = [torch.tensor(0.0) for _ in range(len(stops))]
         self.start_time = start_time
+        self.active = False
         self.id = id
 
 
@@ -244,6 +245,16 @@ class Bus:
         pass through.
         '''
 
+        if not self.active:
+            # Bus has not started its route yet
+            if t > self.start_time:
+                # This should only be reached once for each bus
+                # Bus should start its route
+                dt = t - self.start_time
+                self.active = True
+            else:
+                # Bus should not start yet
+                return
 
         if self.at_stop:
             if printing:

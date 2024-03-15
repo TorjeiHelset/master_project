@@ -306,6 +306,8 @@ class Junction:
         for i in range(n):
             # move D to be here to reduce the number of calls
             # is clone needed?
+            # Change below to be a function of all of rho that return a new
+            # tensor of length n
             i_flux = fv.D(rho_in[i].clone(), gamma_in[i])            
             for j in range(m):
                 fluxes[i,j] = active[i,j]*self.distribution[i][j]*max_dens_in[i] * i_flux
@@ -333,25 +335,26 @@ class Junction:
                 # No legal edges into road j -> This should never happen, maybe throw an error
                 continue
 
-            incr_indexes = np.argsort(np.array(non_zero))
-            if len(incr_indexes) > 1:
+            nz_priorities = [priority_list[k][j] for k in non_zero]
+            sorted_indexes = [x for _, x in sorted(zip(nz_priorities, non_zero))]
+            if len(sorted_indexes) > 1:
                 # More than one one legal edge into road j -> need prirority parameters
-                density_in = self.distribution[incr_indexes[0]][j] * rho_in[incr_indexes[0]]
-                priority_params[incr_indexes[0]][j] = priority_fnc(density_in, h0, hmax,
+                density_in = self.distribution[sorted_indexes[0]][j] * rho_in[sorted_indexes[0]]
+                priority_params[sorted_indexes[0]][j] = priority_fnc(density_in, h0, hmax,
                                                                     h1, rho_m)
 
-                for i, idx in enumerate(incr_indexes[1:-1]):
+                for i, idx in enumerate(sorted_indexes[1:-1]):
                     # Go through the indexes in decreasing order
                     # Don't need the last index -> set to 1 - sum(previous)
                     density_in = self.distribution[idx][j] * rho_in[idx]
                     nu_factor = priority_fnc(density_in, h0, hmax, h1, rho_m)
-                    priority_params[idx][j] = (1 - sum([priority_params[l][j] for l in incr_indexes[:i+1]])) * nu_factor
+                    priority_params[idx][j] = (1 - sum([priority_params[l][j] for l in sorted_indexes[:i+1]])) * nu_factor
 
-                priority_params[incr_indexes[-1]][j] = 1 - sum([priority_params[l][j] for l in incr_indexes[:-1]])
+                priority_params[sorted_indexes[-1]][j] = 1 - sum([priority_params[l][j] for l in sorted_indexes[:-1]])
             
-            elif len(incr_indexes) == 1:
+            elif len(sorted_indexes) == 1:
                 # Only one legal edge into road j -> set priority parameter to 1
-                priority_params[incr_indexes[0]][j] = 1
+                priority_params[sorted_indexes[0]][j] = 1
 
         return priority_params
     
@@ -440,14 +443,16 @@ class Junction:
                         # Calculate actual flux
                         # upper_bound[i,j] should be less or equal to demand[i,j] and so
                         # it should not be necessary to include upper_bounds[i,j] below
-                        demand_sum = torch.tensor(0.0)
+                        # demand_sum = torch.tensor(0.0)
                         upper_bound_sum = torch.tensor(0.0)
                         for l in range(n):
                             if l != i:
-                                demand_sum += demand[l,j]
-                                upper_bound_sum += upper_bounds[l,j]
-                        interior_max = torch.max(capacities[j] - demand_sum,
-                                                        capacities[j] - upper_bound_sum)
+                                # demand_sum += demand[l,j]
+                                # upper_bound_sum += upper_bounds[l,j]
+                                upper_bound_sum += torch.min(upper_bounds[l,j].clone(), demand[l,j].clone())
+                        # interior_max = torch.max(capacities[j] - demand_sum,
+                        #                                 capacities[j] - upper_bound_sum)
+                        interior_max = capacities[j] - upper_bound_sum
                         supply_max = torch.max(priorities[i][j]*capacities[j], interior_max)
                         demand_max = torch.min(upper_bounds[i,j].clone(), demand[i,j].clone())
                         actual_fluxes[i,j] = torch.min(demand_max, supply_max.clone())
@@ -712,6 +717,7 @@ class Junction:
         capacities = [max_dens_out[j] * fv.S(rho_out[j].clone(),  gamma_out[j]) for j in range(m)]
 
         # 4. Determine a set of prirority parameters for each outgoing road j
+        # This needs to be permuted back to original order!!
         priorities = self.calculate_priority_params(rho_in, n, m)
         
         # 5. Determine the actual flux between road i and road j:
