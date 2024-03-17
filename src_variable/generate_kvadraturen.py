@@ -357,6 +357,248 @@ def create_junctions_small(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw
     festning_jncs.pop(2)
     return v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs
 
+
+def create_junctions_small_row(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw,
+                           elvegata_fw, elvegata_bw, dronning_fw, dronning_bw,
+                           festning_fw, festning_bw, lundsbro_fw, lundsbro_bw):
+    '''
+    Generates the junctions of the interesting parts of kvadraturen also including right of way
+    For every junction, a priority matrix and a matrix containing the crossing connections is then needed.
+    '''
+
+    # For Vestre strandgate:
+    # vestre strandgate 1 is in/out road - only connected at one end
+    # Junctions where vestre strandgate is connected
+    v_strand_jncs = [None] * 8
+    for i in range(8):
+        if i < 2:
+            # strandgate to strandgate - no trafficlights
+            # Right of way not relevant for this junction
+            v_strand_jncs[i] = jn.Junction([v_strand_fw[i], v_strand_fw[i+1],
+                                            v_strand_bw[i], v_strand_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+
+        elif i == 2:
+            # strandgate to henrik Wergeland 4 way + traffic light
+            # In this junction right of way is interesting
+            distribution = [[0.7, 0.0, 0.3],
+                            [0.0, 0.7, 0.3],
+                            [0.3, 0.3, 0.4]]
+            priorities = [[1, 0, 2],
+                          [0, 1, 1],
+                          [2, 2, 3]]
+            crossings = [[[], [], [(1,1)]],
+                         [[], [], []],
+                         [[], [(0,0)], [(0,0), (1,1)]]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [0,3], [1,2,5], [4], [1,2,5],
+                                                            [50.0, 100.0])
+            v_strand_jncs[i] = jn.Junction([v_strand_fw[i], v_strand_fw[i+1],
+                                            v_strand_bw[i], v_strand_bw[i+1],
+                                            h_w[0], h_w[1]], [0,3,4], [1,2,5],
+                                            distribution, [], [trafficlight], duty_to_gw=True, priorities=priorities,
+                                            crossing_connections=crossings)
+
+        elif i < 6:
+            # strandgate to strandgate - trafficlight
+            # Right of way not relevant
+            trafficlight = tl.TrafficLightContinous(True, [0,3], [1,2],
+                                                    [60.0, 60.0])
+
+            v_strand_jncs[i] = jn.Junction([v_strand_fw[i], v_strand_fw[i+1],
+                                            v_strand_bw[i], v_strand_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [trafficlight], [])
+        elif i==6:
+            # strandgate to tollbod 1 way + traffic light
+            # Right of way needed for incoming traffic from tollbod
+            distribution = [[1.0, 0.0],
+                            [0.0, 1.0],
+                            [0.3, 0.7]]
+            priorities = [[1, 0],
+                          [0, 1],
+                          [2, 2]]
+            crossings = [[[], []],
+                         [[], []],
+                         [[(1,1)], []]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [0,3], [1,2], [4], [1,2],
+                                                            [100.0, 50.0])
+            v_strand_jncs[i] = jn.Junction([v_strand_fw[i], v_strand_fw[i+1],
+                                            v_strand_bw[i], v_strand_bw[i+1],
+                                            tollbod_bw[0]], [0,3,4], [1,2],
+                                            distribution, [], [trafficlight],
+                                            duty_to_gw=True, priorities=priorities,
+                                            crossing_connections=crossings)
+        else:
+            # strandgate to dronningens gate + traffic light
+            # Traffic can only go one direction - no r.o.w. needed
+            trafficlight = tl.TrafficLightContinous(True, [0,3], [1,2],
+                                                    [60.0, 60.0])
+            v_strand_jncs[i] = jn.Junction([v_strand_fw[i], dronning_fw[0],
+                                            v_strand_bw[i], dronning_bw[0]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [trafficlight], [])
+
+    # For Henrik Wergelands:
+    # Junctions where henrik Wergeland is connected (and nt vestre strandgate)
+    h_w_jncs = [None] * 3
+    for i in range(3):
+        if i < 2:
+            # henrik Wergeland to henrik Wergeland - no trafficlights and no r.o.w.
+            h_w_jncs[i] = jn.Junction([h_w[i], h_w[i+1]],
+                                        [0], [1], [[1.0]], [], [])
+        if i == 2:
+            #henrik Wergeland to festningsgata 3/4 + traffic light
+            # r.o.w. needed
+            distribution = [[0.5, 0.5],
+                            [1.0, 0.0],
+                            [0.0, 1.0]]
+            priorities = [[2, 2],
+                          [1, 0],
+                          [0, 1]]
+            crossings = [[[], [(1,0)]],
+                         [[], []],
+                         [[], []]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [0], [2,3], [1,4], [2,3],
+                                                            [100.0, 50.0])
+
+
+            h_w_jncs[i] = jn.Junction([h_w[i], festning_fw[2], festning_fw[3],
+                                       festning_bw[2], festning_bw[3]],
+                                       [0,1,4], [2,3], distribution, [], [trafficlight],
+                                       duty_to_gw=True, priorities=priorities, crossing_connections=crossings)
+
+    # For Tollbodgata:
+    # Junctions where tollbodgata is connected (and not vestre strandgate or henrik Wergeland)
+    tollbod_jncs = [None] * 6
+    for i in range(6):
+        if i < 2:
+            # tollbodgata to tollbodgata - no trafficlights - 1way - no r.o.w
+            tollbod_jncs[i] = jn.Junction([tollbod_bw[i], tollbod_bw[i+1]],
+                                            [1], [0], [[1.0]], [], [])
+        elif i == 2:
+            # tollbodgata to festningsgata 7/8 + no traffic light - r.o.w. needed
+            distribution = [[0.1, 0.8, 0.0, 0.1],
+                            [0.1, 0.0, 0.8, 0.1],
+                            [0.5, 0.25, 0.25, 0.0]]
+            priorities = [[1, 1, 0, 2],
+                          [2, 0, 1, 1],
+                          [3, 2, 2, 0]]
+            crossings = [[[], [], [], []],
+                         [[(0,1)], [], [], []],
+                         [[(0,1), (1,2)], [(1,2)], [], []]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [1,4], [0,2,3,5], [6], [0,2,3,5],
+                                                            [50.0, 100.0])
+            tollbod_jncs[i] = jn.Junction([tollbod_bw[i], festning_fw[6], festning_fw[7],
+                                           festning_bw[6], festning_bw[7], tollbod_fw[i+1],
+                                           tollbod_bw[i+1]], [1,4,6], [0,2,3,5],
+                                           distribution, [], [trafficlight], duty_to_gw=True,
+                                           priorities=priorities, crossing_connections=crossings)
+        elif i < 5:
+            # tollbodgata to tollbodgata - no traffic light - 2way - r.o.w. not relevant
+            tollbod_jncs[i] = jn.Junction([tollbod_fw[i], tollbod_fw[i+1],
+                                            tollbod_bw[i], tollbod_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+        else:
+            # tollbodgata to elvegata + no traffic light - r.o.w. not relevant
+            tollbod_jncs[i] = jn.Junction([tollbod_fw[i], elvegata_fw[0],
+                                            tollbod_bw[i], elvegata_bw[0]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+
+    # For Dronningens gate:
+    # Junctions where dronningens gate is connected (and not vestre strandgate, henrik Wergeland or tollbodgata)
+    dronning_jncs = [None] * 6
+    for i in range(6):
+        if i in [0,3,4]:
+            # dronningens gate to dronningens gate - no trafficlights - r.o.w. not relevant
+            dronning_jncs[i] = jn.Junction([dronning_fw[i], dronning_fw[i+1],
+                                            dronning_bw[i], dronning_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+
+        elif i == 1:
+            # dronningens gate to dronningens gate - trafficlight - r.o.w. not relevant
+
+            trafficlight = tl.TrafficLightContinous(True, [0,3], [1,2],
+                                                    [60.0, 60.0])
+            dronning_jncs[i] = jn.Junction([dronning_fw[i], dronning_fw[i+1],
+                                            dronning_bw[i], dronning_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [trafficlight], [])
+
+        elif i == 2:
+            # dronningens gate to festningsgata 8/9 + traffic light - r.o.w. needed
+            # Double check this junction...
+            distribution = [[0.7, 0.0, 0.15, 0.15],
+                            [0.0, 0.7, 0.15, 0.15],
+                            [0.15, 0.15, 0.7, 0.0],
+                            [0.15, 0.15, 0.0, 0.7]]
+            priorities = [[1, 0, 1, 3],
+                          [0, 1, 3, 1],
+                          [2, 3, 2, 0],
+                          [3, 2, 0, 2]]
+            crossings = [[[], [], [], [(1,1), (2,2), (2,0)]],
+                         [[], [], [(0,0), (3,1), (3,3)], []],
+                         [[], [(1,1), (3,3)], [(0,0), (1,1)], []],
+                         [[(0,0)], [], [], [(0,0), (1,1)]]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [0,3], [1,2,5,6], [4,7], [1,2,5,6],
+                                                            [100.0, 50.0])
+
+            dronning_jncs[i] = jn.Junction([dronning_fw[i], dronning_fw[i+1],
+                                            dronning_bw[i], dronning_bw[i+1],
+                                            festning_fw[7], festning_fw[8],
+                                            festning_bw[7], festning_bw[8]],
+                                            [0,3,4,7], [1,2,5,6], distribution, [], [trafficlight],
+                                            duty_to_gw=True, priorities=priorities,
+                                            crossing_connections=crossings)
+        elif i == 5:
+            # dronningens gate to elvegata and lundsbro + traffic light - also r.o.w.
+            distribution = [[0.7, 0.0, 0.3],
+                            [0.0, 0.7, 0.3],
+                            [0.5, 0.5, 0.0]]
+            priorities = [[1, 0, 2],
+                          [0, 1, 1],
+                          [2, 2, 0]]
+            crossings = [[[], [], [(1,1)]],
+                         [[], [], []],
+                         [[(1,1)], [], []]]
+            trafficlight = tl.CoupledTrafficLightContinuous(True, [0,3], [1,2,5], [4], [1,2,5],
+                                                            [50.0, 100.0])
+
+            dronning_jncs[i] = jn.Junction([dronning_fw[i], lundsbro_fw[0],
+                                            dronning_bw[i], lundsbro_bw[0],
+                                            elvegata_fw[0], elvegata_bw[0]],
+                                            [0,3,4], [1,2,5], distribution, [], [trafficlight],
+                                            duty_to_gw=True, priorities=priorities,
+                                            crossing_connections=crossings)
+
+
+    # For Festningsgata:
+    # Junctions where festningsgata is connected (and not vestre strandgate, henrik Wergeland, tollbodgata or dronningens gate)
+    festning_jncs = [None] * 5
+    for i in range(5):
+        if i == 0:
+            # festningsgata to festningsgata - trafficlight - no r.o.w
+            trafficlight = tl.TrafficLightContinous(True, [0,3], [1,2],
+                                                    [60.0, 60.0])
+            festning_jncs[i] = jn.Junction([festning_fw[i], festning_fw[i+1],
+                                            festning_bw[i], festning_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [trafficlight], [])
+        elif i == 1:
+            # festningsgata to festningsgata - no trafficlight - no r.o.w.
+            festning_jncs[i] = jn.Junction([festning_fw[i], festning_fw[i+1],
+                                            festning_bw[i], festning_bw[i+1]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+        elif i == 3:
+            # festningsgata to festningsgata - trafficlight - shifted one index- no r.o.w
+            trafficlight = tl.TrafficLightContinous(True, [0,3], [1,2],
+                                                    [60.0, 60.0])
+            festning_jncs[i] = jn.Junction([festning_fw[i+1], festning_fw[i+2],
+                                            festning_bw[i+1], festning_bw[i+2]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [trafficlight], [])
+        elif i in [4, 5]:
+            #  festningsgata to festningsgata - no trafficlights - shifted one index - no r.o.w.
+            festning_jncs[i] = jn.Junction([festning_fw[i+1], festning_fw[i+2],
+                                            festning_bw[i+1], festning_bw[i+2]],
+                                            [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [])
+    festning_jncs.pop(2)
+    return v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs
+
 def generate_kvadraturen_small(T):
     '''
     In the first iteration, do things manually
@@ -612,6 +854,32 @@ def generate_minimal(T):
 
 # Can also have a network where most of the road speed limits do not require a gradient...
 
+def generate_kvadraturen_small_w_row(T):
+    '''
+    In the first iteration, do things manually
+    This is rather unfeasible for the large case, but is okay in this smaller network
+    '''
+
+    # Create the roads
+    v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
+    elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
+    lundsbro_fw, lundsbro_bw = create_roads_small()
+
+    # Create the junctions
+    v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs = create_junctions_small_row(v_strand_fw, v_strand_bw, h_w,
+                                                                                                 tollbod_fw, tollbod_bw, elvegata_fw,
+                                                                                                 elvegata_bw, dronning_fw, dronning_bw,
+                                                                                                 festning_fw, festning_bw, lundsbro_fw,
+                                                                                                 lundsbro_bw)
+
+    # Create the network
+    roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[3:] + tollbod_bw + elvegata_fw + \
+            elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
+    junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
+
+    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+
+    return network
 
 
 def generate_kvadraturen_small_w_params(T, v_strand_speed = 50, h_w_speed = 30, tollbod_speed = 30,
