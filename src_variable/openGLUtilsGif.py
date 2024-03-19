@@ -12,7 +12,7 @@ color_gradient = 3
 def draw_red_arrow(x, y):
     # Draw two arrows for each road
     # Oriented up to down
-    glColor3f(1.0, 0.0, 0.0)
+    glColor3f(0.3, 0.3, 0.3)
     glBegin(GL_LINES)
     glVertex2f(x, y)            # Arrow base
     glVertex2f(x + 0.1, y + 0.2) # Arrow tip
@@ -20,15 +20,16 @@ def draw_red_arrow(x, y):
     glVertex2f(x - 0.1, y + 0.2) # Arrow tip
     glEnd()
 
-def draw_red_arrows_with_orientation(start, end, line_width):
+def draw_arrows_with_orientation(start, end, line_width):
     # Draws two red arrows in the orientation of the road
+    arrow_color = (0.3, 0.3, 0.3)
     if start[0] < end[0]:
         # Left to right
         x1 = start[0] + 0.3*(end[0]-start[0])
         y1 = start[1]
         x2 = start[0] + 0.7*(end[0]-start[0])
         y2 = start[1]
-        glColor3f(1.0, 0.0, 0.0)
+        glColor3f(*arrow_color)
         glLineWidth(1)
         glBegin(GL_LINES)
         glVertex2f(x1, y1) # base
@@ -50,7 +51,7 @@ def draw_red_arrows_with_orientation(start, end, line_width):
         y1 = start[1]
         x2 = start[0] + 0.7*(end[0]-start[0])
         y2 = start[1]
-        glColor3f(1.0, 0.0, 0.0)
+        glColor3f(*arrow_color)
         glLineWidth(1)
         glBegin(GL_LINES)
         glVertex2f(x1, y1) # base
@@ -72,7 +73,7 @@ def draw_red_arrows_with_orientation(start, end, line_width):
         y1 = start[1] + 0.3*(end[1]-start[1])
         x2 = start[0]
         y2 = start[1] + 0.7*(end[1]-start[1])
-        glColor3f(1.0, 0.0, 0.0)
+        glColor3f(*arrow_color)
         glLineWidth(1)
         glBegin(GL_LINES)
         glVertex2f(x1, y1) # base
@@ -94,7 +95,7 @@ def draw_red_arrows_with_orientation(start, end, line_width):
         y1 = start[1] + 0.3*(end[1]-start[1])
         x2 = start[0]
         y2 = start[1] + 0.7*(end[1]-start[1])
-        glColor3f(1.0, 0.0, 0.0)
+        glColor3f(*arrow_color)
         glLineWidth(1)
         glBegin(GL_LINES)
         glVertex2f(x1, y1) # base
@@ -110,11 +111,13 @@ def draw_red_arrows_with_orientation(start, end, line_width):
         glVertex2f(x2 + 0.03, y2 + 0.06) # second tip
         glEnd()
 
-def draw_line_with_colors(colors, points, line_width):
+def draw_line_with_colors(colors, points, line_width, arrow=True):
     # Draw black border aroung roads
     glLineWidth(line_width + 2)
     glBegin(GL_LINE_STRIP)
     for color, point in zip(colors, points):
+        # print(f"Trying to add point {point}")
+        # print(f"With color {color}")
         glColor3f(0,0,0)
         glVertex2f(*point)
     glEnd()
@@ -130,12 +133,10 @@ def draw_line_with_colors(colors, points, line_width):
 
     start = points[0]
     end = points[-1]
-    # Draw red arrows, oriented in the direction of the road
-    # Assume road either goes from left to right, right to left, up to down or down to up
-    draw_red_arrows_with_orientation(start, end, line_width)
-
-
-
+    if arrow:
+        # Draw red arrows, oriented in the direction of the road
+        # Assume road either goes from left to right, right to left, up to down or down to up
+        draw_arrows_with_orientation(start, end, line_width)
 
 def map_value_to_color(value):
     # Ensure the input value is within the valid range [0, 1]'
@@ -252,7 +253,7 @@ def draw_colored_line(colors, points):
     # Set up the view and projection matrices
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(-2, 2, -2, 2, -2, 2)  # Set the coordinate system to be [-2, 2]x[-2, 2]
+    glOrtho(-2.2, 2.2, -2.2, 2.2, -2.2, 2.2)  # Set the coordinate system to be [-2, 2]x[-2, 2]
 
     glMatrixMode(GL_MODELVIEW)
     
@@ -485,6 +486,39 @@ def create_density_container_with_shift(network, densities):
         # print(points)
     return colors, points
 
+def create_density_points_from_road_points(network, densities,
+                                           road_points):
+    colors = []
+    points = []
+    try:
+        times = list(densities[0].keys())
+    except:
+        times = list(densities['0'].keys())
+
+    for t in times:
+        # Get densities at time t
+        try:
+            density = [densities[i][t] for i in range(len(densities))]
+        except:
+            density = [densities[str(i)][t] for i in range(len(densities))]
+
+        # Transform densities to colors
+        colors.append([None] * len(density))
+        points.append([None] * len(density))
+        for i, d in enumerate(density):
+            # d is an array of densities -> convert to colors
+            colors[-1][i] = [map_value_to_color(rho) for rho in d]
+            road = network.roads[i]
+            # Shifting of left and right points
+            left, right = shift_single_point(road.id, road_points[i][0], road_points[i][1])
+            n = len(colors[-1][i])
+            x = np.linspace(left[0], right[0], n)
+            y = np.linspace(left[1], right[1], n)
+            points[-1][i] = [(x[i], y[i]) for i in range(len(x))]
+        # print(points)
+    return colors, points
+        
+
 def draw_timed(network, densities, interval_seconds=0.05, output_name='density_animation.gif'):
     colors, points = create_density_container(network, densities)
     renderer = DensityRenderer(colors, points, interval_seconds=interval_seconds,
@@ -648,7 +682,9 @@ def get_positions_of_busses(network, bus_positions, x_shift, y_shift):
         max_x = max(max_x, left[0], right[0])
         max_y = min(max_y, left[1], right[1])
         min_y = max(min_y, left[1], right[1])
-    
+    print(f"Maximum and minimum x points: {max_x}, {min_x}")
+    print(f"Maximum and minimum y points: {max_y}, {min_y}")
+
     a_x = 4 / (max_x - min_x)
     b_x = 2 -  4 * max_x / (max_x - min_x)
 
@@ -806,7 +842,7 @@ def draw_busses_network(road_points, bus_positions):
     # Set up the view and projection matrices
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(-2, 2, -2, 2, -2, 2)  # Set the coordinate system to be [-2, 2]x[-2, 2]
+    glOrtho(-2.2, 2.2, -2.2, 2.2, -2.2, 2.2)  # Set the coordinate system to be [-2, 2]x[-2, 2]
 
     glMatrixMode(GL_MODELVIEW)
     
@@ -836,6 +872,19 @@ def draw_busses_network(road_points, bus_positions):
             glVertex2f(*p)
         glEnd()
 
+    # Draw the busses
+    for bus_position in bus_positions:
+        if bus_position != (None, None):
+            glPointSize(7.0)
+            glBegin(GL_POINTS)
+            glColor3f(1.0, 0.0, 0.0)
+            glVertex2f(bus_position[0], bus_position[1])
+            glEnd()
+
+    glutSwapBuffers()
+
+def draw_busses(bus_positions):
+    line_width = 5.0
     # Draw the busses
     for bus_position in bus_positions:
         if bus_position != (None, None):
@@ -905,8 +954,8 @@ class MultipleBusRenderer:
         # Read the content of the framebuffer and save as an image
         # data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
         # image = Image.frombytes("RGBA", (400, 300), data)
-        data = glReadPixels(0, 0, 800, 600, GL_RGBA, GL_UNSIGNED_BYTE)
-        image = Image.frombytes("RGBA", (800, 600), data)
+        data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (400, 300), data)
         self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
     
     def timer(self, value):
@@ -990,6 +1039,73 @@ def find_points(network, bus, bus_lengths):
 
     return positions, x_shift, y_shift
 
+class BusDensityRenderer:
+    def __init__(self, colors, road_points, bus_points, interval_seconds, output_name):
+        '''
+        Road poitns is a list of points defining the network. This is fixed for all times
+        Bus points is a list of points defining the position of the bus. This changes for each time step
+        '''
+        self.colors = colors
+        self.road_points = road_points
+        self.bus_points = bus_points
+        self.current_idx = 0
+        self.interval_seconds = interval_seconds
+        self.last_update_time = time.time()
+        self.is_rendering = True
+        self.images = []
+        assert type(output_name) == str
+        if not output_name.endswith('.gif'):
+            output_name += '.gif'
+        self.output_name = output_name
+
+    def display(self):
+        glClear(GL_COLOR_BUFFER_BIT)
+        # Draw roads
+        # print(f"Colors: {self.colors[self.current_idx]}")
+        # print(f"Points: {self.road_points[self.current_idx]}")
+        draw_colored_line(self.colors[self.current_idx], self.road_points[self.current_idx])
+        glutSwapBuffers()
+        # Draw busses
+        draw_busses([points[self.current_idx] for points in self.bus_points])
+
+        # Read the content of the framebuffer and save as an image
+        data = glReadPixels(0, 0, 400, 300, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (400, 300), data)
+        self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
+
+    def timer(self, value):
+        if self.current_idx >= len(self.colors)-1:
+            print("End of simulation reached!")
+            self.is_rendering = False
+            self.save_gif()
+            glutLeaveMainLoop()
+            return
+        
+        # Update the current element index
+        self.current_idx += 1
+        
+
+        # Redraw the scene
+        glutPostRedisplay()
+
+        # Set the timer for the next update - change this to take into account
+        # that time intervals of the simulation might change
+        glutTimerFunc(int(self.interval_seconds * 1000), self.timer, 0)
+
+        # Update the last update time
+        self.last_update_time = time.time()
+    
+    def save_gif(self):
+        if len(self.images) == 0:
+            print("No images to save")
+            return
+        
+        # output_file = "density_animation.gif"
+        print("Saving GIF as:", self.output_name)
+        self.images[0].save(self.output_name, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
+        print("GIF saved.")
+
+
 def find_points_of_busses(network, busses, bus_lengths):
     # For each timestep, find the coordinates of the bus, using the positions of the roads
     x_shift = [[0 for _ in range(len(bus_lengths[i]))] for i in range(len(busses))]
@@ -1019,15 +1135,16 @@ def find_points_of_busses(network, busses, bus_lengths):
                     # Shift road to the left
                     x_shift[i][j] = -0.08
             elif road_id[-2:] == 'bw':
-                if left[0] < right[0]:
+                # print(f"road id: {road_id}")
+                if left[0] > right[0]:
                     # Road goes from right to the left
                     # Shift road up
                     y_shift[i][j] = 0.08
                 else:
-                    # Road goes from bottom to left
+                    # Road goes from bottom to up
                     # Shift road to the right
                     x_shift[i][j] = 0.08
-        
+                # print(f"Shift on road: {x_shift[i][j], y_shift[i][j]}")
 
             # The bus has travelled length/road.L of the road
             relative_length = length_travelled / road.L # Going from 0 to b
@@ -1110,11 +1227,49 @@ def draw_busses_timed(bus_network, busses, bus_lengths, interval_seconds = 0.05)
 
     glutMainLoop()
 
+def draw_busses_w_densities(bus_network, busses, bus_lengths, densities, interval_seconds = 0.05,
+                            output_name='animation.gif'):
+    try:
+        times = list(bus_lengths[0].keys())
+        lengths = [[float(bus_lengths[i][t]) for t in times] for i in range(len(busses))]
+
+    except:
+        times = list(bus_lengths['0'].keys())
+        lengths = [[float(bus_lengths[str(i)][t]) for t in times] for i in range(len(busses))]
+    positions, x_shift, y_shift = find_points_of_busses(bus_network, busses, lengths)
+    # get_positions_of_busses()
+    road_points, bus_points = get_positions_of_busses(bus_network, positions, x_shift, y_shift)
+    # for i in range(len(road_points)):
+    #     print(f"Points of road {bus_network.roads[i].id}: {road_points[i]}")
+    # Calculate the colors:
+    # create_density_container() # Just to throw error
+    colors, points = create_density_points_from_road_points(bus_network, densities, road_points)
+    # for i in range(len(points[0])):
+    #     print(f"Points of road {bus_network.roads[i].id}: {points[0][i]}")
+    renderer = BusDensityRenderer(colors, points, bus_points, interval_seconds, output_name)
+    #renderer = MultipleBusRenderer(road_points, bus_points, interval_seconds)
+    # create_density_container_with_shift()
+    
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA)
+    glutCreateWindow(b"OpenGL Bus Animation")
+
+    print("Window created")
+    time.sleep(2.0)
+
+    # Set up callback functions
+    glutDisplayFunc(renderer.display)
+    #glutTimerFunc(int(interval_seconds * 1000), renderer.timer, 0)
+    glutTimerFunc(1000, renderer.timer, 0)
+
+    glClearColor(1.0, 1.0, 1.0, 1.0)
+    
+    glutMainLoop()
 
 if __name__ == "__main__":
     import generate_kvadraturen as gk
     
-    option = 2
+    option = 9
     match option:
         case 0:
             network = gk.generate_kvadraturen_small(10.0)
@@ -1338,4 +1493,112 @@ if __name__ == "__main__":
             _, _, bus_lengths, _ = bus_network.solve_cons_law()
 
             draw_busses_timed(bus_network, [bus_fw, bus_bw], bus_lengths, 0.1)
+
+        case 8:
+            import json
+            import bus
+            import network as nw
+
+            print("Loading results...")
+            f = open("notebooks/kvadraturen_results.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+            print("Data loaded!")
             
+            print("Creating bus network...")
+            # Create bus network - this needs to made into a function...
+            T = 400
+            network = gk.generate_kvadraturen_small_w_row(T)
+            # network = gk.generate_kvadraturen_wo_tl(T)
+
+            ids_bw = ["lundsbro_bw", "elvegata_bw", "tollbod_6bw", "tollbod_5bw", "tollbod_4bw", 
+                    "tollbod_3bw", "tollbod_2bw", "tollbod_1bw", "v_strand_7bw", "v_strand_6bw",
+                        "v_strand_5bw", "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw"]            
+                        
+
+            stops_bw = [("tollbod_6bw", 50), ("tollbod_3bw", 90), ("tollbod_1bw", 30), ("v_strand_3bw", 25)]
+            # stops_bw = [("tollbod_6bw", 50), ("tollbod_3bw", 90)]
+
+            times_bw = [40, 130, 190, 250]
+            # times_bw = [10, 70]
+
+            bus_bw = bus.Bus(ids_bw, stops_bw, times_bw, network)
+
+            ids_fw = ["v_strand_1fw", "v_strand_2fw", "v_strand_3fw", "h_w_2", "h_w_3",
+                "h_w_4", "festning_4fw", "festning_5fw", "festning_6fw", "festning_7fw",
+                "tollbod_4fw", "tollbod_5fw", "tollbod_6fw", "elvegata_fw", "lundsbro_fw"]
+
+            stops_fw = [("v_strand_1fw", 40), ("h_w_3", 30), ("festning_5fw", 40), ("tollbod_4fw", 25), 
+                        ("tollbod_6fw", 60)]
+            # stops_fw = [("h_w_3", 30), ("festning_5fw", 40), ("tollbod_4fw", 25), 
+            #             ("tollbod_6fw", 60)]
+            # stops_fw = [("h_w_3", 30), ("festning_5fw", 40), ("tollbod_4fw", 10)]
+            times_fw = [1, 30, 110, 130, 230]
+            # times_fw = [10, 40, 80, 120]
+            # times_fw = [10, 40, 70]
+
+            bus_fw = bus.Bus(ids_fw, stops_fw, times_fw, network)
+
+            roads = network.roads
+            junctions = network.junctions
+            T = network.T
+            # Don't store the densities 
+            # bus_network = nw.RoadNetwork(roads, junctions, T, [bus_fw, bus_bw], store_densities = False)
+            bus_network = nw.RoadNetwork(roads, junctions, T, [bus_fw, bus_bw], store_densities = True)
+
+            print("Bus network created!")
+            print("Creating animation...")
+            draw_busses_w_densities(bus_network, [bus_fw, bus_bw], bus_lengths,
+                                    densities, output_name="test_animation.gif")
+            # print(bus_delays)
+            # Why is length of the first and last road so long??
+
+        case 9:
+            import json
+            import bus
+            import network as nw
+
+            print("Loading results...")
+            f = open("notebooks/kvadraturen_results_minimal.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+
+            T = 20
+            network = gk.generate_kvadraturen_minimal_junctions(T)
+
+            ids_bw = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw", 
+                        "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw"]            
+            
+
+            stops_bw = [("tollbod_2bw", 50), ("tollbod_1bw", 90), ("tollbod_1bw", 230), ("v_strand_1bw", 25)]
+            times_bw = [40, 130, 190, 250]
+            bus_bw = bus.Bus(ids_bw, stops_bw, times_bw, network, id = "2")
+            ids_fw = ["v_strand_1fw", "h_w_2", "festning_3fw", "festning_4fw", "tollbod_2fw",
+                    "elvegata_fw", "lundsbro_fw"]
+            stops_fw = [("h_w_2", 130), ("festning_4fw", 40), ("tollbod_2fw", 25), 
+                        ("tollbod_2fw", 260)]
+            times_fw = [30, 110, 130, 230]
+            bus_fw = bus.Bus(ids_fw, stops_fw, times_fw, network, id = "1")
+
+            # Create actual network
+            roads = network.roads
+            junctions = network.junctions
+            T = network.T
+            # Don't store the densities 
+            # bus_network = nw.RoadNetwork(roads, junctions, T, [bus_fw, bus_bw], store_densities = False)
+            bus_network = nw.RoadNetwork(roads, junctions, T, [bus_fw, bus_bw], store_densities = True)
+
+            print("Bus network created!")
+            print("Creating animation...")
+            draw_busses_w_densities(bus_network, [bus_fw, bus_bw], bus_lengths,
+                                    densities, output_name="test_minimal.gif")
+
+
