@@ -283,20 +283,21 @@ class Road:
                     # No inflow density specified, add artifical inflow
                     inflow = torch.max(torch.tensor(0), torch.sin(torch.tensor(2*torch.pi*t)))
                 else:
-                    if self.id[0] == '1' or self.id[0] == '3':
-                        if 50 < t < 100:
-                            inflow = self.inflow * 4
-                        elif t > 100:
-                            inflow = self.inflow * 0.5
-                        else:
-                            inflow = self.inflow
-                    elif self.id[0] == '5' or self.id[0] == '7':
-                        if t > 100:
-                            inflow = self.inflow * 0.25
-                        else:
-                            inflow = self.inflow
-                    else:
-                        inflow = self.inflow
+                    # if self.id[0] == '1' or self.id[0] == '3':
+                    #     if 50 < t < 100:
+                    #         inflow = self.inflow * 4
+                    #     elif t > 100:
+                    #         inflow = self.inflow * 0.5
+                    #     else:
+                    #         inflow = self.inflow
+                    # elif self.id[0] == '5' or self.id[0] == '7':
+                    #     if t > 100:
+                    #         inflow = self.inflow * 0.25
+                    #     else:
+                    #         inflow = self.inflow
+                    # else:
+                    #     inflow = self.inflow
+                    inflow = self.inflow
 
                 if self.flux_in >= 0:
                     # Inflow is given as flux
@@ -308,20 +309,21 @@ class Road:
                     # else:
                     #     f_in = self.flux_in
                     # Manual update of the flux
-                    if self.id == "1_fw" or self.id[0] == "3_bw":
-                        if 50 < t < 100:
-                            f_in = self.flux_in * 4
-                        elif t > 100:
-                            f_in = self.flux_in * 0.5
-                        else:
-                            f_in = self.flux_in
-                    elif self.id[0] == "5" or self.id[0] == "7":
-                        if 50 < t < 100:
-                            f_in = self.flux_in * 0.25
-                        else:
-                            f_in = self.flux_in
-                    else:
-                        f_in = self.flux_in
+                    # if self.id == "1_fw" or self.id[0] == "3_bw":
+                    #     if 50 < t < 100:
+                    #         f_in = self.flux_in * 4
+                    #     elif t > 100:
+                    #         f_in = self.flux_in * 0.5
+                    #     else:
+                    #         f_in = self.flux_in
+                    # elif self.id[0] == "5" or self.id[0] == "7":
+                    #     if 50 < t < 100:
+                    #         f_in = self.flux_in * 0.25
+                    #     else:
+                    #         f_in = self.flux_in
+                    # else:
+                    #     f_in = self.flux_in
+                    f_in = self.flux_in
                 else:
                     # Inflow is given as density
                     if 300 < t < 600:

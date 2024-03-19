@@ -126,11 +126,11 @@ class Bus:
         self.times = times # List of times the bus should be at each stop
         # self.network = network
         self.lengths = self.get_lengths(network)
-        self.length_travelled = 0
+        self.length_travelled = torch.tensor(0.0)
         # When the bus is at a stop, it should stop for a certain amount of time (not always?)
         # It also has to wait for the time in the schedule
         self.at_stop = False
-        self.remaining_stop_time = 0
+        self.remaining_stop_time = torch.tensor(0.0)
         self.stop_lengths = self.get_stop_lengs(stops)
         self.next_stop = 0
         self.delays = [torch.tensor(0.0) for _ in range(len(stops))]
