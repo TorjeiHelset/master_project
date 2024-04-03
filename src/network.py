@@ -30,10 +30,9 @@ class RoadNetwork:
     iters = None
     T = None
     debug_dt = None
-    optimizing = True
 
     def __init__(self, roads, junctions, T, busses = [], debugging = False, object_type = 0, iters = 1, dt = 0.001,
-                 optimizing = False, store_densities = True, print_control_points = False):
+                store_densities = True, print_control_points = False):
         # Check that unit length and dx are equal for all roads
         for i in range(1, len(roads)):
             assert roads[i].L == roads[i-1].L 
@@ -47,7 +46,6 @@ class RoadNetwork:
         self.iters = iters
         self.T = T
         self.debug_dt = dt
-        self.optimizing = optimizing
         self.store_densities = store_densities
         self.print_control_points = print_control_points
 
@@ -129,7 +127,6 @@ class RoadNetwork:
         plt.margins(0.2)
         plt.show()
 
-    
     def get_node_pos(self):
         # Function to get position of roads
 
@@ -280,6 +277,7 @@ class RoadNetwork:
 
                 #-------------------------------------
                 # STEP 2: Update positions of busses
+                # This needs to be a separate function...
                 #-------------------------------------
                 for i, bus in enumerate(self.busses):
                     if t < bus.start_time:
@@ -361,13 +359,10 @@ class RoadNetwork:
                 # STEP 4: Apply flux conditions for each Junction
                 #-------------------------------------
                 # if t < 1000:
-                if self.optimizing:
-                    for J in self.junctions:
-                        # Apply boundary conditions to all junctions
-                        J.apply_bc(dt, t)
-                else:   
-                    for J in self.junctions:
-                        J.apply_bc_wo_opt(dt, t)
+                for J in self.junctions:
+                    # Apply boundary conditions to all junctions
+                    J.apply_bc(dt, t)
+
                     
                 #-------------------------------------
                 # STEP 5: Apply BC to roads with one or more edges not connected to junction

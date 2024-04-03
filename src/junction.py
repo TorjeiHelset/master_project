@@ -151,7 +151,6 @@ class Junction:
 
 
         # Make sure distribution is of correct dimension
-
         assert len(distribution[0]) == len(leaving)
         # Make sure distribution sums to 1
         # assert abs(sum(distribution) -1 ) <= 1e-4
@@ -200,7 +199,7 @@ class Junction:
             self.max_crossing_connections = max([max([len(row) for row in row_list]) for row_list in crossing_connections])
         except:
             self.max_crossing_connections = 0
-            
+         
     def divide_flux(self, t):
         '''
         When comparing the fluxes from different roads, use 
@@ -944,8 +943,8 @@ class Junction:
     
     def get_speed(self, t, id_1, id_2):
         '''
-        Need to reevaluate how the flux is divided among the roads
-        -> Change this to avoid reevaluations...
+        Need to recalculate how the flux is divided among the roads
+        -> Change this to avoid recalculations...
         '''
         idx_1 = 0
         idx_2 = 0

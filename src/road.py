@@ -200,27 +200,27 @@ class Road:
         # left is internal cell, middle is first boundary cell
         left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
         # Calculate rusanov flux:
-        left_flux = fv.Rusanov_Flux_2(left, middle, self.gamma)
+        left_flux = fv.Rusanov_Flux_2(left, middle, self.gamma[self.idx])
 
         # Update density on boundary cell(s)
         # Inplace operation below!
         self.rho[-self.pad] = self.rho[-self.pad] - dt/self.dx * (incoming_flux - left_flux)
         if self.pad > 1:
             # More than one boundary cell -> put all other boundary cells equal to this one
-            for i in range(len(self.pad) - 1):
+            for i in range(self.pad - 1):
                 self.rho[-self.pad+i+1] = self.rho[-self.pad]
         
     def update_left_boundary(self, outgoing_flux, dt):
         # right is internal cell, middle is first boundary cell
         right, middle = self.rho[self.pad], self.rho[self.pad-1]
         # Calculate Rusanov flux:
-        right_flux = fv.Rusanov_Flux_2(middle, right, self.gamma)
+        right_flux = fv.Rusanov_Flux_2(middle, right, self.gamma[self.idx])
 
         # Update density on boundary cell(s)
         # Inplace operation!
         self.rho[self.pad-1] = self.rho[self.pad-1] - dt/self.dx * (right_flux - outgoing_flux)
         if self.pad > 1:
-            for i in range(len(self.pad)-1):
+            for i in range(self.pad-1):
                 self.rho[self.pad-2-i] = self.rho[self.pad-1]
 
     def max_dt(self):
