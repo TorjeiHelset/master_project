@@ -1,6 +1,38 @@
 import torch
 import FV_schemes as fv
 
+def h_00(t):
+    return 2*t**3 - 3*t**2 + 1
+
+def h_10(t):
+    return t**3 - 2*t**2 + t
+
+def h_01(t):
+    return -2*t**3 + 3*t**2
+
+def h_11(t):
+    return t**3 - t**2
+
+def p_1(rho, h0, rho_m, hmax, m0):
+    t_1 = rho/rho_m
+    return h_00(t_1)*h0 + h_10(t_1)*rho_m*m0 + h_01(t_1)*hmax
+
+def p_2(rho, h1, rho_m, hmax, m2):
+    t_2 = rho/rho_m
+    return h_00(t_2)*hmax + h_01(t_2)*h1 + h_11(t_2)*(1-rho_m)*m2
+
+
+def priority_fnc(rho, h0=0.6, hmax=0.9, h1=0.6, rho_m=0.6):
+    '''
+    Cubic Hermite interpolation of the points (0, h0), (rho_m, hmax), (1, h1)
+    with tangent slopes (hmax - h0)/rho_m, 0 and (h1 - hmax)/(1 - rho_m) at the three points
+    '''
+
+    if rho < rho_m:
+        return p_1(rho, h0, rho_m, hmax, (hmax - h0)/rho_m)
+    else:
+        return p_2(rho, h1, rho_m, hmax, (h1 - hmax)/(1 - rho_m))
+    
 
 class RoundaboutRoad:
     queue_length = None
@@ -71,7 +103,7 @@ class RoundaboutJunction:
         
         # Check whether it should be alpha or (1-alpha)...
 
-        beta = ... # Calculate the single priority parameter based on density on mainline
+        beta = priority_fnc(self.mainline_in.rho[-1]) # Calculate the single priority parameter based on density on mainline
 
         if not self.queue_junction:
             # Calculating the demands:
@@ -128,7 +160,8 @@ class RoundaboutJunction:
             in_fluxes[1] = torch.min(demands[1], max_second_in)
 
             # Update densities of roads:
-            ...
+            self.mainline_in.update_right_boundary(in_fluxes[0], dt)
+            self.mainline_out.update_left_boundary(out_flux, dt)
 
             # Update queue length:
             self.secondary_in.update_queue(in_fluxes[1], dt, t)
