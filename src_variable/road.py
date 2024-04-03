@@ -138,7 +138,7 @@ class Road:
 
         # In total we have
         N_full = N * b + 2*self.pad + (b-1)
-
+        # Maybe not 100% correct, but very close...
         j = torch.linspace(-(self.pad-1), b*(N+1) + (self.pad-1), N_full)
         # If first order, x goes from 0 to bL
         # If higher order x goes from -dx * order to bL + dx*order
@@ -188,6 +188,40 @@ class Road:
         '''
         self.gamma = [v / self.L for v in self.Vmax]
 
+    def demand(self):
+        # clone needed?
+        return self.max_dens * fv.D(self.rho[-1].clone(), self.gamma[self.idx])
+
+    def supply(self):
+        # Clone needed?
+        return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
+    
+    def update_right_boundary(self, incoming_flux, dt):
+        # left is internal cell, middle is first boundary cell
+        left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
+        # Calculate rusanov flux:
+        left_flux = fv.Rusanov_Flux_2(left, middle, self.gamma)
+
+        # Update density on boundary cell(s)
+        # Inplace operation below!
+        self.rho[-self.pad] = self.rho[-self.pad] - dt/self.dx * (incoming_flux - left_flux)
+        if self.pad > 1:
+            # More than one boundary cell -> put all other boundary cells equal to this one
+            for i in range(len(self.pad) - 1):
+                self.rho[-self.pad+i+1] = self.rho[-self.pad]
+        
+    def update_left_boundary(self, outgoing_flux, dt):
+        # right is internal cell, middle is first boundary cell
+        right, middle = self.rho[self.pad], self.rho[self.pad-1]
+        # Calculate Rusanov flux:
+        right_flux = fv.Rusanov_Flux_2(middle, right, self.gamma)
+
+        # Update density on boundary cell(s)
+        # Inplace operation!
+        self.rho[self.pad-1] = self.rho[self.pad-1] - dt/self.dx * (right_flux - outgoing_flux)
+        if self.pad > 1:
+            for i in range(len(self.pad)-1):
+                self.rho[self.pad-2-i] = self.rho[self.pad-1]
 
     def max_dt(self):
         '''

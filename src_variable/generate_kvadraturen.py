@@ -134,6 +134,180 @@ def create_roads_minimal_junctions():
 
     return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, lundsbro_fw, lundsbro_bw
 
+def create_roads_minimal_junctions_for_roundabout():
+    '''
+    Combine roads that do not need a junction between them to form a single road
+
+    Idea to reduce memory usage - let the speed limit on each of the roads be the same tensor
+    At the very least reduces the number of variables, but potentially also the memory cost(?)
+    '''
+    L = 25 # Length of road
+    N = 2 # Number of nodes to be used for every 50 meters
+    offset = 0.1
+    tilt = 0.025
+    # Vestre Strandgate:
+    # junctions 1 and 2 not needed, all other junctions needed
+    v_strand_fw = [None] * 6
+    v_strand_bw = [None] * 6
+    for i in range(6):
+        if i == 0:
+            # Combine first three to form one road
+            # b = 3 since three roads are combined
+            v_strand_fw[0] = rd.Road(6, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(0, 0), right_pos=(0, 3-offset),
+                                inflow = 0.3, id="v_strand_" + str(1) + "fw")
+            v_strand_bw[0] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(0, 3-offset), right_pos=(0, 0),
+                                inflow = 0.1, id="v_strand_" + str(1) + "bw")
+        else:
+            v_strand_fw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(0, i+2+offset), right_pos=(0, i+3-offset),
+                                    inflow = 0.05, id="v_strand_" + str(i+1) + "fw")
+            v_strand_bw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(0, i+3-offset), right_pos=(0, i+2+offset),
+                                    inflow = 0.1, id="v_strand_" + str(i+1) + "bw")
+
+    # Henrik Wergeland:
+    # junction 1 needed, junctions 2 and 3 not needed, junction 4 needed
+    h_w = [None] * 2
+    h_w[0] = rd.Road(2, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(-0.5, 3), right_pos=(0-offset, 3),
+                    inflow = 0.1, id="h_w_" + str(1))
+    h_w[1] = rd.Road(2*6, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(0+offset, 3), right_pos=(3-offset+6*tilt, 3),
+                    inflow = 0.1, id="h_w_" + str(2))
+
+
+    # Tollbodgata:
+    # Incoming junction needed, junctions 2 and 3 not needed, last junction needed
+    tollbod_fw = [None] * 2
+    tollbod_bw = [None] * 2
+    tollbod_bw[0] = rd.Road(2*6, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(3-offset+2*tilt, 7), right_pos=(0+offset, 7),
+                            inflow = 0.1, id="tollbod_" + str(1) + "bw")
+    tollbod_bw[1] = rd.Road(2*6, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(6-offset, 7), right_pos=(3+offset+2*tilt, 7),
+                            inflow = 0.1, id="tollbod_" + str(2) + "bw")
+    tollbod_fw[1] = rd.Road(2*6, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(3+offset+2*tilt, 7), right_pos=(6-offset, 7),
+                            inflow = 0.1, id="tollbod_" + str(2) + "fw")
+
+    # Elvegata:
+    # Both junctions needed (strictly speaking elvegate into tollbodgata is not needed, but keep¨
+    # since the road changes direction/name)
+    elvegata_fw = [rd.Road(2, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(6, 7+offset), right_pos=(6, 8-offset),
+                        inflow = 0.1, id="elvegata_fw")]
+    elvegata_bw = [rd.Road(2, L, N, torch.tensor([30.0], requires_grad=True), [], left_pos=(6, 8-offset), right_pos=(6, 7+offset),
+                        inflow = 0.1, id="elvegata_bw")]
+
+    # Dronningens gate:
+    # Incoming already accounted for, junction 2 not needed, junctions 3 and 4 needed, 
+    # junction 5 and 6 not needed, last junction needed
+    dronning_fw = [None] * 3
+    dronning_bw = [None] * 3
+    dronning_fw[0] = rd.Road(2*4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(0+offset, 8), right_pos=(2-offset, 8),
+                            inflow = 0.1, id="dronning_" + str(1) + "fw")
+    dronning_bw[0] = rd.Road(2*4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(2-offset, 8), right_pos=(0+offset, 8),
+                            inflow = 0.1, id="dronning_" + str(1) + "bw")
+    dronning_fw[1] = rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(2+offset, 8), right_pos=(3-offset, 8),
+                            inflow = 0.1, id="dronning_" + str(2) + "fw")
+    dronning_bw[1] = rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3-offset, 8), right_pos=(2+offset, 8),
+                            inflow = 0.1, id="dronning_" + str(2) + "bw")
+    dronning_fw[2] = rd.Road(2*6, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+offset, 8), right_pos=(6-offset, 8),
+                            inflow = 0.1, id="dronning_" + str(3) + "fw")
+    dronning_bw[2] = rd.Road(2*6, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(6-offset, 8), right_pos=(3+offset, 8),
+                            inflow = 0.1, id="dronning_" + str(3) + "bw")
+    
+
+    # Festningsgata:
+    # junction 1 needed, junction 2 not needed, junctions 3 and 4 needed, 5 and 6 not needed, 7 and 8 needed
+    # In picture, festningsgate is not completly vertical. The top is leaning to the right slightly
+    # Try 0.05 shift for every piece of road
+
+    festning_fw = [None] * 6
+    festning_bw = [None] * 6
+    # Add (9-i)*tilt to the roads
+    for i in range(6):
+        if i == 0:
+            festning_fw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(9-i)*tilt, i+offset), 
+                                     right_pos=(3+(8-i)*tilt, i+1-offset), inflow = 0.2, id="festning_" + str(i+1) + "fw")
+            festning_bw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(8-i)*tilt, i+1-offset), 
+                                     right_pos=(3+(9-i)*tilt, i+offset),inflow = 0.1, id="festning_" + str(i+1) + "bw")
+        elif i == 1:
+            festning_fw[i] = rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(9-i)*tilt, i+offset), 
+                                     right_pos=(3+(7-i)*tilt, i+2-offset),inflow = 0.05, id="festning_" + str(i+1) + "fw")
+            festning_bw[i] = rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(7-i)*tilt, i+2-offset), 
+                                     right_pos=(3+(9-i)*tilt, i+offset), inflow = 0.1, id="festning_" + str(i+1) + "bw")
+        elif i == 2:
+            festning_fw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(8-i)*tilt, i+1+offset), 
+                                     right_pos=(3+(7-i)*tilt, i+2-offset), inflow = 0.05, id="festning_" + str(i+1) + "fw")
+            festning_bw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(7-i)*tilt, i+2-offset), 
+                                     right_pos=(3+(8-i)*tilt, i+1+offset), inflow = 0.1, id="festning_" + str(i+1) + "bw")
+        elif i == 3:
+            festning_fw[i] = rd.Road(6, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(8-i)*tilt, i+1+offset), 
+                                     right_pos=(3+(5-i)*tilt, i+4-offset), inflow = 0.05, id="festning_" + str(i+1) + "fw")
+            festning_bw[i] = rd.Road(6, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(5-i)*tilt, i+4-offset), 
+                                     right_pos=(3+(8-i)*tilt, i+1+offset), inflow = 0.1, id="festning_" + str(i+1) + "bw")
+        else:
+            # i = 4
+            # i = 5
+            festning_fw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(6-i)*tilt, i+3+offset), 
+                                     right_pos=(3+(5-i)*tilt, i+4-offset), inflow = 0.05, id="festning_" + str(i+1) + "fw")
+            festning_bw[i] = rd.Road(2, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(3+(5-i)*tilt, i+4-offset), 
+                                     right_pos=(3+(6-i)*tilt, i+3+offset), inflow = 0.1, id="festning_" + str(i+1) + "bw")
+    # Lundsbroa:
+    # Only one road
+    lundsbro_fw = [rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(6+offset, 8), right_pos=(7, 7.8),
+                inflow = 0.1, id="lundsbro_fw")]
+    lundsbro_bw = [rd.Road(4, L, N, torch.tensor([50.0], requires_grad=True), [], left_pos=(7, 7.8), right_pos=(6+offset, 8),
+                inflow = 0.05, id="lundsbro_bw")]
+
+    return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, lundsbro_fw, lundsbro_bw
+
+def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
+                       speed1 = 50, speed_2 = 50):
+    # TODO: Modify to include inflow conditions
+    # For now, choose these manually
+
+    L = 25 # Length of road
+    N = 2 # Number of nodes to be used for every 50 meters
+    
+    # Vestre Strandgate roundabout:
+    # Four arm roundabout with 4 junctions, where 2 roads are a part of simulation
+    # Secondary roads can be described by a small object with a queue and an inflow condition
+    # Creating the mainline
+    main_speed_limit = torch.tensor([50.0], requires_grad=True)
+    vs_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="vs_mainline_1")
+    vs_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="vs_mainline_2")
+    vs_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="vs_mainline_3")
+    vs_main_4 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="vs_mainline_4")
+    # Creating the secondary incoming roads
+    # These are not proper road objects, but rather a small classs containing only 
+    # the queue length and the inflow function
+    vs_secondary_1 = ...
+    vs_secondary_2 = ...
+    vs_secondary_3 = ...
+    # Creating the roundabout junctions
+    vs_jnc_1 = ...
+    vs_jnc_2 = ...
+    vs_jnc_3 = ...
+    vs_jnc_4 = ...
+    vs_junctions = [vs_jnc_1, vs_jnc_2, vs_jnc_3, vs_jnc_4]
+
+    # Festningsgate roundabout:
+    # Similar to the vestre strandgate roundabout, but with only three incoming roads
+    fn_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="fn_mainline_1")
+    fn_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="fn_mainline_2")
+    fn_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+                        inflow = 0.0, id="fn_mainline_3")
+    # Creating the secondary incoming roads
+    fn_secondary_1 = ...
+    fn_secondary_2 = ...
+    # Creating the roundabout junctions
+    fn_jnc_1 = ...
+    fn_jnc_2 = ...
+    fn_jnc_3 = ...
+    fn_junctions = [fn_jnc_1, fn_jnc_2, fn_jnc_3]
+
+
+
 def create_minimal_junctions(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw,
                            elvegata_fw, elvegata_bw, dronning_fw, dronning_bw,
                            festning_fw, festning_bw, lundsbro_fw, lundsbro_bw):

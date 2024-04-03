@@ -12,7 +12,6 @@ def init_density(max_dens, type):
     type = 1  ->  Constant
     type = 2  ->  Linearly increasing
     type = 3  ->  Linearly decreasing
-    
     '''
 
     match type:
