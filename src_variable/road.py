@@ -249,8 +249,12 @@ class Road:
                 self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
 
     def apply_bc(self, t, dt):
+        # Change structure of road to instead have a boundary condition function and use
+        # this function to update the road.
+
         # Apply boundary conditions to edges not attached to any junction
         # If condition becomes on flux in then max dens might be necessary also here
+
 
         if self.periodic:
             # Set periodic boundary conditions
@@ -272,6 +276,7 @@ class Road:
 
         else:
             # For now set right boundary elements equal to closest interior
+            # This means all flux is allowed to leave the road
             if not self.right:
                 # Right boundary not attached to junction
                 self.rho[-self.pad:] = self.rho[-self.pad-1]
@@ -297,7 +302,14 @@ class Road:
                     #         inflow = self.inflow
                     # else:
                     #     inflow = self.inflow
-                    inflow = self.inflow
+                    if 200 < t < 400:
+                        inflow = self.inflow * 0.3
+                    elif 600 < t < 800:
+                        inflow = self.inflow * 2
+                    elif 800 <= t:
+                        inflow = self.inflow * 0.5
+                    else:
+                        inflow = self.inflow
 
                 if self.flux_in >= 0:
                     # Inflow is given as flux
@@ -323,7 +335,15 @@ class Road:
                     #         f_in = self.flux_in
                     # else:
                     #     f_in = self.flux_in
-                    f_in = self.flux_in
+                    if 200 < t < 400:
+                        f_in = self.flux_in * 0.3
+                    elif 600 < t < 800:
+                        f_in = self.flux_in * 2
+                    elif 800 <= t:
+                        f_in = self.flux_in * 0.5
+                    else:
+                        f_in = self.self.flux_in
+                    # f_in = self.flux_in
                 else:
                     # Inflow is given as density
                     if 300 < t < 600:
@@ -407,6 +427,8 @@ class Road:
         '''
         Return the speed calculated at a given length
         For now, just use local speed
+
+        What happens if the length is exactly on a cell midpoint?
         '''
         # Find which two nodes are closest to the length
         # Then interpolate between the two nodes
