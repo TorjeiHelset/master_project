@@ -25,13 +25,14 @@ class RoadNetwork:
     roads = None # All roads in network
     junctions = None # All junctions in network
     busses = None # All buses in network
+    roundabouts = []
     debugging = None
     object_type = None
     iters = None
     T = None
     debug_dt = None
 
-    def __init__(self, roads, junctions, T, busses = [], debugging = False, object_type = 0, iters = 1, dt = 0.001,
+    def __init__(self, roads, junctions, T, roundabouts = [], busses = [], debugging = False, object_type = 0, iters = 1, dt = 0.001,
                 store_densities = True, print_control_points = False):
         # Check that unit length and dx are equal for all roads
         for i in range(1, len(roads)):
@@ -41,6 +42,7 @@ class RoadNetwork:
         self.roads = roads
         self.junctions = junctions
         self.busses = busses
+        self.roundabouts = roundabouts
         self.debugging = debugging
         self.object_type = object_type
         self.iters = iters
@@ -204,11 +206,64 @@ class RoadNetwork:
         return road_pos
 
     def get_road(self, id):
-        for road in self.roads:
+        for i, road in enumerate(self.roads):
             if road.id == id:
-                return road
+                return i, road
         return None
     
+    def update_position_of_bus(self, bus, dt, slowdown_factors):
+        if t < bus.start_time:
+            # Bus has not started its route yet
+            return
+        
+        # 1. Find the road the bus is on
+        road_id, length, next_id = bus.get_road_id()
+        if road_id == "":
+            # Bus has reached the end of the route
+            # Stop updating the bus
+            return
+        
+        road = self.get_road(road_id)
+        activation = torch.tensor(1.0)
+        
+        # 2. Find the the junction (and traffic light) that connects the two roads
+        # This is actually not necessary unless the bus has almost reached the end of the road
+        # Add some check on the length here
+        if next_id == "" or length < road.L*road.b: # and length < ...
+            # Road_id is at the last road, don't need to find the next junction
+            # or bus is not close to the junction
+            pass
+        else:
+            # Find the junction and the activation function of the two roads
+            # If the activation is above i.e. 0.5, the bus can cross the junction
+            # If the activation is below, the bus cannot go further than the junction
+            for j in self.junctions:
+                check, activ_ = j.get_activation(t, road_id, next_id)
+                if check:
+                    activation = activ_
+                    break
+
+        # 3. Using the road id and length, find the speed of the bus
+        # Okay to use local speed here?
+        if length >= road.L*road.b:
+            if activation >= 0.5:
+                speed = j.get_speed(t, road_id, next_id) 
+            else:
+                # Setting speed equal to 0 means that the bus stops before the junction...
+                # Should maybe set the speed as the minimum from the get_speed
+                # and the speed that ensures the bus reaches the junction...
+                speed = torch.tensor(0.0) # Differentiable...?
+        else:
+            new_length = length / road.L
+            speed = road.get_speed(new_length) * road.L # Need to multiply with L to get actual speed in m/s
+        
+        # At this point the position to the bus stop on this road can be used to update the
+        # speed
+        # If the bus stop is close, then the speed can be reduced
+
+        relative_length = road.L*road.b - length # Remaining length
+        bus.update_position(t, dt, speed, activation, relative_length, printing=False)
+
     def solve_cons_law(self):
         '''
         Takes in a road network consisting of roads and junctions.
@@ -277,72 +332,13 @@ class RoadNetwork:
 
                 #-------------------------------------
                 # STEP 2: Update positions of busses
-                # This needs to be a separate function...
+                # This should be a separate function...
                 #-------------------------------------
-                for i, bus in enumerate(self.busses):
-                    if t < bus.start_time:
-                        continue
-                    
-                    # 1. Find the road the bus is on
-                    road_id, length, next_id = bus.get_road_id()
-                    if printing:
-                        print(f"Bus {i} is on road {road_id} at length {length} and next road is {next_id}")
-                    
-
-                    if road_id == "":
-                        # Bus has reached the end of the route
-                        # Stop updating the bus
-                        continue
-
-                    # 2. Find the the junction (and traffic light) that connects the two roads
-                    # This is actually not necessary unless the bus has almost reached the end of the road
-                    # Add some check on the length here
-                    if next_id == "":
-                        # Road_id is at the last road, don't need to find the next junction
-                        activation = torch.tensor(1.0)
-                    else:
-                        # Find the junction and the activation function of the two roads
-                        # If the activation is above i.e. 0.5, the bus can cross the junction
-                        # If the activation is below, the bus cannot go further than the junction
-                        activation = torch.tensor(1.0) # Replace with actual
-                        for j in self.junctions:
-                            check, activ_ = j.get_activation(t, road_id, next_id)
-                            if check:
-                                activation = activ_
-                                break
-
-                    if printing:
-                        print(f"Activation function: {activation}")
-                        try:
-                            print(f"Version of activation function: {activation._version}")
-                        except:
-                            pass
-
-
-
-                    # 3. Using the road id and length, find the speed of the bus
-                    # Okay to use local speed here?
-                    road = self.get_road(road_id)
-                    if length >= road.L*road.b:
-                        if printing:
-                            print("calculating speed using the junction")
-                        # Bus has reached the end of the road
-                        # Calculate speed differently...
-                        if activation >= 0.5:
-                            speed = j.get_speed(t, road_id, next_id) 
-                        else:
-                            speed = torch.tensor(0.0)
-                    else:
-                        if printing:
-                            print("calculating speed using nodes of road")
-                        new_length = length / road.L
-                        speed = road.get_speed(new_length, printing) * road.L # Need to multiply with L to get actual speed in m/s
-                    
-                    if printing:
-                        print(f"Speed of bus is {speed}")
-
-                    relative_length = road.L*road.b - length
-                    bus.update_position(t, dt, speed, activation, relative_length, printing=printing)
+                # Sowdown_factors is a list of how much to reduce the flux on each
+                # cell interface for each road determined by the bus
+                slowdown_factors = [torch.zeros(road.N_internal+1) for road in self.roads]
+                for bus in self.busses:
+                    slowdown_factors = self.update_position_of_bus(self, bus, dt, slowdown_factors)
 
                 #-------------------------------------
                 # STEP 3: Solve internal system for each road
@@ -352,8 +348,10 @@ class RoadNetwork:
                     # Before updating internal values, values near boundary should maybe be saved to 
                     # update boundary properly
                     # Right now values near boundary at next time step is used to update boundary.
+                    # Solution: Make road.solve_internally(dt) return a copy of the densities
+                    # for each road instead of overwriting the values
+                    # Update internal values later
                     road.solve_internally(dt)
-
 
                 #-------------------------------------
                 # STEP 4: Apply flux conditions for each Junction
@@ -361,21 +359,31 @@ class RoadNetwork:
                 # if t < 1000:
                 for J in self.junctions:
                     # Apply boundary conditions to all junctions
-                    J.apply_bc(dt, t)
+                    J.apply_bc_wo_opt(dt, t)
 
-                    
+                #-------------------------------------
+                # STEP 5: Apply flux conditions for each Roundabout
+                #-------------------------------------
+                # if t < 1000:
+                for roundabout in self.roundabouts:
+                    # Apply boundary conditions to all roundabouts
+                    roundabout.apply_bc(dt, t)
+
                 #-------------------------------------
                 # STEP 5: Apply BC to roads with one or more edges not connected to junction
                 #-------------------------------------
-                # if t < 1000:
                 for road in self.roads:
                     # Add boundary conditions to remaining roads
                     road.apply_bc(t, dt)
 
+                # At this point, the old internal values are not used anymore, so they can safely be 
+                # overwritten
+
                 #-------------------------------------
                 # STEP 6: Store solution after time t
                 # Maybe a bit too much to store the solution at all times
-                # If the objective function could be calculated here instead, it would save a lot of memory...
+                # If the objective function could be calculated here instead, ¨
+                # it would probably save a lot of memory...
                 #-------------------------------------
                 if self.store_densities:
                     for i in range(len(self.roads)):
@@ -383,26 +391,17 @@ class RoadNetwork:
                         # queue_timesteps[i][t] = self.roads[i].queue_length.clone()
                         queue_timesteps[i][t] = self.roads[i].queue_length
 
-
                 for i in range(len(self.busses)):
-                    # bus_timesteps[i][t] = self.busses[i].length_travelled.clone()
                     bus_timesteps[i][t] = self.busses[i].length_travelled.clone()
-
 
                 if self.debugging:
                     i_count += 1
                     if i_count >= self.iters:
                         t = self.T+1
-
                 
                 if printing:
                     print("-----------------------------------------\n")
-                # if self.debugging:
-                #     t = T+1 # Only do 1 iteration for debugging purposes
-        #-------------------------------------
-        # STEP 6: Calculate objective function and its derivatives
-        # For now this will be done in separate function
-        #-------------------------------------
+
         history_of_network = rho_timesteps
         queues = queue_timesteps
         bus_times = bus_timesteps

@@ -35,7 +35,7 @@ def priority_fnc(rho, h0=0.6, hmax=0.9, h1=0.6, rho_m=0.6):
     
 
 class RoundaboutRoad:
-    queue_length = None
+    queue_length = torch.tensor(0.0)
     inflow_fnc = None
     max_inflow = None
 
@@ -44,11 +44,17 @@ class RoundaboutRoad:
         self.max_inflow = max_inflow
     
     def demand(self, t):
-        return torch.max(self.inflow_fnc(t), self.max_inflow)
+        return torch.min(self.inflow_fnc(t), self.max_inflow)
 
     def update_queue(self, actual_flux, dt, t):
         # Can this queue length be negative?
-        self.queue_length = self.queue_length + dt * (self.inflow_fnc(t) - actual_flux)
+        # print(actual_flux)
+        # print(dt)
+        # print(t)
+        # print(self.inflow_fnc(t))
+        # print()
+        self.queue_length = torch.max(self.queue_length + dt * (self.inflow_fnc(t) - actual_flux),
+                                      torch.tensor(0.0))
 
 class RoundaboutJunction:
     '''
@@ -84,16 +90,23 @@ class RoundaboutJunction:
     queue_junction = True
 
     def __init__(self, main_in, main_out, alpha, second_in, second_out = None,
-                 queue_junction = True, max_flux = 1):
+                 queue_junction = True):
         self.mainline_in = main_in
         self.mainline_out = main_out
         self.alpha = alpha # Single parameter > 0
         self.secondary_in = second_in
         self.secondary_out = second_out
+        # Maybe try to instead infer the queue_junction type based on the type of the secondary roads
         self.queue_junction = queue_junction
-        self.max_flux = max_flux
 
-    def divide_flux(self, t, dt):
+        # Setting boundary edges of mainline and secondary roads equal to true
+        self.mainline_in.right = True
+        self.mainline_out.left = True
+        if not queue_junction:
+            self.secondary_in.right = True
+            self.secondary_out.left = True
+
+    def divide_flux(self, dt, t):
         # Explicit solution of this 2x2 junction is known
         # Influx from secondary road eiter determined by density on road, or 
         # by inflow function
@@ -110,14 +123,13 @@ class RoundaboutJunction:
             demands = torch.zeros(2)
             demands[0] = self.mainline_in.demand()
             demands[1] = self.secondary_in.demand()
-
             # Calculating the supplies
             supplies = torch.zeros(2)
             supplies[0] = self.mainline_out.supply()
             supplies[1] = self.secondary_out.supply()
         
             # Adjusting the first demand based on the supplies:
-            demands[0] = torch.min(demands[0], supplies[1] / self.distribution)
+            demands[0] = torch.min(demands[0], supplies[1] / self.alpha)
 
             # Calculating the fluxes using a FIFO rule:
             in_fluxes = torch.zeros(2)
@@ -144,9 +156,12 @@ class RoundaboutJunction:
             main_gamma = self.mainline_in.gamma[self.mainline_in.idx]
 
             # Calculate the demands:
+            # print(f"Timestep: {dt}")
+            # print(f"Queue length: {self.secondary_in.queue_length}")
             demands = torch.zeros(2)
             demands[0] = main_max_dens * fv.D(main_rho_in, main_gamma)
             demands[1] = self.secondary_in.demand(t)
+            # print(f"Demands of incoming roads: {demands[0], demands[1]}")
 
             # Calculate the supply:
             supply = main_max_dens * fv.S(main_rho_out, main_gamma)
@@ -154,14 +169,72 @@ class RoundaboutJunction:
             # Calculate the fluxes
             out_flux = torch.min((1-self.alpha)*demands[0] + demands[1])
             in_fluxes = torch.zeros(2)
+            max_main_in = torch.max(beta*supply, supply - demands[1])
             in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0],
-                                                        supply - demands[1])
-            max_second_in = torch.max((1-beta)*supply, supply  (1-self.alpha)*demands[0])
+                                                        max_main_in)
+            max_second_in = torch.max((1-beta)*supply, supply - (1-self.alpha)*demands[0])
             in_fluxes[1] = torch.min(demands[1], max_second_in)
+
+            # print(f"Incoming fluxes: {in_fluxes[0], in_fluxes[1]}")
+            # print(f"Outgoing fluxes: {out_flux}")
+
+            # print(f"Incoming density before updating: {self.mainline_in.rho}")
+            # print(f"Outgoing density before updating: {self.mainline_out.rho}")
+
 
             # Update densities of roads:
             self.mainline_in.update_right_boundary(in_fluxes[0], dt)
             self.mainline_out.update_left_boundary(out_flux, dt)
+            # print(f"Incoming density after updating: {self.mainline_in.rho}")
+            # print(f"Outgoing density after updating: {self.mainline_out.rho}")
 
             # Update queue length:
             self.secondary_in.update_queue(in_fluxes[1], dt, t)
+
+
+class Roundabout:
+    junctions = []
+    mainline_roads = []
+    secondary_inroads = []
+    secondary_outroads = []
+
+    def __init__(self, mainline_roads, secondary_inroads, secondary_outroads,
+                 roundabout_junctions):
+        # Check that the mainline roads go in a loop
+        # first_mainline = roundabout_junctions[0].mainline_in
+        # last_mainline = roundabout_junctions[-1].mainline_out
+        # assert first_mainline == last_mainline
+
+        # # Check that all roads are a part of at least one roundabout junction
+        # mainline_contained = False
+        # for mainline in mainline_roads:
+        #     for j in roundabout_junctions:
+        #         if j.mainline_in == mainline:
+        #             mainline_contained = True
+        #             break
+        # assert mainline_contained
+        # second_in_cont = False
+        # for second_in in secondary_inroads:
+        #     for j in roundabout_junctions:
+        #         if j.mainline_in == mainline:
+        #             mainline_contained = True
+        #             break
+        # second_out_cont = False
+        # for second_out in secondary_outroads:
+        #     # Either None or a part of a junction
+        #     if 
+
+        self.junctions = roundabout_junctions
+        self.mainline_roads = mainline_roads
+        self.secondary_inroads = secondary_inroads
+        self.secondary_outroads = secondary_outroads
+
+    
+    def apply_bc(self, dt, t):
+        
+        # Update flux on the junctions
+        for j in self.junctions:
+            j.divide_flux(dt, t)
+
+        # Do not need to solve internally on the roads as this is already done
+        

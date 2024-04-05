@@ -3,6 +3,8 @@ import road as rd
 import junction as jn
 import traffic_lights as tl
 import network as nw
+import FV_schemes as fv
+import roundabout as rb
 
 '''
 Ideas for visualizing the network:
@@ -260,6 +262,9 @@ def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
     # TODO: Modify to include inflow conditions
     # For now, choose these manually
 
+    offset = 0.1
+    tilt = 0.025
+
     L = 25 # Length of road
     N = 2 # Number of nodes to be used for every 50 meters
     
@@ -268,45 +273,61 @@ def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
     # Secondary roads can be described by a small object with a queue and an inflow condition
     # Creating the mainline
     main_speed_limit = torch.tensor([50.0], requires_grad=True)
-    vs_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    vs_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(0,0), right_pos=(0.15, -0.3),
                         inflow = 0.0, id="vs_mainline_1")
-    vs_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    vs_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(0.15, -0.3), right_pos=(0, -0.6),
                         inflow = 0.0, id="vs_mainline_2")
-    vs_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    vs_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(0, -0.6), right_pos=(-0.15, -0.3),
                         inflow = 0.0, id="vs_mainline_3")
-    vs_main_4 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    vs_main_4 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(-0.15, -0.3), right_pos=(0,0),
                         inflow = 0.0, id="vs_mainline_4")
     # Creating the secondary incoming roads
     # These are not proper road objects, but rather a small classs containing only 
     # the queue length and the inflow function
-    vs_secondary_1 = ...
-    vs_secondary_2 = ...
-    vs_secondary_3 = ...
+    secondary_gamma = torch.tensor(50 / (25 * 3.6))
+    max_inflow = fv.flux(torch.tensor(0.5), secondary_gamma)
+    secondary_big_gamma = torch.tensor(60 / (25 * 3.6))
+    max_inflow_big = fv.flux(torch.tensor(0.5), secondary_big_gamma)
+    rho_1, rho_2, rho_3 = torch.tensor(0.25),torch.tensor(0.05), torch.tensor(0.05)
+    inflow_1 = lambda t : fv.flux(rho_1, secondary_gamma)
+    inflow_2 = lambda t : fv.flux(rho_2, secondary_gamma)
+    inflow_3 = lambda t : fv.flux(rho_3, secondary_big_gamma)
+    vs_secondary_1 = rb.RoundaboutRoad(inflow_1, max_inflow)
+    vs_secondary_2 = rb.RoundaboutRoad(inflow_2, max_inflow)
+    vs_secondary_3 = rb.RoundaboutRoad(inflow_3, max_inflow_big)
     # Creating the roundabout junctions
-    vs_jnc_1 = ...
-    vs_jnc_2 = ...
-    vs_jnc_3 = ...
-    vs_jnc_4 = ...
+    vs_jnc_1 = rb.RoundaboutJunction(vs_main_1, vs_main_2, 0.6, v_strand_fw, v_strand_bw, queue_junction = False)
+    vs_jnc_2 = rb.RoundaboutJunction(vs_main_2, vs_main_3, 0.6, vs_secondary_1, None, queue_junction = True)
+    vs_jnc_3 = rb.RoundaboutJunction(vs_main_3, vs_main_4, 0.6, vs_secondary_2, None, queue_junction = True)
+    vs_jnc_4 = rb.RoundaboutJunction(vs_main_4, vs_main_1, 0.6, vs_secondary_3, None, queue_junction = True)
     vs_junctions = [vs_jnc_1, vs_jnc_2, vs_jnc_3, vs_jnc_4]
+    vs_roundabout = rb.Roundabout([vs_main_1, vs_main_2, vs_main_3, vs_main_4], 
+                           [v_strand_fw, vs_secondary_1, vs_secondary_2, vs_secondary_3],
+                           [v_strand_bw, None, None, None],vs_junctions)
 
     # Festningsgate roundabout:
     # Similar to the vestre strandgate roundabout, but with only three incoming roads
-    fn_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    fn_main_1 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(3+9*tilt, offset), right_pos=(3+9*tilt+0.15, offset-0.4),
                         inflow = 0.0, id="fn_mainline_1")
-    fn_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    fn_main_2 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(3+9*tilt+0.15, offset-0.4), right_pos=(3+9*tilt-0.15, offset-0.4),
                         inflow = 0.0, id="fn_mainline_2")
-    fn_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(), right_pos=(),
+    fn_main_3 = rd.Road(1, L, N, main_speed_limit, [], left_pos=(3+9*tilt-0.15, offset-0.4), right_pos=(3+9*tilt, offset),
                         inflow = 0.0, id="fn_mainline_3")
     # Creating the secondary incoming roads
-    fn_secondary_1 = ...
-    fn_secondary_2 = ...
+    rho_4 = torch.tensor(0.15)
+    inflow_4 = lambda t : fv.flux(rho_4, secondary_gamma)
+    fn_secondary_1 = rb.RoundaboutRoad(inflow_4, max_inflow)
+    fn_secondary_2 = rb.RoundaboutRoad(inflow_4, max_inflow)
     # Creating the roundabout junctions
-    fn_jnc_1 = ...
-    fn_jnc_2 = ...
-    fn_jnc_3 = ...
+    fn_jnc_1 = rb.RoundaboutJunction(fn_main_1, fn_main_2, 0.6, festning_fw, festning_bw, queue_junction = False)
+    fn_jnc_2 = rb.RoundaboutJunction(fn_main_2, fn_main_3, 0.6, fn_secondary_1, None, queue_junction = True)
+    fn_jnc_3 = rb.RoundaboutJunction(fn_main_3, fn_main_1, 0.6, fn_secondary_2, None, queue_junction = True)
     fn_junctions = [fn_jnc_1, fn_jnc_2, fn_jnc_3]
+    fn_roundabout = rb.Roundabout([fn_main_1, fn_main_2, fn_main_3],
+                                  [festning_fw, fn_secondary_1, fn_secondary_2],
+                                  [festning_bw, None, None], fn_junctions)
 
-
+    return [vs_main_1, vs_main_2, vs_main_3, vs_main_4,fn_main_1, fn_main_2, fn_main_3], [vs_roundabout, fn_roundabout]
 
 def create_minimal_junctions(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw,
                            elvegata_fw, elvegata_bw, dronning_fw, dronning_bw,
@@ -1104,7 +1125,7 @@ def generate_kvadraturen_small(T):
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
     junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
 
-    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+    network = nw.RoadNetwork(roads, junctions, T)#, optimizing = False)
 
 
     return network
@@ -1126,9 +1147,38 @@ def generate_kvadraturen_minimal_junctions(T):
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
     junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
 
-    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+    network = nw.RoadNetwork(roads, junctions, T)#, optimizing = False)
 
     return network
+
+def generate_kvadraturen_w_roundabout(T):
+    # Create the roads
+    v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
+    elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
+    lundsbro_fw, lundsbro_bw = create_roads_minimal_junctions_for_roundabout()
+
+    # Create the junctions
+    v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs = create_minimal_junctions(v_strand_fw, v_strand_bw, h_w,
+                                                                                                 tollbod_fw, tollbod_bw, elvegata_fw,
+                                                                                                 elvegata_bw, dronning_fw, dronning_bw,
+                                                                                                 festning_fw, festning_bw, lundsbro_fw,
+                                                                                                 lundsbro_bw)
+    
+    # Create the roundabouts
+    mainline_roads, roundabouts = create_roundabouts(v_strand_fw[0], v_strand_bw[0],
+                                                     festning_fw[0], festning_bw[0])
+    
+    # Create the network
+    roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
+            elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + \
+            lundsbro_bw + mainline_roads
+    junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
+    
+    network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts)
+    
+    return network
+
+
 
 def minimal_kvadraturen(T = 100):
     road1 = rd.Road(1, 50, 5, torch.tensor([50.0], requires_grad=True), [], left_pos=(-1, 0), right_pos=(0, 0),
@@ -1141,7 +1191,7 @@ def minimal_kvadraturen(T = 100):
                     inflow = 0.1, id="road2bw")
     traffic_light = tl.CoupledTrafficLightContinuous(True, [0], [1], [3], [2], [50.0, 50.0])
     junction = jn.Junction([road1, road2, road3, road4], [0,3], [1,2], [[1.0, 0.0],[0.0, 1.0]], [], [traffic_light])
-    network = nw.RoadNetwork([road1, road2, road3, road4], [junction], T, optimizing = False)
+    network = nw.RoadNetwork([road1, road2, road3, road4], [junction], T)#, optimizing = False)
     return network
 
 def create_junctions_wo_tl(v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw,
@@ -1334,7 +1384,7 @@ def generate_kvadraturen_wo_tl(T):
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
     junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
 
-    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+    network = nw.RoadNetwork(roads, junctions, T)#, optimizing = False)
 
     return network
 
@@ -1352,7 +1402,7 @@ def generate_minimal(T):
     trafficlight = tl.CoupledTrafficLightContinuous(False, [0], [2], [1], [3], [50.0, 50.0])
     junction = jn.Junction([road1, road2, road3, road4], [0,1], [2,3], [[1.0, 0.0],[0.0, 1.0]], [], [trafficlight])
     
-    network = nw.RoadNetwork([road1, road2, road3, road4], [junction], T, optimizing = False)
+    network = nw.RoadNetwork([road1, road2, road3, road4], [junction], T)#, optimizing = False)
     return network
 
 # Can also have a network where most of the road speed limits do not require a gradient...
@@ -1380,7 +1430,7 @@ def generate_kvadraturen_small_w_row(T):
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
     junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
 
-    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+    network = nw.RoadNetwork(roads, junctions, T)#, optimizing = False)
 
     return network
 
@@ -1411,7 +1461,7 @@ def generate_kvadraturen_small_w_params(T, v_strand_speed = 50, h_w_speed = 30, 
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + lundsbro_bw
     junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
 
-    network = nw.RoadNetwork(roads, junctions, T, optimizing = False)
+    network = nw.RoadNetwork(roads, junctions, T)#, optimizing = False)
     
     return network
 

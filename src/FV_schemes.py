@@ -136,7 +136,6 @@ def SSP_RK(rho, dx, limiter, dt, gamma):
     rho_ = rho + dt * L_operator(rho, dx, limiter, gamma)
     rho__ = rho_ + dt * L_operator(rho_, dx, limiter, gamma)
     rho_new = .5 * (rho + rho__)
-
     return rho_new
     
 def Euler(rho, dx, limiter, dt, gamma):

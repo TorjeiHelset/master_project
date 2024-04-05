@@ -137,7 +137,8 @@ class Road:
         # Finally we have b-1 connecting nodes between each length unit of road
 
         # In total we have
-        N_full = N * b + 2*self.pad + (b-1)
+        self.N_internal = N*b + (b-1)
+        N_full = self.N_internal +  2*self.pad
         # Maybe not 100% correct, but very close...
         j = torch.linspace(-(self.pad-1), b*(N+1) + (self.pad-1), N_full)
         # If first order, x goes from 0 to bL

@@ -762,4 +762,52 @@ if __name__ == "__main__":
 
         case 2:
             main()
+        case 3:
+            import json
+            import bus
+            import network as nw
+            import generate_kvadraturen as gk
+
+            print("Loading results...")
+            f = open("notebooks/kvadraturen_roundabout.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+
+            print("Creating network...")
+            T = 1000
+            network = gk.generate_kvadraturen_w_roundabout(T)
+
+            ids_bw = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw", 
+                    "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw"]            
+            stops_bw = [("tollbod_2bw", 50), ("tollbod_1bw", 90), ("tollbod_1bw", 230), ("v_strand_1bw", 25)]
+            times_bw = [40, 130, 190, 250]
+            bus_bw = bus.Bus(ids_bw, stops_bw, times_bw, network, id = "2", start_time = 0.0)
+            ids_fw = ["v_strand_1fw", "h_w_2", "festning_3fw", "festning_4fw", "tollbod_2fw",
+                    "elvegata_fw", "lundsbro_fw"]
+            stops_fw = [("h_w_2", 130), ("festning_4fw", 40), ("tollbod_2fw", 25), 
+                        ("tollbod_2fw", 260)]
+            times_fw = [30, 110, 130, 230]
+            bus_fw = bus.Bus(ids_fw, stops_fw, times_fw, network, id = "1")
+            times_bw_2 = [240, 330, 390, 450]
+            times_fw_2 = [530, 610, 630, 830]
+            bus_bw_2 = bus.Bus(ids_bw, stops_bw, times_bw, network, id = "3", start_time = 200.0)
+            bus_fw_2 = bus.Bus(ids_fw, stops_fw, times_fw, network, id = "4", start_time = 500.0)
+
+            roads = network.roads
+            junctions = network.junctions
+            T = network.T
+            roundabouts = network.roundabouts
+            # Don't store the densities 
+            # bus_network = nw.RoadNetwork(roads, junctions, T, [bus_fw, bus_bw], store_densities = False)
+            bus_network = nw.RoadNetwork(roads, junctions, T, busses=[bus_fw, bus_bw, bus_fw_2, bus_bw_2], roundabouts=roundabouts,
+                                         store_densities = True)
+
+            print("Creating animation...")
+            draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
+                                    densities, output_name="test_minimal_1000_variable_map.gif",
+                                    background_img="background_imgs/kvadraturen_simple2.png")
 
