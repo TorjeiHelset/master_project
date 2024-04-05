@@ -211,22 +211,26 @@ class RoadNetwork:
                 return i, road
         return None
     
-    def update_position_of_bus(self, bus, dt, slowdown_factors):
+    def update_position_of_bus(self, bus, dt, t, slowdown_factors):
         if t < bus.start_time:
             # Bus has not started its route yet
-            return
+            return slowdown_factors
         
         # 1. Find the road the bus is on
         road_id, length, next_id = bus.get_road_id()
         if road_id == "":
             # Bus has reached the end of the route
             # Stop updating the bus
-            return
+            return slowdown_factors
         
         i, road = self.get_road(road_id)
+        # i used to find out what slowdown_factors to modify
+        # 2. Use position of bus to calculate the slowdown factors
+        slowdown_factors[i] = bus.get_slowdown_factor(slowdown_factors[i], road_id,
+                                                      length, road)
+
         activation = torch.tensor(1.0)
-        
-        # 2. Find the the junction (and traffic light) that connects the two roads
+        # 3. Find the the junction (and traffic light) that connects the two roads
         # This is actually not necessary unless the bus has almost reached the end of the road
         # Add some check on the length here
         if next_id == "" or length < road.L*road.b: # and length < ...
@@ -243,7 +247,7 @@ class RoadNetwork:
                     activation = activ_
                     break
 
-        # 3. Using the road id and length, find the speed of the bus
+        # 4. Using the road id and length, find the speed of the bus
         # Okay to use local speed here?
         if length >= road.L*road.b:
             if activation >= 0.5:
@@ -263,6 +267,7 @@ class RoadNetwork:
 
         relative_length = road.L*road.b - length # Remaining length
         bus.update_position(t, dt, speed, activation, relative_length, printing=False)
+        return slowdown_factors
 
     def solve_cons_law(self):
         '''
@@ -336,14 +341,14 @@ class RoadNetwork:
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
-                slowdown_factors = [torch.zeros(road.N_internal+1) for road in self.roads]
+                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
                 for bus in self.busses:
-                    slowdown_factors = self.update_position_of_bus(self, bus, dt, slowdown_factors)
+                    slowdown_factors = self.update_position_of_bus(bus, dt, t, slowdown_factors)
 
                 #-------------------------------------
                 # STEP 3: Solve internal system for each road
                 #-------------------------------------
-                for road in self.roads:
+                for i, road in enumerate(self.roads):
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
                     # update boundary properly
@@ -351,7 +356,7 @@ class RoadNetwork:
                     # Solution: Make road.solve_internally(dt) return a copy of the densities
                     # for each road instead of overwriting the values
                     # Update internal values later
-                    road.solve_internally(dt)
+                    road.solve_internally(dt, slowdown_factors[i])
 
                 #-------------------------------------
                 # STEP 4: Apply flux conditions for each Junction

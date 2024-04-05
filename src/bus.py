@@ -1,6 +1,5 @@
 import torch
 
-
 '''
 So far roads/junctions have not had global positions, but only relative positions
 The fact that a bus follows a specific route, means that this approach might not be
@@ -89,6 +88,9 @@ stops = [(tollbod_6, 50), (tollbod_3, 90), (tollbod_1, 30), (v_strand_3, 25)]
 # Map to stops being absolute length of the route
 '''
 
+def get_slowdown_factor(d, alpha = 0.5, beta = 2):
+    return torch.sigmoid(alpha * d + 5) - torch.sigmoid(beta * d - 5)
+
 class Bus:
     '''
     Small class for keeping track of the route with its stops and
@@ -162,7 +164,7 @@ class Bus:
         '''
         lengths = [0 for _ in range(len(self.ids))]
         for i, id in enumerate(self.ids):
-            road = network.get_road(id)
+            _, road = network.get_road(id)
             try:
                 lengths[i] = road.L * road.b
             except:
@@ -227,6 +229,35 @@ class Bus:
                 relative_length = length / road.L # Mapping to x-coord in the road
                 return i, relative_length, next_idx
         return -1, 0, -1 # Road not found, stop updating...
+
+    def get_slowdown_factor(self, slowdown_factor, road_id, length, road):
+        # Length is the length travelled on the current road
+        if not self.active:
+            # Bus not actually a part of the simulation yet
+            return slowdown_factor
+        
+        factors = torch.ones(road.N_internal+1)
+        # Check for bus stops on this road
+        for stop in self.stops:
+            if stop[0] == road_id:
+                # Bus stop is on the road -> Calculate the distance from the bus to the stop
+                stop_pos = stop[1]
+                distance = stop_pos - length # In metres
+                # Calculate the slow down factor based on this distance:
+                # Multiply by 0.8 to always allow for some cars to cross.
+                stop_factor = get_slowdown_factor(distance) * 0.8
+
+                # Find the distance of the cell interfaces to the position of the bus:
+                # road.N_internal cells between dx and b - dx
+                # road.N_internal + 1 interfaces between dx/2 and b - dx/2
+                interface_positions = torch.linspace(road.dx, road.b - road.dx/2, road.N_internal)
+                # Faster by removing for loop...
+                for i, pos in enumerate(interface_positions):
+                    interface_factor = get_slowdown_factor(length - pos*road.L)
+                    factors[i] = torch.min(factors[i], 
+                                           torch.tensor(1.0) - interface_factor*stop_factor)                
+        return factors
+                
 
     def update_position(self, t, dt, speed, activation, length, printing = False):
         '''

@@ -144,7 +144,7 @@ def find_points_of_busses(network, busses, bus_lengths):
                 break
             
             # Find the road the bus is on
-            road = network.get_road(road_id)
+            _, road = network.get_road(road_id)
             left = road.left_pos
             right = road.right_pos
 
@@ -669,7 +669,7 @@ def draw_busses_w_densities(bus_network, busses, bus_lengths, densities, output_
 
 
 if __name__ == "__main__":
-    scenario = 0
+    scenario = 3
     match scenario:
         case 0:
             import json
@@ -715,7 +715,8 @@ if __name__ == "__main__":
 
             print("Creating animation...")
             draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
-                                    densities, output_name="test_minimal_1000_variable_map.gif")
+                                    densities, output_name="test_minimal_1000_variable_map.gif",
+                                    background_img="background_imgs/kvadraturen_simple2.png")
             # print(bus_lengths.keys())        
         case 1:
             import generate_kvadraturen as gk
@@ -808,6 +809,23 @@ if __name__ == "__main__":
 
             print("Creating animation...")
             draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
-                                    densities, output_name="test_minimal_1000_variable_map.gif",
+                                    densities, output_name="roundabout.gif",
                                     background_img="background_imgs/kvadraturen_simple2.png")
 
+        case 4:
+            import json
+            print("Loading results...")
+            f = open("notebooks/kvadraturen_results_minimal_1000_variable.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+            positions = [[(None, None) for _ in range(len(bus_lengths[str(i)]))] for i in range(4)]
+
+            for i, lengths in enumerate(bus_lengths):
+                for j, length in enumerate(lengths):
+                    positions[i][j] = (2.2, 2.2)
+
+            print([len(bus_lengths[str(i)]) for i in range(4)])

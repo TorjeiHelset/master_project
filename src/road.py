@@ -252,9 +252,12 @@ class Road:
         
         return CFL * self.dx / (self.max_dens * max_flux)
 
-    def solve_internally(self, dt):
+    def solve_internally(self, dt, slowdown_factors):
         '''
         Solving conservation law for internal
+        Slowdown_factors is a number for each interface that says how the flux should be
+        reduced for each interface
+        First iteration: Only add to the SSP_RK function
         '''
         # print("Solving internally")
         # print(self.scheme)
@@ -279,9 +282,11 @@ class Road:
                 F = fv.Lax_Wendroff_Flux(self.rho, self.dx, dt, self.gamma[self.idx])
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 3:
-                self.rho = fv.SSP_RK(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
+                self.rho = fv.SSP_RK(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
+                                     slowdown_factors)
             case 4:
-                self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
+                self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
+                                    slowdown_factors)
 
     def apply_bc(self, t, dt):
         # Change structure of road to instead have a boundary condition function and use

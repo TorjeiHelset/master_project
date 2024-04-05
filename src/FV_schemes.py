@@ -118,28 +118,28 @@ def Rusanov_Flux_2(left, right, gamma):
     return 0.5*(flux(left, gamma) + flux(right, gamma)) - 0.5 * s * (right - left)
 
 @torch.jit.script
-def L_operator(rho, dx, limiter, gamma):
+def L_operator(rho, dx, limiter, gamma, slowdown_factors):
     sigma = slope(rho, limiter)
     left = torch.zeros(len(rho)-2)
     right = torch.zeros(len(rho)-2)
 
     left = rho[1:-1] + torch.tensor(.5)  * sigma 
     right = rho[1:-1] - torch.tensor(.5) * sigma
-    F = Rusanov_Flux_2(left[:-1], right[1:], gamma)
+    F = Rusanov_Flux_2(left[:-1], right[1:], gamma) * slowdown_factors
     L_out = torch.zeros_like(rho)
     L_out[2:-2] = -1/dx * (F[1:] - F[:-1])
     return L_out
 
 @torch.jit.script
-def SSP_RK(rho, dx, limiter, dt, gamma):
+def SSP_RK(rho, dx, limiter, dt, gamma, slowdown_factors):
     # Need also alpha parameter
-    rho_ = rho + dt * L_operator(rho, dx, limiter, gamma)
-    rho__ = rho_ + dt * L_operator(rho_, dx, limiter, gamma)
+    rho_ = rho + dt * L_operator(rho, dx, limiter, gamma, slowdown_factors)
+    rho__ = rho_ + dt * L_operator(rho_, dx, limiter, gamma, slowdown_factors)
     rho_new = .5 * (rho + rho__)
     return rho_new
     
-def Euler(rho, dx, limiter, dt, gamma):
-    rho_new = rho + dt * L_operator(rho, dx, limiter, gamma)
+def Euler(rho, dx, limiter, dt, gamma, slowdown_factors):
+    rho_new = rho + dt * L_operator(rho, dx, limiter, gamma, slowdown_factors)
     return rho_new
 
 def total_flux_out(rho_dict, order):
