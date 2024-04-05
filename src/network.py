@@ -223,7 +223,7 @@ class RoadNetwork:
             # Stop updating the bus
             return
         
-        road = self.get_road(road_id)
+        i, road = self.get_road(road_id)
         activation = torch.tensor(1.0)
         
         # 2. Find the the junction (and traffic light) that connects the two roads
