@@ -214,20 +214,23 @@ class RoadNetwork:
     def update_position_of_bus(self, bus, dt, t, slowdown_factors):
         if t < bus.start_time:
             # Bus has not started its route yet
-            return slowdown_factors
+            return slowdown_factors, None
         
         # 1. Find the road the bus is on
         road_id, length, next_id = bus.get_road_id()
         if road_id == "":
             # Bus has reached the end of the route
             # Stop updating the bus
-            return slowdown_factors
+            return slowdown_factors, None
         
         i, road = self.get_road(road_id)
+        slowing_idx = None
         # i used to find out what slowdown_factors to modify
         # 2. Use position of bus to calculate the slowdown factors
-        slowdown_factors[i] = bus.get_slowdown_factor(slowdown_factors[i], road_id,
+        slowdown_factors[i], bus_started = bus.get_slowdown_factor(slowdown_factors[i], road_id,
                                                       length, road)
+        if bus_started:
+            slowing_idx = i
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
@@ -267,7 +270,7 @@ class RoadNetwork:
 
         relative_length = road.L*road.b - length # Remaining length
         bus.update_position(t, dt, speed, activation, relative_length, printing=False)
-        return slowdown_factors
+        return slowdown_factors, slowing_idx
     
     def update_position_of_bus_no_slowdown(self, bus, dt, t):
         if t < bus.start_time:
@@ -397,10 +400,12 @@ class RoadNetwork:
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
-                # slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_indexes = []
                 for bus in self.busses:
-                    self.update_position_of_bus_no_slowdown(bus, dt, t)#, slowdown_factors)
-
+                    slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt, t, slowdown_factors)
+                    if slowing_idx is not None:
+                        slowdown_indexes.append(slowing_idx)
                 #-------------------------------------
                 # STEP 3: Solve internal system for each road
                 #-------------------------------------
@@ -412,7 +417,10 @@ class RoadNetwork:
                     # Solution: Make road.solve_internally(dt) return a copy of the densities
                     # for each road instead of overwriting the values
                     # Update internal values later
-                    road.solve_internally(dt)#, slowdown_factors[i])
+                    if i in slowdown_indexes:
+                        road.solve_internally_slowdown(dt, slowdown_factors[i])
+                    else:
+                        road.solve_internally(dt)
 
                 #-------------------------------------
                 # STEP 4: Apply flux conditions for each Junction

@@ -234,7 +234,7 @@ class Bus:
         # Length is the length travelled on the current road
         if not self.active:
             # Bus not actually a part of the simulation yet
-            return slowdown_factor
+            return slowdown_factor, False
         
         factors = torch.ones(road.N_internal+1)
         # Check for bus stops on this road
@@ -256,7 +256,7 @@ class Bus:
                     interface_factor = get_slowdown_factor(length - pos*road.L)
                     factors[i] = torch.min(factors[i], 
                                            torch.tensor(1.0) - interface_factor*stop_factor)                
-        return factors
+        return factors, True
                 
 
     def update_position(self, t, dt, speed, activation, length, printing = False):

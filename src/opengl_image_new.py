@@ -9,7 +9,8 @@ import numpy as np
 texture = None
 w1 = 0
 h1 = 0
-shift_const = 0.008 # relative to the [0,1]x[0,1] coordinate system
+y_shift_const = 0.008 # relative to the [0,1]x[0,1] coordinate system
+x_shift_const = y_shift_const * 3/4
 color_gradient = 0
 arrow_length = 5
 
@@ -152,21 +153,21 @@ def find_points_of_busses(network, busses, bus_lengths):
                 if left[0] < right[0]:
                     # Road goes from left to right
                     # Shift road down
-                    y_shift[i][j] = - shift_const
+                    y_shift[i][j] = - y_shift_const
                 else:
                     # Road goes from top to bottom
                     # Shift road to the left
-                    x_shift[i][j] = - shift_const
+                    x_shift[i][j] = - x_shift_const
             elif road_id[-2:] == 'bw':
                 # print(f"road id: {road_id}")
                 if left[0] > right[0]:
                     # Road goes from right to the left
                     # Shift road up
-                    y_shift[i][j] = shift_const
+                    y_shift[i][j] = y_shift_const
                 else:
                     # Road goes from bottom to up
                     # Shift road to the right
-                    x_shift[i][j] = shift_const
+                    x_shift[i][j] = x_shift_const
                 # print(f"Shift on road: {x_shift[i][j], y_shift[i][j]}")
 
             # The bus has travelled length/road.L of the road
@@ -191,7 +192,7 @@ def convert_bus_positions(network, bus_positions, x_shift, y_shift):
     # 7 * a_x + b_x = 0.95 -> 15 * b_x - 14*0.01 = 0.95
     # -> b_x = (0.95 + 14*0.01) / 15
     # -> a_x = 2*(0.95 + 14*0.01) / 15 - 2*0.01
-    left_x = 0.025
+    left_x = 0.03
     right_x = 0.99
     b_x = (right_x + 14*left_x) / 15
     a_x = 2*(right_x + 14*left_x) / 15 - 2*left_x
@@ -308,26 +309,26 @@ def shift_single_point(id, left, right):
         if right[0] > left[0]:
             # Road goes from left to the right
             # Shift road down
-            shifted_left = (left[0], left[1] - shift_const)
-            shifted_right = (right[0], right[1] - shift_const)
+            shifted_left = (left[0], left[1] - y_shift_const)
+            shifted_right = (right[0], right[1] - y_shift_const)
         else:
             # Road goes from top to bottom
             # Shift road to the left
-            shifted_left = (left[0] - shift_const, left[1])
-            shifted_right = (right[0] - shift_const, right[1])
+            shifted_left = (left[0] - x_shift_const, left[1])
+            shifted_right = (right[0] - x_shift_const, right[1])
     elif id[-2:] == 'bw':
         # Shift road right or up depending on the direction
         # Find direction from x-values
         if right[0] < left[0]:
             # Road goes from right to left
             # Shift road up
-            shifted_left = (left[0], left[1] + shift_const)
-            shifted_right = (right[0], right[1] + shift_const)
+            shifted_left = (left[0], left[1] + y_shift_const)
+            shifted_right = (right[0], right[1] + y_shift_const)
         else:
             # Road goes from top to bottom
             # Shift road to the right
-            shifted_left = (left[0] + shift_const, left[1])
-            shifted_right = (right[0] + shift_const, right[1])
+            shifted_left = (left[0] + x_shift_const, left[1])
+            shifted_right = (right[0] + x_shift_const, right[1])
     else:
         shifted_left = left
         shifted_right = right
@@ -669,7 +670,7 @@ def draw_busses_w_densities(bus_network, busses, bus_lengths, densities, output_
 
 
 if __name__ == "__main__":
-    scenario = 3
+    scenario = 0
     match scenario:
         case 0:
             import json
@@ -716,7 +717,7 @@ if __name__ == "__main__":
             print("Creating animation...")
             draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
                                     densities, output_name="test_minimal_1000_variable_map.gif",
-                                    background_img="background_imgs/kvadraturen_simple2.png")
+                                    background_img="background_imgs/blurred_kvadraturen.png")
             # print(bus_lengths.keys())        
         case 1:
             import generate_kvadraturen as gk
@@ -770,7 +771,7 @@ if __name__ == "__main__":
             import generate_kvadraturen as gk
 
             print("Loading results...")
-            f = open("notebooks/kvadraturen_roundabout.json")
+            f = open("notebooks/kvadraturen_roundabout_slowdown.json")
             data = json.load(f)
             f.close()
             densities = data[0]
@@ -809,8 +810,8 @@ if __name__ == "__main__":
 
             print("Creating animation...")
             draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
-                                    densities, output_name="roundabout.gif",
-                                    background_img="background_imgs/kvadraturen_simple2.png")
+                                    densities, output_name="roundabout_slowdown.gif",
+                                    background_img="background_imgs/blurred_kvadraturen.png")
 
         case 4:
             import json

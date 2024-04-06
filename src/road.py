@@ -289,6 +289,42 @@ class Road:
                 # self.rho = fv.Euler_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
                 #                              slowdown_factors)
                 self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
+    
+    def solve_internally_slowdown(self, dt, slowdown_factors):
+        '''
+        Solving conservation law for internal
+        Slowdown_factors is a number for each interface that says how the flux should be
+        reduced for each interface
+        First iteration: Only add to the SSP_RK function
+        '''
+        # print("Solving internally")
+        # print(self.scheme)
+        # Solve conservation law for internal nodes on road
+        #print(self.rho, self.dx, self.limiter, self.Vmax, dt)
+        # Check if scheme is 1. or 2. order'
+        # idx is the index currently being used
+        # idx is determined in network method
+
+        # Don't need to care about the maximum density here, since all terms are multiplied by it
+
+        match self.scheme:
+            case 0:
+                # Lax-Friedrich scheme
+                F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
+                self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
+            case 1:
+                # Rusanov scheme
+                F = fv.Rusanov_Flux(self.rho, self.gamma[self.idx])
+                self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
+            case 2:
+                F = fv.Lax_Wendroff_Flux(self.rho, self.dx, dt, self.gamma[self.idx])
+                self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
+            case 3:
+                self.rho = fv.SSP_RK_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
+                                              slowdown_factors)
+            case 4:
+                self.rho = fv.Euler_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
+                                             slowdown_factors)
 
     def apply_bc(self, t, dt):
         # Change structure of road to instead have a boundary condition function and use
