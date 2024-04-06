@@ -167,7 +167,7 @@ class RoundaboutJunction:
             supply = main_max_dens * fv.S(main_rho_out, main_gamma)
 
             # Calculate the fluxes
-            out_flux = torch.min((1-self.alpha)*demands[0] + demands[1])
+            out_flux = torch.min((1-self.alpha)*demands[0] + demands[1], supply)
             in_fluxes = torch.zeros(2)
             max_main_in = torch.max(beta*supply, supply - demands[1])
             in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0],

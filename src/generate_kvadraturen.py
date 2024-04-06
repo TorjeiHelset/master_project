@@ -296,10 +296,10 @@ def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
     vs_secondary_2 = rb.RoundaboutRoad(inflow_2, max_inflow)
     vs_secondary_3 = rb.RoundaboutRoad(inflow_3, max_inflow_big)
     # Creating the roundabout junctions
-    vs_jnc_1 = rb.RoundaboutJunction(vs_main_1, vs_main_2, 0.6, v_strand_fw, v_strand_bw, queue_junction = False)
-    vs_jnc_2 = rb.RoundaboutJunction(vs_main_2, vs_main_3, 0.6, vs_secondary_1, None, queue_junction = True)
-    vs_jnc_3 = rb.RoundaboutJunction(vs_main_3, vs_main_4, 0.6, vs_secondary_2, None, queue_junction = True)
-    vs_jnc_4 = rb.RoundaboutJunction(vs_main_4, vs_main_1, 0.6, vs_secondary_3, None, queue_junction = True)
+    vs_jnc_1 = rb.RoundaboutJunction(vs_main_4, vs_main_1, 0.6, v_strand_bw, v_strand_fw, queue_junction = False)
+    vs_jnc_2 = rb.RoundaboutJunction(vs_main_1, vs_main_2, 0.6, vs_secondary_1, None, queue_junction = True)
+    vs_jnc_3 = rb.RoundaboutJunction(vs_main_2, vs_main_3, 0.6, vs_secondary_2, None, queue_junction = True)
+    vs_jnc_4 = rb.RoundaboutJunction(vs_main_3, vs_main_4, 0.6, vs_secondary_3, None, queue_junction = True)
     vs_junctions = [vs_jnc_1, vs_jnc_2, vs_jnc_3, vs_jnc_4]
     vs_roundabout = rb.Roundabout([vs_main_1, vs_main_2, vs_main_3, vs_main_4], 
                            [v_strand_fw, vs_secondary_1, vs_secondary_2, vs_secondary_3],
@@ -319,9 +319,9 @@ def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
     fn_secondary_1 = rb.RoundaboutRoad(inflow_4, max_inflow)
     fn_secondary_2 = rb.RoundaboutRoad(inflow_4, max_inflow)
     # Creating the roundabout junctions
-    fn_jnc_1 = rb.RoundaboutJunction(fn_main_1, fn_main_2, 0.6, festning_fw, festning_bw, queue_junction = False)
-    fn_jnc_2 = rb.RoundaboutJunction(fn_main_2, fn_main_3, 0.6, fn_secondary_1, None, queue_junction = True)
-    fn_jnc_3 = rb.RoundaboutJunction(fn_main_3, fn_main_1, 0.6, fn_secondary_2, None, queue_junction = True)
+    fn_jnc_1 = rb.RoundaboutJunction(fn_main_3, fn_main_1, 0.6, festning_bw, festning_fw, queue_junction = False)
+    fn_jnc_2 = rb.RoundaboutJunction(fn_main_1, fn_main_2, 0.6, fn_secondary_1, None, queue_junction = True)
+    fn_jnc_3 = rb.RoundaboutJunction(fn_main_2, fn_main_3, 0.6, fn_secondary_2, None, queue_junction = True)
     fn_junctions = [fn_jnc_1, fn_jnc_2, fn_jnc_3]
     fn_roundabout = rb.Roundabout([fn_main_1, fn_main_2, fn_main_3],
                                   [festning_fw, fn_secondary_1, fn_secondary_2],
@@ -1177,8 +1177,6 @@ def generate_kvadraturen_w_roundabout(T):
     network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts)
     
     return network
-
-
 
 def minimal_kvadraturen(T = 100):
     road1 = rd.Road(1, 50, 5, torch.tensor([50.0], requires_grad=True), [], left_pos=(-1, 0), right_pos=(0, 0),
