@@ -492,7 +492,6 @@ class Junction:
 
         # fluxes[i,j] is theself. flux from road i to road j
         fluxes = torch.zeros((self.n, self.m))
-
     
         for j in range(self.m):
             # Update the flux from all roads into road j
@@ -500,6 +499,8 @@ class Junction:
             if sum_influx > capacities[j]:
                 # If the sum of the fluxes is larger than the capacity, scale down the fluxes
                 fluxes[:,j] = demand[:,j] * capacities[j] / sum_influx
+            else:
+                fluxes[:,j] = demand[:,j]
 
         fluxes_in = [0]*self.n
         fluxes_out = [0]*self.m
