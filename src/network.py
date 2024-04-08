@@ -66,145 +66,6 @@ class RoadNetwork:
             for light in junction.coupled_trafficlights:
                 light.init_activation_function2(T)
 
-    def draw_network(self):
-        # Function to draw a graph of the network to check that it is properly set up
-
-        # Create an empty graph
-        G = nx.Graph()
-
-        # Create all necessary nodes
-        for i in range(len(self.junctions)):
-            G.add_node(f"J {i+1}")
-
-        for i in range(len(self.roads)):
-            if not self.roads[i].left:
-                # Need to add left edge
-                G.add_node(f"Left {i+1}")
-
-            if not self.roads[i].right:
-                # Need to add right edge
-                G.add_node(f"Right {i+1}")
-            
-        # Create all necessary edges
-        for i in range(len(self.roads)):
-            # Either from left end to junction, 
-            # junction to right end
-            # or junction to junction
-            # left to right only if only one road
-
-            if not self.roads[i].left:
-                # Left side not connected to anything
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        G.add_edge(f"Left {i+1}", f"J {j+1}")
-                        #break
-                
-                if not self.roads[i].right:
-                    # This should only be the case when network only consists of single road
-                    G.add_edge(f"Left {i+1}", f"Right {i+1}")
-                
-            elif not self.roads[i].right:
-                # Left side not connected to anything
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        G.add_edge(f"Right {i+1}", f"J {j+1}")
-                        #break
-            
-            else:
-                # Road connected to two junctions
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        # One side connected to junction j
-                        for k in range(j+1, len(self.junctions)):
-                            if self.roads[i] in self.junctions[k].roads:
-                                # Other side connected to junction k
-                                G.add_edge(f"J {j+1}", f"J {k+1}")
-                                #break
-
-        pos = nx.spring_layout(G)
-        print(pos)
-        nx.draw(G, pos, with_labels=True, node_color="skyblue", font_size=10)
-        node_positions = nx.get_node_attributes(G, 'pos')
-        print(node_positions)
-        plt.margins(0.2)
-        plt.show()
-
-    def get_node_pos(self):
-        # Function to get position of roads
-
-        # Create an empty graph
-
-        road_pos = {i : {} for i in range(len(self.roads))}
-
-        G = nx.Graph()
-        # Create all necessary nodes
-        for i in range(len(self.junctions)):
-            G.add_node(f"J {i+1}")
-
-        for i in range(len(self.roads)):
-            if not self.roads[i].left:
-                # Need to add left edge
-                G.add_node(f"Left {i+1}")
-                road_pos[i][f"Left {i+1}"] = None # Add placeholder for position of left node
-
-            if not self.roads[i].right:
-                # Need to add right edge
-                G.add_node(f"Right {i+1}")
-                road_pos[i][f"Right {i+1}"] = None
-            
-        # Create all necessary edges
-        for i in range(len(self.roads)):
-            # Either from left end to junction, 
-            # junction to right end
-            # or junction to junction
-            # left to right only if only one road
-
-            if not self.roads[i].left:
-                # Left side not connected to anything
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        G.add_edge(f"Left {i+1}", f"J {j+1}")
-                        #break
-                        road_pos[i][f"J {j+1}"] = None
-                
-                if not self.roads[i].right:
-                    # This should only be the case when network only consists of single road
-                    G.add_edge(f"Left {i+1}", f"Right {i+1}")
-                    road_pos[i][f"Right {i+1}"] = None
-                
-            elif not self.roads[i].right:
-                # Left side not connected to anything
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        G.add_edge(f"Right {i+1}", f"J {j+1}")
-                        #break
-                        road_pos[i][f"J {j+1}"] = None
-            
-            else:
-                # Road connected to two junctions
-                for j in range(len(self.junctions)):
-                    if self.roads[i] in self.junctions[j].roads:
-                        # One side connected to junction j
-                        for k in range(j+1, len(self.junctions)):
-                            if self.roads[i] in self.junctions[k].roads:
-                                # Should find out which edge is connected to which junction
-                                # Need to check if road is entering or leaving
-
-                                # Other side connected to junction k
-                                G.add_edge(f"J {j+1}", f"J {k+1}")
-                                #break
-                                road_pos[i][f"J {j+1}"] = None
-                                road_pos[i][f"J {j+1}"] = None
-
-        pos = nx.spring_layout(G)
-
-        for i in range(len(self.roads)):
-            for key in road_pos[i].keys():
-
-                road_pos[i][key] = pos[key]
-
-        return road_pos
-
     def get_road(self, id):
         for i, road in enumerate(self.roads):
             if road.id == id:
@@ -428,7 +289,8 @@ class RoadNetwork:
                 # if t < 1000:
                 for J in self.junctions:
                     # Apply boundary conditions to all junctions
-                    J.apply_bc_wo_opt(dt, t)
+                    #J.apply_bc_wo_opt(dt, t)
+                    J.apply_bc(dt,t)
 
                 #-------------------------------------
                 # STEP 5: Apply flux conditions for each Roundabout
@@ -476,6 +338,145 @@ class RoadNetwork:
         bus_times = bus_timesteps
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
+    
+    def draw_network(self):
+        # Function to draw a graph of the network to check that it is properly set up
+
+        # Create an empty graph
+        G = nx.Graph()
+
+        # Create all necessary nodes
+        for i in range(len(self.junctions)):
+            G.add_node(f"J {i+1}")
+
+        for i in range(len(self.roads)):
+            if not self.roads[i].left:
+                # Need to add left edge
+                G.add_node(f"Left {i+1}")
+
+            if not self.roads[i].right:
+                # Need to add right edge
+                G.add_node(f"Right {i+1}")
+            
+        # Create all necessary edges
+        for i in range(len(self.roads)):
+            # Either from left end to junction, 
+            # junction to right end
+            # or junction to junction
+            # left to right only if only one road
+
+            if not self.roads[i].left:
+                # Left side not connected to anything
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        G.add_edge(f"Left {i+1}", f"J {j+1}")
+                        #break
+                
+                if not self.roads[i].right:
+                    # This should only be the case when network only consists of single road
+                    G.add_edge(f"Left {i+1}", f"Right {i+1}")
+                
+            elif not self.roads[i].right:
+                # Left side not connected to anything
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        G.add_edge(f"Right {i+1}", f"J {j+1}")
+                        #break
+            
+            else:
+                # Road connected to two junctions
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        # One side connected to junction j
+                        for k in range(j+1, len(self.junctions)):
+                            if self.roads[i] in self.junctions[k].roads:
+                                # Other side connected to junction k
+                                G.add_edge(f"J {j+1}", f"J {k+1}")
+                                #break
+
+        pos = nx.spring_layout(G)
+        print(pos)
+        nx.draw(G, pos, with_labels=True, node_color="skyblue", font_size=10)
+        node_positions = nx.get_node_attributes(G, 'pos')
+        print(node_positions)
+        plt.margins(0.2)
+        plt.show()
+
+    def get_node_pos(self):
+        # Function to get position of roads
+
+        # Create an empty graph
+
+        road_pos = {i : {} for i in range(len(self.roads))}
+
+        G = nx.Graph()
+        # Create all necessary nodes
+        for i in range(len(self.junctions)):
+            G.add_node(f"J {i+1}")
+
+        for i in range(len(self.roads)):
+            if not self.roads[i].left:
+                # Need to add left edge
+                G.add_node(f"Left {i+1}")
+                road_pos[i][f"Left {i+1}"] = None # Add placeholder for position of left node
+
+            if not self.roads[i].right:
+                # Need to add right edge
+                G.add_node(f"Right {i+1}")
+                road_pos[i][f"Right {i+1}"] = None
+            
+        # Create all necessary edges
+        for i in range(len(self.roads)):
+            # Either from left end to junction, 
+            # junction to right end
+            # or junction to junction
+            # left to right only if only one road
+
+            if not self.roads[i].left:
+                # Left side not connected to anything
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        G.add_edge(f"Left {i+1}", f"J {j+1}")
+                        #break
+                        road_pos[i][f"J {j+1}"] = None
+                
+                if not self.roads[i].right:
+                    # This should only be the case when network only consists of single road
+                    G.add_edge(f"Left {i+1}", f"Right {i+1}")
+                    road_pos[i][f"Right {i+1}"] = None
+                
+            elif not self.roads[i].right:
+                # Left side not connected to anything
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        G.add_edge(f"Right {i+1}", f"J {j+1}")
+                        #break
+                        road_pos[i][f"J {j+1}"] = None
+            
+            else:
+                # Road connected to two junctions
+                for j in range(len(self.junctions)):
+                    if self.roads[i] in self.junctions[j].roads:
+                        # One side connected to junction j
+                        for k in range(j+1, len(self.junctions)):
+                            if self.roads[i] in self.junctions[k].roads:
+                                # Should find out which edge is connected to which junction
+                                # Need to check if road is entering or leaving
+
+                                # Other side connected to junction k
+                                G.add_edge(f"J {j+1}", f"J {k+1}")
+                                #break
+                                road_pos[i][f"J {j+1}"] = None
+                                road_pos[i][f"J {j+1}"] = None
+
+        pos = nx.spring_layout(G)
+
+        for i in range(len(self.roads)):
+            for key in road_pos[i].keys():
+
+                road_pos[i][key] = pos[key]
+
+        return road_pos
     
 
 if __name__ == "__main__":

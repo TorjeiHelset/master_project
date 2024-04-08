@@ -113,8 +113,6 @@ class Bus:
 
     '''
 
-    
-
     def __init__(self, ids, stops, times, network, start_time = 0.0, id = ""):
         '''
         Needs to have a check to ensure that all id's in route are in the network and not empty strings
@@ -145,8 +143,6 @@ class Bus:
         '''
         Returns the lengths of the stops
         '''
-        # stop_lengths is not a torch variable so inplace operation is fine
-
         stop_lengths = [0 for _ in range(len(stops)+1)]
         for i, stop in enumerate(stops):
             stop_length = 0
@@ -175,20 +171,20 @@ class Bus:
         '''
         Returns the remaining length of the road the bus is on
         '''
-        return
+        raise NotImplementedError("Function not dfined yet")
     
     def get_road_id(self):
         '''
         Returns the id of the road at the current length of the route
-        as well as the remaining length of the road and the id of the next road
+        as well as the length travelled on the road and the id of the next road
         '''
-        # tot_length is not a torch tensor, so inplace operations is fine
         tot_length = 0
         for i, length in enumerate(self.lengths):
             tot_length += length
             # Greater or equal to, because the bus might be at the end of the road
             if tot_length >= self.length_travelled: 
                 if i < len(self.ids)-1:
+                    # At least one more road left
                     return self.ids[i], length - (tot_length - self.length_travelled), self.ids[i+1]
                 else:
                     return self.ids[i], length - (tot_length - self.length_travelled), ""
@@ -196,9 +192,9 @@ class Bus:
     
     def get_road_id_at_length(self, length_travelled):
         '''
-        Returns the id of the road at the given length of the route
+        Returns the id of the road at the given length of the route, as well as the length
+        travelled on the road
         '''
-        # inplace operation is fine
         tot_length = 0
         for i, length in enumerate(self.lengths):
             tot_length += length
@@ -206,12 +202,14 @@ class Bus:
                 return self.ids[i], length - (tot_length - length_travelled)
         return "", 0 # End of route reached, stop updating...
     
-
     def get_road_position(self, network):
         '''
-        Returns the index of the road/junction at the given length, and the length of the road
+        Returns the index of the road/junction at the given length, and the length travelled on
+        the road
         If the road is at the position of a junction, assume that it is at the end of the 
-        previous road
+        previous road, instead of at the beginning of the next road.
+
+        Index -1 is used when road is not found. This should maybe be changed?
         '''
         road_id, length, next_id = self.get_road_id()
         next_idx = -1
@@ -228,9 +226,12 @@ class Bus:
             if road.id == road_id:
                 relative_length = length / road.L # Mapping to x-coord in the road
                 return i, relative_length, next_idx
+            
         return -1, 0, -1 # Road not found, stop updating...
 
     def get_slowdown_factor(self, slowdown_factor, road_id, length, road):
+        '''
+        '''
         # Length is the length travelled on the current road
         if not self.active:
             # Bus not actually a part of the simulation yet
@@ -274,6 +275,9 @@ class Bus:
         will pass through. This is used to simulate the traffic lights. If the activation is
         lower than 0.5, the bus should wait at the junction, and if it is higher, the bus should
         pass through.
+
+        Should maybe take in the slowdown factor as well so that the bus actually slows down 
+        before and after stops
         '''
 
         if not self.active:
@@ -351,10 +355,10 @@ class Bus:
                         except:
                             pass
                         
-                    # print(f"t = {t}, bus should stop at the busstop")
                     actual_dt = (length_of_next_stop - self.length_travelled)/speed
                     # The bus should stop at the next stop
                     self.at_stop = True
+                    # This should maybe be a torch tensor that requires tracking the gradient...
                     self.remaining_stop_time = max(30, self.times[self.next_stop] - t)  - (dt - actual_dt) # This might be requiring gradient
                     print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
                     # Calculate delay time

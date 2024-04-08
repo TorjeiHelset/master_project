@@ -3,6 +3,12 @@ import torch
 # Scaling parameters moved out of variables so that v_max no longer is input to flux functions
 # When calculating approximate fluxes vmax is no longer relevant
 # Scheme is now alpha * rho_t + (rho v)_x = 0, where alpha depends on flux
+
+# Al of the Finite Volume related code seem to be vectorized as far as possible, so difficult to 
+# optimize further
+# Some inplace operations might be used, which might be an issue...
+# Investigate if this is the case, if .clone() is necessary, or adding an empty torch tensor
+
 @torch.jit.script
 def flux(rho, gamma):
     '''
