@@ -71,7 +71,6 @@ class Road:
     limiter = None
     left = False
     right = False
-    inflow = None
     queue_length = None
     control_points = None
     index = None # Index of control point being evaluated, needs to be evaluated for each road at each time
@@ -79,13 +78,12 @@ class Road:
     left_pos = None
     right_pos = None
     periodic = False
-    flux_in = None
     id = ""
+    boundary_fnc = None
 
     def __init__(self, b, L, N, Vmax, control_points, scheme = 3, limiter = "minmod", 
-                 initial = lambda x: torch.zeros_like(x), inflow = -1, max_dens=1,
-                 left_pos = (-1,0), right_pos = (0,1), periodic = False, flux_in = -1,
-                 id = ""):
+                 initial = lambda x: torch.zeros_like(x), max_dens=1, left_pos = (-1,0), 
+                 right_pos = (0,1), boundary_fnc = None, periodic = False, id = ""):
         
         '''
         Initializes a road given a set of parameters
@@ -160,7 +158,6 @@ class Road:
             case "superbee":
                 self.limiter = torch.tensor(3.0)
         # Inflow determines boundary condition in to road
-        self.inflow = torch.tensor(inflow)
 
         # For now it is assumed that all flux is allowed to exit road
         # Should maybe extend to limit the allowed flux that can exit road
@@ -173,8 +170,9 @@ class Road:
         self.right_pos = right_pos
 
         self.periodic = periodic
-        self.flux_in = torch.tensor(flux_in)
         self.id = id
+
+        self.boundary_fnc = boundary_fnc
         
 
     def calculate_gamma(self, T):
@@ -250,7 +248,8 @@ class Road:
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
         
-        return CFL * self.dx / (self.max_dens * max_flux)
+        # return CFL * self.dx / (self.max_dens * max_flux) # Should max_dens really be here?
+        return CFL * self.dx / (max_flux)
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
@@ -359,107 +358,31 @@ class Road:
                 # Right boundary not attached to junction
                 self.rho[-self.pad:] = self.rho[-self.pad-1]
 
-            # For left boundary some inflow conditions are necessary
-            # TODO: Change below to take in a function depending on t instead of manually 
-            # setting a value            
+            # For left boundary some inflow conditions are necessary       
             if not self.left:
                 # Set some influx to left boundary
-                if self.inflow < 0:
-                    # No inflow density specified, add artifical inflow
-                    inflow = torch.max(torch.tensor(0), torch.sin(torch.tensor(2*torch.pi*t)))
+                if self.boundary_fnc is None:
+                    raise ValueError(f"No boundary function specified for road {self.id}!")
+
                 else:
-                    # if self.id[0] == '1' or self.id[0] == '3':
-                    #     if 50 < t < 100:
-                    #         inflow = self.inflow * 4
-                    #     elif t > 100:
-                    #         inflow = self.inflow * 0.5
-                    #     else:
-                    #         inflow = self.inflow
-                    # elif self.id[0] == '5' or self.id[0] == '7':
-                    #     if t > 100:
-                    #         inflow = self.inflow * 0.25
-                    #     else:
-                    #         inflow = self.inflow
-                    # else:
-                    #     inflow = self.inflow
-                    if 200 < t < 400:
-                        inflow = self.inflow * 0.3
-                    elif 600 < t < 800:
-                        inflow = self.inflow * 2
-                    elif 800 <= t:
-                        inflow = self.inflow * 0.5
+                    f_in =  self.boundary_fnc(t)
+
+                    if self.queue_length > 0:
+                        # Set the influx to the maximum possible
+                        D = fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone())
                     else:
-                        inflow = self.inflow
-
-                if self.flux_in >= 0:
-                    # Inflow is given as flux
-                    # For now this is only allowed to be constant
-                    # if 300 < t < 600:
-                    #     f_in = self.flux_in * 2.0#0.5
-                    # elif t > 800:
-                    #     f_in = self.flux_in * 0.8
-                    # else:
-                    #     f_in = self.flux_in
-                    # Manual update of the flux
-                    # if self.id == "1_fw" or self.id[0] == "3_bw":
-                    #     if 50 < t < 100:
-                    #         f_in = self.flux_in * 4
-                    #     elif t > 100:
-                    #         f_in = self.flux_in * 0.5
-                    #     else:
-                    #         f_in = self.flux_in
-                    # elif self.id[0] == "5" or self.id[0] == "7":
-                    #     if 50 < t < 100:
-                    #         f_in = self.flux_in * 0.25
-                    #     else:
-                    #         f_in = self.flux_in
-                    # else:
-                    #     f_in = self.flux_in
-                    if 200 < t < 400:
-                        f_in = self.flux_in * 0.3
-                    elif 600 < t < 800:
-                        f_in = self.flux_in * 2
-                    elif 800 <= t:
-                        f_in = self.flux_in * 0.5
-                    else:
-                        f_in = self.self.flux_in
-                    # f_in = self.flux_in
-                else:
-                    # Inflow is given as density
-                    if 300 < t < 600:
-                        f_in = fv.D(inflow, self.gamma[self.idx]) * 0.5
-                    else:
-                        f_in = fv.D(inflow, self.gamma[self.idx]) # Caclulate inflow
-
-                if self.queue_length > 0:
-                    # Set the influx to the maximum possible
-                    D = fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone())
-                else:
-                    # Set the influx to the mimum of actual and maximum
-                    D = torch.min(f_in, fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()))
+                        # Set the influx to the mimum of actual and maximum
+                        D = torch.min(f_in, fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()))
                 
-                # Set influx to the mimum of actual influx and maximum capacity
-                gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
+                        # Set influx to the mimum of actual influx and maximum capacity
+                        gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
 
-                # Update queue length using the difference between actual and desired flux in
-                # Potential problem: Queue length could become negative!!!
-                self.queue_length = self.queue_length + dt * (f_in - gamma_in)
-
-                # Update density according to flux in
-                # There exisits a function that does this...
-                right, out_mid = self.rho[self.pad], self.rho[self.pad-1]
-                s = torch.max(torch.abs(fv.d_flux(out_mid, self.gamma[self.idx])), torch.abs(fv.d_flux(right, self.gamma[self.idx])))
-                mid_f = fv.flux(out_mid.clone(), self.gamma[self.idx])
-                right_f = fv.flux(right.clone(), self.gamma[self.idx])
-                right_flux = 0.5 * (mid_f + right_f) - 0.5 * s * (right - out_mid)
-                
-                self.rho[self.pad-1] = self.rho[self.pad-1] - dt / self.dx * (right_flux - gamma_in)
-                if self.pad > 1:
-                    self.rho[0] = self.rho[1]
-                
-                # Instead of directly setting the density at the boundary, find out how much
-                # flux is sent into the road. If more flux than capacity is sent in, then 
-                # the actual flux in should be the capacity, and the queue into the road should increase
+                        # Update queue length using the difference between actual and desired flux in
+                        # Potential problem: Queue length could become negative!!!
+                        self.queue_length = self.queue_length + dt * (f_in - gamma_in)
+                        
+                        # Update density according to flux in
+                        self.update_left_boundary(gamma_in, dt)
 
     def update_index(self, t):
         '''

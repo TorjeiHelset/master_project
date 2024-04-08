@@ -55,17 +55,18 @@ def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_
     for rho in densities:
         assert 0 <= rho <= 1
     assert len(densities) == len(time_jumps)+1
+    
     match type:
         case 0:
             return lambda t : torch.tensor(0.0)
         case 1:
             # Densities given as piecewise function
             if len(time_jumps) == 0:
-                gamma = torch.tensor(in_speed / L)
+                gamma = in_speed / L
                 return lambda t : max_dens * fv.flux(densities[0], gamma)
             
             def piecewise(t):
-                gamma = torch.tensor(in_speed / L)
+                gamma = in_speed / L
                 if t < time_jumps[0]:
                     return max_dens * fv.flux(densities[0], gamma)
                 for i, time in enumerate(time_jumps):
@@ -75,7 +76,7 @@ def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_
         
         case 2:
             # Density given by sinus wave centered at densities[0]
-            ...
+            raise NotImplementedError("Sinus boundary condition for density on incoming road not implemented")
         case 3:
             # Fluxes given as piecewise function
             if len(time_jumps) == 0:
@@ -91,7 +92,8 @@ def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_
         
         case 4:
             # Fluxes given by sinus wave centered around fluxes[0]
-            ...
+            raise NotImplementedError("Sinus boundary condition for flux on incoming road not implemented")
+            
 
                     
 
