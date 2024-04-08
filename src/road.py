@@ -353,13 +353,15 @@ class Road:
                     self.rho[-2] = self.rho[2].clone()
 
         else:
-            # For now set right boundary elements equal to closest interior
-            # This means all flux is allowed to leave the road
+            # For right boundary, set boundary elements equal to closest interior
+            # This means all flux is allowed to exit
             if not self.right:
                 # Right boundary not attached to junction
                 self.rho[-self.pad:] = self.rho[-self.pad-1]
-                # Should maybe instead have some limit on the flux out
-            
+
+            # For left boundary some inflow conditions are necessary
+            # TODO: Change below to take in a function depending on t instead of manually 
+            # setting a value            
             if not self.left:
                 # Set some influx to left boundary
                 if self.inflow < 0:
@@ -440,9 +442,11 @@ class Road:
                 gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
 
                 # Update queue length using the difference between actual and desired flux in
+                # Potential problem: Queue length could become negative!!!
                 self.queue_length = self.queue_length + dt * (f_in - gamma_in)
 
                 # Update density according to flux in
+                # There exisits a function that does this...
                 right, out_mid = self.rho[self.pad], self.rho[self.pad-1]
                 s = torch.max(torch.abs(fv.d_flux(out_mid, self.gamma[self.idx])), torch.abs(fv.d_flux(right, self.gamma[self.idx])))
                 mid_f = fv.flux(out_mid.clone(), self.gamma[self.idx])

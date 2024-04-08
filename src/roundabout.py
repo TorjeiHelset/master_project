@@ -53,6 +53,7 @@ class RoundaboutRoad:
         # print(t)
         # print(self.inflow_fnc(t))
         # print()
+        # The queue length could become negative!!!
         self.queue_length = torch.max(self.queue_length + dt * (self.inflow_fnc(t) - actual_flux),
                                       torch.tensor(0.0))
 
@@ -234,6 +235,8 @@ class Roundabout:
         
         # Update flux on the junctions
         for j in self.junctions:
+            # No check for right of way, because the right of way has been manually added
+            # to the roundabout junctions as it is known beforehand
             j.divide_flux(dt, t)
 
         # Do not need to solve internally on the roads as this is already done
