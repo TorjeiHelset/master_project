@@ -88,7 +88,7 @@ stops = [(tollbod_6, 50), (tollbod_3, 90), (tollbod_1, 30), (v_strand_3, 25)]
 # Map to stops being absolute length of the route
 '''
 
-def get_slowdown_factor(d, alpha = 0.5, beta = 2):
+def calulate_slowdown_factor(d, alpha = 0.5, beta = 2):
     return torch.sigmoid(alpha * d + 5) - torch.sigmoid(beta * d - 5)
 
 class Bus:
@@ -133,10 +133,12 @@ class Bus:
         self.remaining_stop_time = torch.tensor(0.0)
         self.stop_lengths = self.get_stop_lengs(stops)
         self.next_stop = 0
+        # LIST OF TENSORS
         self.delays = [torch.tensor(0.0) for _ in range(len(stops))]
         self.start_time = start_time
         self.active = False
         self.id = id
+        self.stop_factor = torch.tensor(0.0)
 
 
     def get_stop_lengs(self, stops):
@@ -162,7 +164,8 @@ class Bus:
         for i, id in enumerate(self.ids):
             _, road = network.get_road(id)
             try:
-                lengths[i] = road.L * road.b
+                # The boundary cells should probably not be displayed
+                lengths[i] = road.L * road.b # Not taking into account the boundary cells...
             except:
                 print(f"Road with id {id} not found in network...")
         return lengths
@@ -231,12 +234,14 @@ class Bus:
 
     def get_slowdown_factor(self, slowdown_factor, road_id, length, road):
         '''
+        In this function, also update the slowing down of the bus
+        This could f.ex. be equal to the stop_factor
         '''
         # Length is the length travelled on the current road
         if not self.active:
             # Bus not actually a part of the simulation yet
             return slowdown_factor, False
-        
+        # ADDING 0-TENSOR
         factors = torch.ones(road.N_internal+1)
         # Check for bus stops on this road
         for stop in self.stops:
@@ -246,15 +251,15 @@ class Bus:
                 distance = stop_pos - length # In metres
                 # Calculate the slow down factor based on this distance:
                 # Multiply by 0.8 to always allow for some cars to cross.
-                stop_factor = get_slowdown_factor(distance) * 0.8
-
+                stop_factor = calulate_slowdown_factor(distance) * 0.8
+                self.stop_factor = stop_factor
                 # Find the distance of the cell interfaces to the position of the bus:
                 # road.N_internal cells between dx and b - dx
                 # road.N_internal + 1 interfaces between dx/2 and b - dx/2
                 interface_positions = torch.linspace(road.dx, road.b - road.dx/2, road.N_internal)
                 # Faster by removing for loop...
                 for i, pos in enumerate(interface_positions):
-                    interface_factor = get_slowdown_factor(length - pos*road.L)
+                    interface_factor = calulate_slowdown_factor(length - pos*road.L)
                     factors[i] = torch.min(factors[i], 
                                            torch.tensor(1.0) - interface_factor*stop_factor)                
         return factors, True
@@ -278,8 +283,16 @@ class Bus:
 
         Should maybe take in the slowdown factor as well so that the bus actually slows down 
         before and after stops
-        '''
 
+        At this point, the member function specifying the slowdown factor 
+        of the bus is calculated, and can be used when calculating the
+        speed
+
+        speed = (1-self.stop_factor) * speed
+        '''
+        speed = (1-self.stop_factor)*speed
+        self.stop_factor = torch.tensor(0.0)
+        
         if not self.active:
             # Bus has not started its route yet
             if t > self.start_time:

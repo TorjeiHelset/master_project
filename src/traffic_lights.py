@@ -188,6 +188,7 @@ class CoupledTrafficLightContinuous:
                 # Rounding the number of periods up to not add activation function
                 # over a too short period
                 n_periods = int(torch.ceil( T / period_time))
+                
 
                 # Add first period no matter what
                 out = full_jump(x, torch.tensor([0]), t1)
@@ -280,3 +281,4 @@ class CoupledTrafficLightContinuous:
             
             self.a_activation = a_activation_func
             self.b_activation = b_activation_func
+

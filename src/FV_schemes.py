@@ -132,6 +132,7 @@ def L_operator_slowdown(rho, dx, limiter, gamma, slowdown_factors):
     left = rho[1:-1] + torch.tensor(.5)  * sigma 
     right = rho[1:-1] - torch.tensor(.5) * sigma
     F = Rusanov_Flux_2(left[:-1], right[1:], gamma) * slowdown_factors
+    # ADDING 0-TENSOR
     L_out = torch.zeros_like(rho)
     L_out[2:-2] = -1/dx * (F[1:] - F[:-1])
     return L_out
@@ -145,6 +146,7 @@ def L_operator(rho, dx, limiter, gamma):
     left = rho[1:-1] + torch.tensor(.5)  * sigma 
     right = rho[1:-1] - torch.tensor(.5) * sigma
     F = Rusanov_Flux_2(left[:-1], right[1:], gamma)
+    # ADDING 0-TENSOR
     L_out = torch.zeros_like(rho)
     L_out[2:-2] = -1/dx * (F[1:] - F[:-1])
     return L_out
@@ -152,6 +154,7 @@ def L_operator(rho, dx, limiter, gamma):
 @torch.jit.script
 def SSP_RK_slowdown(rho, dx, limiter, dt, gamma, slowdown_factors):
     # Need also alpha parameter
+    # ADDING 0-TENSOR
     rho_ = rho + dt * L_operator_slowdown(rho, dx, limiter, gamma, slowdown_factors)
     rho__ = rho_ + dt * L_operator_slowdown(rho_, dx, limiter, gamma, slowdown_factors)
     rho_new = .5 * (rho + rho__)

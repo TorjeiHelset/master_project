@@ -295,6 +295,7 @@ class Junction:
         Is this possible to do without requiring several for-loops?
         Yes! Each traffic light can return an activation matrix, and these can be summed
         '''
+        # ADDING 0-TENSOR
         active = torch.ones((self.n,self.m))
 
         for light in self.trafficlights:
@@ -323,6 +324,7 @@ class Junction:
         Calculate the demand of each connection i,j given the activation
         on each connection determined by the traffic lights
         '''
+        # ADDING 0-TENSOR
         demands = torch.zeros((self.n, self.m))
         for i, road in enumerate(self.road_in):
             demand = road.demand()
@@ -442,7 +444,8 @@ class Junction:
 
         assigned_fluxes = []
         upper_bounds = demand.clone()
-
+        # ADDING 0-Tensor
+        # CLONING
         for n_crossing in range(self.max_crossing_connections + 1):
             for i in range(self.n):
                 for j in range(self.m):
@@ -481,16 +484,20 @@ class Junction:
 
     def divide_flux(self, t):
         # 1. Calculate how much of the demand is limited by traffic lights
+        # ADDING 0-TENSOR
         activation = self.calculate_activation(t)
 
+        # ADDING 0-TENSOR
         # 2. Calculate the actual desired flux from each road i to road j
         demand = self.calculate_demand(activation)
 
         # 3. Calculate the capacity of the roads
         # Scaled with the maximum density of the outgoing road
+        # LIST OF TENSORS
         capacities = [road.supply() for road in self.road_out]
 
         # fluxes[i,j] is theself. flux from road i to road j
+        # ADDING 0-Tensor
         fluxes = torch.zeros((self.n, self.m))
     
         for j in range(self.m):
@@ -502,6 +509,7 @@ class Junction:
             else:
                 fluxes[:,j] = demand[:,j]
 
+        # LIST OF TENSORS
         fluxes_in = [0]*self.n
         fluxes_out = [0]*self.m
 
@@ -528,7 +536,7 @@ class Junction:
         This prirority list and the densities of the incoming roads will be used to find prirotiy
         parameters.
         '''
-
+        # LIST OF TENSORS
         rho_in = [road.rho[-road.pad] for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
         max_flux_in = [fv.fmax(gamma) for gamma in gamma_in]
@@ -570,6 +578,7 @@ class Junction:
         else:
             fluxes_in, fluxes_out = self.divide_flux(t)
 
+        # LIST OF TENSORS
         for i, road in enumerate(self.road_in):
             road.update_right_boundary(fluxes_in[i], dt)
         

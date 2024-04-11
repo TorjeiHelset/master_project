@@ -73,6 +73,8 @@ class RoadNetwork:
         return None
     
     def update_position_of_bus(self, bus, dt, t, slowdown_factors):
+        # Also update member function of thebus that tells the bus how much it 
+        # should slow down
         if t < bus.start_time:
             # Bus has not started its route yet
             return slowdown_factors, None
@@ -92,7 +94,53 @@ class RoadNetwork:
                                                       length, road)
         if bus_started:
             slowing_idx = i
+        
+        # Now use either maximum density or road in other direction
+        # to update the slowdown factor
+        if road.max_dens == 1:
+            # Look for lane going in other direction, and 
+            # use density/flux on that lane to update the
+            # slowdown factors
+            # Check roads close to index i
+            opposite_road = None
+            if i > 0: 
+                if self.roads[i-1].id[:-2] == road.id[:-2]:
+                    opposite_road = self.roads[i-1]
+            if i < len(self.roads)-1:
+                if self.roads[i+1].id[:-2] == road.id[:-2]:
+                    opposite_road = self.roads[i+1]
 
+            if opposite_road is not None:
+                # Opposite road found - use densities on this road
+                # to update the slowdown factor
+                # If fully congested, then let slowdown factor be as 
+                # before
+                # If empty, reduce slowdown factor by 50(?)%
+                # Linear interpolation between the two
+
+                # INPLACE OPERATION
+                # Maybe okay?
+                # This can be avoided by removing for loop
+                # left = opposite_road.rho[:-1]
+                # right = opposite_road.rho[1:]
+                # avg = (left + right) / 2
+                # ...
+                # print("Opposite road is ", opposite_road.id)
+
+                for l in range(opposite_road.N_internal-1):
+                    avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 4
+                    slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
+
+        else:
+            # Current road has more lanes
+            # use only density/flux on this road to update the slowdown
+            # factors
+            n_extra_lanes = road.max_dens - 1
+            avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
+            for l in range(len(avg)-1):
+                slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
+
+        
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
         # This is actually not necessary unless the bus has almost reached the end of the road

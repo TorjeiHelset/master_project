@@ -2,6 +2,11 @@ import torch
 # import numpy as np
 import FV_schemes as fv
 
+# 4 styles used:
+# LIST OF TENSORS
+# CLONING
+# ADDING 0-TENSOR
+# INPLACE 
 
 class Road:
     '''
@@ -105,7 +110,7 @@ class Road:
         '''
         self.b = b
         self.L = L 
-        self.dx = torch.tensor(1 / (N + 1)) # Should be the same for all roads
+        self.dx = torch.tensor(1 / N) # Should be the same for all roads
         # Denominator = 1 since x goes from 0 to b (0 to 1 on a unit length)
 
         # Vmax is parameter that optimization should done wrt.
@@ -135,12 +140,12 @@ class Road:
         # Finally we have b-1 connecting nodes between each length unit of road
 
         # In total we have
-        self.N_internal = N*b + (b-1)
+        self.N_internal = N*b
         N_full = self.N_internal +  2*self.pad
         # Maybe not 100% correct, but very close...
-        j = torch.linspace(-(self.pad-1), b*(N+1) + (self.pad-1), N_full)
-        # If first order, x goes from 0 to bL
-        # If higher order x goes from -dx * order to bL + dx*order
+        j = torch.arange(-self.pad, self.N_internal + self.pad, 1)
+        # If first order, x goes from -.dx to bL + dx
+        # If higher order x goes from -dx*order * order to bL + dx*order
         # Defining the system in such a way means that all internal points in actual
         # road correspond to internal nodes in FV scheme
         x =  (j + 1/2) * self.dx 
@@ -185,14 +190,17 @@ class Road:
         For now T is not in the variable
         Instead let t go from 0 to T to easier compare with traffic ligths
         '''
+        # LIST OF TENSORS
         self.gamma = [v / self.L for v in self.Vmax]
 
     def demand(self):
         # clone needed?
+        # CLONING
         return self.max_dens * fv.D(self.rho[-1].clone(), self.gamma[self.idx])
 
     def supply(self):
         # Clone needed?
+        # CLONING
         return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
     
     def update_right_boundary(self, incoming_flux, dt):
@@ -247,9 +255,9 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+        # return CFL * self.dx / (max_flux)
         
-        # return CFL * self.dx / (self.max_dens * max_flux) # Should max_dens really be here?
-        return CFL * self.dx / (max_flux)
+        return CFL * self.dx / (self.max_dens * max_flux) # Should max_dens really be here?
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
@@ -269,6 +277,7 @@ class Road:
         # Don't need to care about the maximum density here, since all terms are multiplied by it
 
         match self.scheme:
+            # INPLACE 
             case 0:
                 # Lax-Friedrich scheme
                 F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
@@ -307,6 +316,7 @@ class Road:
         # Don't need to care about the maximum density here, since all terms are multiplied by it
 
         match self.scheme:
+            # INPLACE 
             case 0:
                 # Lax-Friedrich scheme
                 F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
@@ -336,6 +346,8 @@ class Road:
         if self.periodic:
             # Set periodic boundary conditions
             match self.pad:
+                # INPLACE 
+                # CLONING
                 case 1:
                     # In condition:
                     self.rho[0] = self.rho[-2].clone()
@@ -355,6 +367,7 @@ class Road:
             # For right boundary, set boundary elements equal to closest interior
             # This means all flux is allowed to exit
             if not self.right:
+                # INPLACR
                 # Right boundary not attached to junction
                 self.rho[-self.pad:] = self.rho[-self.pad-1]
 

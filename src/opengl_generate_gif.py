@@ -670,7 +670,7 @@ def draw_busses_w_densities(bus_network, busses, bus_lengths, densities, output_
 
 
 if __name__ == "__main__":
-    scenario = 0
+    scenario = 3
     match scenario:
         case 0:
             import json
@@ -771,7 +771,7 @@ if __name__ == "__main__":
             import generate_kvadraturen as gk
 
             print("Loading results...")
-            f = open("notebooks/kvadraturen_roundabout_slowdown.json")
+            f = open("notebooks/kvadraturen_roundabout_test.json")
             data = json.load(f)
             f.close()
             densities = data[0]
@@ -810,7 +810,7 @@ if __name__ == "__main__":
 
             print("Creating animation...")
             draw_busses_w_densities(bus_network, [bus_fw, bus_bw, bus_fw_2, bus_bw_2], bus_lengths,
-                                    densities, output_name="roundabout_slowdown.gif",
+                                    densities, output_name="roundabout_test.gif",
                                     background_img="background_imgs/blurred_kvadraturen.png")
 
         case 4:

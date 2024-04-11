@@ -1280,13 +1280,12 @@ def generate_kvadraturen_w_bus(T):
     times_bw_2 = [240, 330, 390, 450]
     times_fw_2 = [530, 610, 630, 830]
 
-    bus_bw_2 = bus.Bus(ids_bw, stops_bw, times_bw, temp_network, id = "3", start_time = 200.0)
-    bus_fw_2 = bus.Bus(ids_fw, stops_fw, times_fw, temp_network, id = "4", start_time = 500.0)
+    bus_bw_2 = bus.Bus(ids_bw, stops_bw, times_bw_2, temp_network, id = "3", start_time = 200.0)
+    bus_fw_2 = bus.Bus(ids_fw, stops_fw, times_fw_2, temp_network, id = "4", start_time = 500.0)
 
     bus_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts,
                                  busses = [bus_fw, bus_bw, bus_fw_2, bus_bw_2], store_densities=True)
     return bus_network
-
 
 def minimal_kvadraturen(T = 100):
     road1 = rd.Road(1, 50, 5, torch.tensor([50.0], requires_grad=True), [], left_pos=(-1, 0), right_pos=(0, 0),
