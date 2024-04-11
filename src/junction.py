@@ -161,7 +161,7 @@ class Junction:
         for j in self.leaving:
             self.roads[j].left = True
 
-        self.distribution = distribution
+        self.distribution = torch.tensor(distribution)
         self.priority = [1/len(entering)] * len(entering)
 
         self.trafficlights = trafficlights
@@ -192,7 +192,9 @@ class Junction:
 
 
         For some reason gets stuck whenever t1 or t2 are float ... Why????
+        Is the above still the case?
         Should a torch tensor be returned?
+        Use detach() or not?
         '''
         if torch.is_tensor(t):
             t = t.detach()
@@ -270,7 +272,7 @@ class Junction:
             # id_1 is entering into the junction, id_2 is leaving
             # Assume that this specific crossing is either combined with a traffic light or a 
             # coupled traffic light, but not both
-            activation = 1.0
+            activation = torch.tensor(1.0)
             for light in self.trafficlights:
                 if in_idx in light.entering and out_idx in light.leaving:
                     activation = light.activation_func(t)
@@ -297,8 +299,9 @@ class Junction:
 
         Is this possible to do without requiring several for-loops?
         Yes! Each traffic light can return an activation matrix, and these can be summed
+        Is this actually faster?
         '''
-        # ADDING 0-TENSOR
+        # ADDING 0-TENSOR and inplace updating of this tensor - likely okay
         active = torch.ones((self.n,self.m))
 
         for light in self.trafficlights:
@@ -331,8 +334,10 @@ class Junction:
         demands = torch.zeros((self.n, self.m))
         for i, road in enumerate(self.road_in):
             demand = road.demand()
-            for j, alpha in enumerate(self.distribution[i]):
-                demands[i,j] = active[i,j] * alpha * demand
+            # Remove for loop below:
+            # for j, alpha in enumerate(self.distribution[i]):
+            #     demands[i,j] = active[i,j] * alpha * demand
+            demands[i,:] = active[i,:] * self.distribution[i] * demand
         return demands
     
     def calculate_priority_params(self, rho_in, h0=0.6, hmax=0.9, h1=0.6, rho_m=0.6):
@@ -352,15 +357,18 @@ class Junction:
         priority_params = [[0 for _ in range(len(self.leaving))] for _ in range(len(self.entering))]
 
         for j in range(self.m):
+            # Find all legal connections leading to outgoing road j
             non_zero = [i for i in range(self.n) if priority_list[i][j] != 0]
             if len(non_zero) == 0:
-                # No legal edges into road j -> This should never happen, maybe throw an error
+                # No legal edges into road j -> This should never happen, maybe throw an error 
+                # For now just continue
                 continue
-            # Technically only necessary to do this once, not at every time step
+
             nz_priorities = [priority_list[k][j] for k in non_zero]
             sorted_indexes = [x for _, x in sorted(zip(nz_priorities, non_zero))]
+
             if len(sorted_indexes) > 1:
-                # More than one one legal edge into road j -> need prirority parameters
+                # More than one one legal edge into road j -> need priority parameters
                 density_in = self.distribution[sorted_indexes[0]][j] * rho_in[sorted_indexes[0]]
                 priority_params[sorted_indexes[0]][j] = priority_fnc(density_in, h0, hmax,
                                                                     h1, rho_m)
@@ -381,10 +389,9 @@ class Junction:
         return priority_params
     
     def calculate_xi_two_crossing(self, actual_fluxes, crossing_connections, max_flux_in):
-        # Two crossing connections
-        # I'm using scipy quadrature rule here
-        # This is maybe not supported by torch.autograd, so might
-        # have to implement this myself...
+        '''
+        Function for calculating the combined contribution of two crossing connections
+        '''
         d1 = actual_fluxes[crossing_connections[0][0],crossing_connections[0][1]] / max_flux_in[crossing_connections[0][0]]
         d2 = actual_fluxes[crossing_connections[1][0],crossing_connections[1][1]] / max_flux_in[crossing_connections[1][0]]
         if d1 == 0 and d2 == 0:
@@ -397,6 +404,8 @@ class Junction:
             return 0 # also maybe missing gradient
         else:
             if d1 <= 0.5 and d2 <= 0.5:
+                # Have only calculated explicit solution in the case where both d1 and d2 are smaller than 0.5
+                # Expression also depends on which of the two sticks is smaller
                 if d1 < d2:
                     return 1 - two_short_explicit(d1, d2)
                 else:
@@ -405,9 +414,12 @@ class Junction:
                 return 1 - two_stick_quadrature(d1, d2)
         
     def calculate_xi_n_crossing(self, actual_fluxes, crossing_connections, max_flux_in):
-        # Calculate the lengths of the sticks
-        # Sticks of length 0 can be ignored
-        # If any sticks have length 1, then xi = 0
+        '''
+        Function for calculating the combined contribution of n crossing connections
+        Any connections with no flux can be ignored
+        If any connections have maximal flux, the combined contribution is equal to 1
+        The remaining part of the unit interval is 0 -> set xi = 0
+        '''
         lengths = []
         for i_c, j_c in crossing_connections:
             length = actual_fluxes[i_c,j_c] / max_flux_in[i_c]
@@ -429,20 +441,27 @@ class Junction:
         Calculates the upper bound determined by the flux on the crossing connections
         Upper bound is never lower than epsilon*max_flux_in[i], i.e. a small percentage of the 
         maximum flux, right now default is at 10%
+        In the general case, a quadrature rule is used to calculate the combined contribution of crossing connections
         '''
         cloned_fluxes = actual_fluxes.clone()
         if len(crossing_connections) == 1:
-            # Only one crossing connection
+            # Only one crossing connection - no integral needed
             xi = 1 - cloned_fluxes[crossing_connections[0][0],crossing_connections[0][1]]/max_flux_in[crossing_connections[0][0]]
 
         elif len(crossing_connections) == 2:
+            # Two crossing connections - might be able to use explicit solution for integral
             xi = self.calculate_xi_two_crossing(cloned_fluxes, crossing_connections, max_flux_in)
         else:
+            # Need to use quadrature rule
             xi = self.calculate_xi_n_crossing(cloned_fluxes, crossing_connections, max_flux_in)
+
         epsilon = epsilon * max_flux_in[i]
-        return torch.min(demand_ij, epsilon + xi*(max_flux_in[i] - epsilon))
+        return torch.minimum(demand_ij, epsilon + xi*(max_flux_in[i] - epsilon))
     
     def calculate_fluxes(self, demand, capacities, priorities, max_flux_in):
+        '''
+        Function for calculating (approximating) the flux across a general junction
+        '''
         actual_fluxes = torch.zeros((self.n, self.m))
 
         assigned_fluxes = []
@@ -450,12 +469,17 @@ class Junction:
         # ADDING 0-Tensor
         # CLONING
         for n_crossing in range(self.max_crossing_connections + 1):
+            # Go through all connections in an increasing order of n_crossings starting with 0
             for i in range(self.n):
+                # Go through every incoming road
                 for j in range(self.m):
+                    # Go through every outgoing road
                     if len(self.crossing_connections[i][j]) == n_crossing and (i,j) not in assigned_fluxes:
                         # Connection has not been assigned a flux, and it has the correct number of crossing connections
                         if len(self.crossing_connections[i][j]) > 0:
-                            # Update upper bound
+                            # There are some crossing connections, and so an upper bound needs to be calculated
+                            # Not actually necessary to take in the entire actual_fluxes. Could instead use only the elements of
+                            # actual_fluxes corresponding to crossing connections with higher priority
                             upper_bounds[i,j] = self.calculate_upper_bound(actual_fluxes, 
                                                                            self.crossing_connections[i][j],
                                                                            i, max_flux_in, demand[i,j])
@@ -463,16 +487,23 @@ class Junction:
                         # upper_bound[i,j] should be less or equal to demand[i,j] and so
                         # it should not be necessary to include upper_bounds[i,j] below
                         # demand_sum = torch.tensor(0.0)
-                        upper_bound_sum = torch.tensor(0.0)
-                        for l in range(self.n):
-                            if l != i:
-                                upper_bound_sum += torch.min(upper_bounds[l,j].clone(), demand[l,j].clone())
+                        # upper_bound_sum = torch.tensor(0.0)
+                        # for l in range(self.n):
+                        #     if l != i:
+                        #         upper_bound_sum += torch.min(upper_bounds[l,j].clone(), demand[l,j].clone())
+                        mask = torch.ones(self.n, dtype=torch.bool)
+                        mask[i] = False
+                        upper_bound_sum = torch.sum(upper_bounds[mask,j])
+
                         interior_max = capacities[j] - upper_bound_sum
                         supply_max = torch.max(priorities[i][j]*capacities[j], interior_max)
-                        demand_max = torch.min(upper_bounds[i,j].clone(), demand[i,j].clone())
-                        actual_fluxes[i,j] = torch.min(demand_max, supply_max.clone())
+                        # demand_max = torch.min(upper_bounds[i,j].clone(), demand[i,j].clone())
+                        # actual_fluxes[i,j] = torch.min(demand_max, supply_max.clone())
+                        # actual_fluxes[i,j] = torch.min(upper_bounds[i,j].clone(), supply_max.clone())
+                        actual_fluxes[i,j] = torch.minimum(upper_bounds[i,j].clone(), supply_max)
                         assigned_fluxes.append((i,j))
-        
+
+        # Can for loops be removed below - most likely yes!
         # Fluxes on edges i,j should now be calculated
         # Calculate fluxes in and fluxes out
         fluxes_in = [0]*self.n
@@ -502,7 +533,8 @@ class Junction:
         # fluxes[i,j] is theself. flux from road i to road j
         # ADDING 0-Tensor
         fluxes = torch.zeros((self.n, self.m))
-    
+
+        # This can likely be done without for loop...
         for j in range(self.m):
             # Update the flux from all roads into road j
             sum_influx = torch.sum(demand[:,j])
@@ -512,6 +544,7 @@ class Junction:
             else:
                 fluxes[:,j] = demand[:,j]
 
+        # For loops below can likely be removed
         # LIST OF TENSORS
         fluxes_in = [0]*self.n
         fluxes_out = [0]*self.m
@@ -539,6 +572,7 @@ class Junction:
         This prirority list and the densities of the incoming roads will be used to find prirotiy
         parameters.
         '''
+
         # LIST OF TENSORS
         # rho_in = [road.rho[-road.pad] for road in self.road_in]
         rho_in = [road.rho[-road.pad].clone() for road in self.road_in]
@@ -582,6 +616,7 @@ class Junction:
         else:
             fluxes_in, fluxes_out = self.divide_flux(t)
 
+        # Here, for loops are necessary
         # LIST OF TENSORS
         for i, road in enumerate(self.road_in):
             road.update_right_boundary(fluxes_in[i], dt)

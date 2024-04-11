@@ -132,6 +132,8 @@ class RoadNetwork:
                 # ...
                 # print("Opposite road is ", opposite_road.id)
 
+                # TODO: Remove for loop below
+
                 for l in range(opposite_road.N_internal-1):
                     avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 4
                     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
@@ -140,6 +142,7 @@ class RoadNetwork:
             # Current road has more lanes
             # use only density/flux on this road to update the slowdown
             # factors
+            # TODO: Remove for loop
             n_extra_lanes = road.max_dens - 1
             avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
             for l in range(len(avg)-1):
@@ -186,7 +189,8 @@ class RoadNetwork:
         # If the bus stop is close, then the speed can be reduced
 
         relative_length = road.L*road.b - length # Remaining length
-        bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
+        # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
+        bus.update_position(dt, t, speed, activation, relative_length, printing=False)
         return slowdown_factors, slowing_idx
     
     def update_position_of_bus_no_slowdown(self, bus, dt, t):
@@ -242,7 +246,7 @@ class RoadNetwork:
         # If the bus stop is close, then the speed can be reduced
 
         relative_length = road.L*road.b - length # Remaining length
-        bus.update_position(t, dt, speed, activation, relative_length, printing=False)
+        bus.update_position(dt, t, speed, activation, relative_length, printing=False)
         return #slowdown_factors
 
     def solve_cons_law(self):
@@ -320,7 +324,8 @@ class RoadNetwork:
                 slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
                 slowdown_indexes = []
                 for bus in self.busses:
-                    slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
+                    # slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
+                    slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt, t, slowdown_factors)
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
 
@@ -346,7 +351,7 @@ class RoadNetwork:
                 #-------------------------------------
                 for road in self.roads:
                     # Add boundary conditions to remaining roads
-                    road.apply_bc(t, dt)
+                    road.apply_bc(dt, t)
                 
                 #-------------------------------------
                 # STEP 6: Solve internal system for each road

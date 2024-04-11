@@ -335,7 +335,7 @@ class Road:
                 self.rho = fv.Euler_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
                                              slowdown_factors)
 
-    def apply_bc(self, t, dt):
+    def apply_bc(self, dt, t):
         # Change structure of road to instead have a boundary condition function and use
         # this function to update the road.
 
