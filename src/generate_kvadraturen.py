@@ -1265,16 +1265,18 @@ def generate_kvadraturen_w_bus(T):
 
     # Adding the busses
     ids_bw = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw", 
-          "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw"]            
+          "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw","vs_mainline_1", "vs_mainline_2"]            
     stops_bw = [("tollbod_2bw", 50), ("tollbod_1bw", 90), ("tollbod_1bw", 230), ("v_strand_1bw", 25)]
-    times_bw = [40, 130, 190, 250]
+    # times_bw = [40, 130, 190, 250]
+    times_bw = [4, 130, 190, 250]
     bus_bw = bus.Bus(ids_bw, stops_bw, times_bw, temp_network, id = "2", start_time = 0.0)
 
-    ids_fw = ["v_strand_1fw", "h_w_2", "festning_3fw", "festning_4fw", "tollbod_2fw",
+    ids_fw = ["vs_mainline_3", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw", "festning_4fw", "tollbod_2fw",
             "elvegata_fw", "lundsbro_fw"]
     stops_fw = [("h_w_2", 130), ("festning_4fw", 40), ("tollbod_2fw", 25), 
                 ("tollbod_2fw", 260)]
-    times_fw = [30, 110, 130, 230]
+    # times_fw = [30, 110, 130, 230]
+    times_fw = [3, 110, 130, 230]
     bus_fw = bus.Bus(ids_fw, stops_fw, times_fw, temp_network, id = "1")
 
     times_bw_2 = [240, 330, 390, 450]

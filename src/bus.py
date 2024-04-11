@@ -236,12 +236,15 @@ class Bus:
         In this function, also update the slowing down of the bus
         This could f.ex. be equal to the stop_factor
         '''
+        new_slowdown_factor = slowdown_factor.clone()
+
         # Length is the length travelled on the current road
         if not self.active:
             # Bus not actually a part of the simulation yet
-            return slowdown_factor, False
+            return new_slowdown_factor, False
         # ADDING 0-TENSOR
         factors = torch.ones(road.N_internal+1)
+        updated_factors = torch.ones(road.N_internal+1)
         # Check for bus stops on this road
         for stop in self.stops:
             if stop[0] == road_id:
@@ -259,9 +262,10 @@ class Bus:
                 # Faster by removing for loop...
                 for i, pos in enumerate(interface_positions):
                     interface_factor = calculate_slowdown_factor(length - pos*road.L)
-                    factors[i] = torch.min(factors[i], 
+                    # Error if you hace factors[i] = torch.min(factors[i], ...)
+                    updated_factors[i] = torch.min(factors[i].clone(), 
                                            torch.tensor(1.0) - interface_factor*stop_factor)                
-        return factors, True
+        return updated_factors, True
 
     def update_position(self, t, dt, speed, activation, length, printing = False):
         '''
@@ -371,23 +375,24 @@ class Bus:
                     # The bus should stop at the next stop
                     self.at_stop = True
                     # This should maybe be a torch tensor that requires tracking the gradient...
-                    self.remaining_stop_time = max(30, self.times[self.next_stop] - t)  - (dt - actual_dt) # This might be requiring gradient
+                    self.remaining_stop_time = max(30, self.times[self.next_stop] - t)  - (dt - actual_dt) # This might be requiring gradient, if so cannot use max, but should use torch.max instead
                     print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
                     # Calculate delay time
                     if self.next_stop < len(self.times):
                         # At least one stop left
                         self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                        # self.delays[self.next_stop] = self.delays[self.next_stop].clone() + torch.max(torch.tensor(0.0), t.clone() + actual_dt.clone() - self.times[self.next_stop])
                         # inplace is fine
                         self.next_stop += 1
 
-                    self.length_travelled = self.length_travelled + speed * actual_dt # Could set equal to length_of_next_stop, but
+                    self.length_travelled = self.length_travelled.clone() + speed * actual_dt # Could set equal to length_of_next_stop, but
                     # then it would not be possible to differentiate
                 else:
                     if printing:
                         print(f"Bus should travel full distance of {speed*dt} meters")
                         
                     # print(f"t = {t}, bus should travel full distance of {speed*dt} meters")
-                    self.length_travelled = self.length_travelled + speed * dt
+                    self.length_travelled = self.length_travelled.clone() + speed * dt
             else:
                 # Bus should stop at the junction
                 if length + self.length_travelled >= length_of_next_stop:
@@ -401,7 +406,9 @@ class Bus:
                         
                         # Calculate delay time
                         if self.next_stop < len(self.times):
-                            self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                            # self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                            self.delays[self.next_stop] = self.delays[self.next_stop].clone() + torch.max(torch.tensor(0.0), t.clone() + actual_dt.clone() - self.times[self.next_stop])
+
                             self.next_stop += 1
                         self.length_travelled = self.length_travelled + speed * actual_dt
                     else:

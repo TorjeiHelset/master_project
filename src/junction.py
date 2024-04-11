@@ -242,6 +242,9 @@ class Junction:
         '''
         Given a time t, this function returns the activation of roads with id_1 and id_2
         If either id_1 or id_2 is not a part of the junction, False, 0.0 is returned
+
+        Should also take into account the density on the outgoing road
+        If density higher than ? then bus should not travel past
         '''
         # First check if both id_1 and id_2 are a part of the junction
         id_1_in = False
@@ -537,7 +540,8 @@ class Junction:
         parameters.
         '''
         # LIST OF TENSORS
-        rho_in = [road.rho[-road.pad] for road in self.road_in]
+        # rho_in = [road.rho[-road.pad] for road in self.road_in]
+        rho_in = [road.rho[-road.pad].clone() for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
         max_flux_in = [fv.fmax(gamma) for gamma in gamma_in]
 
@@ -601,11 +605,12 @@ class Junction:
                 idx_2 = i
                 break
         
-
-        rho_in = [road.rho[-road.pad] for road in self.road_in]
+        # rho_in = [road.rho[-road.pad] for road in self.road_in]
+        rho_in = [road.rho[-road.pad].clone() for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
         max_dens_in = torch.tensor([road.max_dens for road in self.road_in])
-        rho_out = [road.rho[road.pad-1] for road in self.road_out]
+        # rho_out = [road.rho[road.pad-1] for road in self.road_out]
+        rho_out = [road.rho[road.pad-1].clone() for road in self.road_out]
         gamma_out = [road.gamma[road.idx] for road in self.road_out]
         max_dens_out = torch.tensor([road.max_dens for road in self.road_out])
 

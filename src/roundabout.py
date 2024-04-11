@@ -130,16 +130,17 @@ class RoundaboutJunction:
             supplies[1] = self.secondary_out.supply()
         
             # Adjusting the first demand based on the supplies:
-            demands[0] = torch.min(demands[0], supplies[1] / self.alpha)
+            demands[0] = torch.min(demands[0].clone(), supplies[1].clone() / self.alpha)
 
             # Calculating the fluxes using a FIFO rule:
+            # PROBLEM: using indexed tensor inside max...
             in_fluxes = torch.zeros(2)
             out_fluxes = torch.zeros(2)
-            max_main_in = torch.max(beta * supplies[0], supplies[0] - demands[1])
-            max_second_in = torch.max((1-beta) * supplies[0], supplies[0] - (1-self.alpha)*demands[0])
-            in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0], max_main_in)
-            in_fluxes[1] = torch.min(demands[1], max_second_in)
-            out_fluxes[0] = torch.min((1-self.alpha)*demands[0] + demands[1], supplies[0])
+            max_main_in = torch.max(beta * supplies[0].clone(), supplies[0].clone() - demands[1].clone())
+            max_second_in = torch.max((1-beta) * supplies[0].clone(), supplies[0].clone() - (1-self.alpha)*demands[0].clone())
+            in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0].clone(), max_main_in)
+            in_fluxes[1] = torch.min(demands[1].clone(), max_second_in)
+            out_fluxes[0] = torch.min((1-self.alpha)*demands[0].clone() + demands[1].clone(), supplies[0].clone())
             out_fluxes[1] = self.alpha*in_fluxes[0]
 
             # Update the densities of roads:
@@ -160,21 +161,21 @@ class RoundaboutJunction:
             # print(f"Timestep: {dt}")
             # print(f"Queue length: {self.secondary_in.queue_length}")
             demands = torch.zeros(2)
-            demands[0] = main_max_dens * fv.D(main_rho_in, main_gamma)
+            demands[0] = main_max_dens * fv.D(main_rho_in.clone(), main_gamma)
             demands[1] = self.secondary_in.demand(t)
             # print(f"Demands of incoming roads: {demands[0], demands[1]}")
 
             # Calculate the supply:
-            supply = main_max_dens * fv.S(main_rho_out, main_gamma)
+            supply = main_max_dens * fv.S(main_rho_out.clone(), main_gamma)
 
             # Calculate the fluxes
-            out_flux = torch.min((1-self.alpha)*demands[0] + demands[1], supply)
+            out_flux = torch.min((1-self.alpha)*demands[0].clone() + demands[1].clone(), supply)
             in_fluxes = torch.zeros(2)
-            max_main_in = torch.max(beta*supply, supply - demands[1])
-            in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0],
+            max_main_in = torch.max(beta*supply, supply - demands[1].clone())
+            in_fluxes[0] = 1/(1-self.alpha) * torch.min((1-self.alpha)*demands[0].clone(),
                                                         max_main_in)
-            max_second_in = torch.max((1-beta)*supply, supply - (1-self.alpha)*demands[0])
-            in_fluxes[1] = torch.min(demands[1], max_second_in)
+            max_second_in = torch.max((1-beta)*supply, supply - (1-self.alpha)*demands[0].clone())
+            in_fluxes[1] = torch.min(demands[1].clone(), max_second_in)
 
             # print(f"Incoming fluxes: {in_fluxes[0], in_fluxes[1]}")
             # print(f"Outgoing fluxes: {out_flux}")

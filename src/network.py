@@ -89,8 +89,13 @@ class RoadNetwork:
         i, road = self.get_road(road_id)
         slowing_idx = None
         # i used to find out what slowdown_factors to modify
+
+        #---------------------------------------------------
+        # SLOWDOWN FACTORS:
+        #---------------------------------------------------
+
         # 2. Use position of bus to calculate the slowdown factors
-        slowdown_factors[i], bus_started = bus.get_slowdown_factor(slowdown_factors[i], road_id,
+        slowdown_factors[i], bus_started = bus.get_slowdown_factor(slowdown_factors[i].clone(), road_id,
                                                       length, road)
         if bus_started:
             slowing_idx = i
@@ -139,6 +144,10 @@ class RoadNetwork:
             avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
             for l in range(len(avg)-1):
                 slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
+    
+        #------------------------------------------------------------
+        # SLOWDOWN FACTORS FINISHED
+        #------------------------------------------------------------
 
         new_length = length / road.L
         speed = road.get_speed(new_length) * road.L
@@ -177,7 +186,7 @@ class RoadNetwork:
         # If the bus stop is close, then the speed can be reduced
 
         relative_length = road.L*road.b - length # Remaining length
-        bus.update_position(t, dt, speed, activation, relative_length, printing=False)
+        bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
         return slowdown_factors, slowing_idx
     
     def update_position_of_bus_no_slowdown(self, bus, dt, t):
@@ -311,7 +320,7 @@ class RoadNetwork:
                 slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
                 slowdown_indexes = []
                 for bus in self.busses:
-                    slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt, t, slowdown_factors)
+                    slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
 

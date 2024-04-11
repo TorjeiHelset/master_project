@@ -207,7 +207,7 @@ class Road:
         # left is internal cell, middle is first boundary cell
         left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
         # Calculate rusanov flux:
-        left_flux = fv.Rusanov_Flux_2(left, middle, self.gamma[self.idx])
+        left_flux = fv.Rusanov_Flux_2(left.clone(), middle.clone(), self.gamma[self.idx])
 
         # Update density on boundary cell(s)
         # Inplace operation below!
@@ -221,7 +221,7 @@ class Road:
         # right is internal cell, middle is first boundary cell
         right, middle = self.rho[self.pad], self.rho[self.pad-1]
         # Calculate Rusanov flux:
-        right_flux = fv.Rusanov_Flux_2(middle, right, self.gamma[self.idx])
+        right_flux = fv.Rusanov_Flux_2(middle.clone(), right.clone(), self.gamma[self.idx])
 
         # Update density on boundary cell(s)
         # Inplace operation!
