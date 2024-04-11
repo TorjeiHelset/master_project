@@ -88,8 +88,8 @@ stops = [(tollbod_6, 50), (tollbod_3, 90), (tollbod_1, 30), (v_strand_3, 25)]
 # Map to stops being absolute length of the route
 '''
 
-def calulate_slowdown_factor(d, alpha = 0.5, beta = 2):
-    return torch.sigmoid(alpha * d + 5) - torch.sigmoid(beta * d - 5)
+def calculate_slowdown_factor(d, alpha = 0.5, beta = 2):
+    return torch.max(torch.tensor(0.0), torch.sigmoid(alpha * d + 5) - torch.sigmoid(beta * d - 5))
 
 class Bus:
     '''
@@ -139,7 +139,6 @@ class Bus:
         self.active = False
         self.id = id
         self.stop_factor = torch.tensor(0.0)
-
 
     def get_stop_lengs(self, stops):
         '''
@@ -248,22 +247,21 @@ class Bus:
             if stop[0] == road_id:
                 # Bus stop is on the road -> Calculate the distance from the bus to the stop
                 stop_pos = stop[1]
-                distance = stop_pos - length # In metres
+                distance = length - stop_pos# In metres
                 # Calculate the slow down factor based on this distance:
                 # Multiply by 0.8 to always allow for some cars to cross.
-                stop_factor = calulate_slowdown_factor(distance) * 0.8
+                stop_factor = calculate_slowdown_factor(distance) * 0.8
                 self.stop_factor = stop_factor
                 # Find the distance of the cell interfaces to the position of the bus:
                 # road.N_internal cells between dx and b - dx
-                # road.N_internal + 1 interfaces between dx/2 and b - dx/2
-                interface_positions = torch.linspace(road.dx, road.b - road.dx/2, road.N_internal)
+                # road.N_internal + 1 interfaces between 0 and b
+                interface_positions = torch.arange(0, road.b + 0.00001, road.dx)
                 # Faster by removing for loop...
                 for i, pos in enumerate(interface_positions):
-                    interface_factor = calulate_slowdown_factor(length - pos*road.L)
+                    interface_factor = calculate_slowdown_factor(length - pos*road.L)
                     factors[i] = torch.min(factors[i], 
                                            torch.tensor(1.0) - interface_factor*stop_factor)                
         return factors, True
-                
 
     def update_position(self, t, dt, speed, activation, length, printing = False):
         '''
@@ -290,6 +288,7 @@ class Bus:
 
         speed = (1-self.stop_factor) * speed
         '''
+        # print(self.stop_factor)
         speed = (1-self.stop_factor)*speed
         self.stop_factor = torch.tensor(0.0)
         

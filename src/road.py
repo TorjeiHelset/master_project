@@ -456,14 +456,29 @@ class Road:
         # (nodes 0 and N+1 are outside of road)
         if length == 0:
             length = torch.tensor(0.0)
-
-        n = self.rho.shape[0] - 2
-        a = (n-1) / self.b
+        # n = self.n_internal
+        n = self.rho.shape[0] - 2*self.pad
+        a = n / self.b
         
-        pos = a * length + 1
+        pos = a * length - 1/2
 
-        prev = torch.floor(pos)
-        next = prev + 1
+        # Position now relates to the internal cells of the road
+        # pos < 0 -> first cell
+        # pos = 0 -> first cell
+        # pos = 1 -> second cell
+        # ...
+        # pos = n - 1 -> last internal cell
+        # pos > n - 1 -> last internal cell
+
+        if pos < 0:
+            prev = 0
+            next = 0
+        elif pos > n - 1:
+            prev = n-1
+            next = n-1
+        else:
+            prev = torch.floor(pos)
+            next = torch.ceil(pos)
 
         if printing:
             print(f"Position: {pos}")
@@ -473,6 +488,7 @@ class Road:
         
         prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)])
         next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)])
+        
         if printing:
             try:
                 print(f"Version of left density: {self.rho[int(prev)]._version}, {self.rho[int(prev)]}")
@@ -490,8 +506,11 @@ class Road:
             print(f"Speeds: {prev_speed} and {next_speed}")
             print(f"Densities: {self.rho[int(prev)]} and {self.rho[int(next)]}")
             print(f"Speed limit: {self.Vmax[self.idx]}, version {self.Vmax[self.idx]._version}")
-        
-        avg_speed = (1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed
+        if prev == next:
+            avg_speed = prev_speed
+        else:
+            # avg_speed = ((1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed) / 2
+            avg_speed = (pos - prev) * prev_speed + (next - pos) * next_speed
         
         if printing:
             print(f"Average speed: {avg_speed}")

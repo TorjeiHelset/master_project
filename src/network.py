@@ -140,12 +140,14 @@ class RoadNetwork:
             for l in range(len(avg)-1):
                 slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
 
-        
+        new_length = length / road.L
+        speed = road.get_speed(new_length) * road.L
+
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
         # This is actually not necessary unless the bus has almost reached the end of the road
         # Add some check on the length here
-        if next_id == "" or length < road.L*road.b: # and length < ...
+        if next_id == "" or length + speed * dt < road.L*road.b: # and length < ...
             # Road_id is at the last road, don't need to find the next junction
             # or bus is not close to the junction
             pass
@@ -158,20 +160,17 @@ class RoadNetwork:
                 if check:
                     activation = activ_
                     break
-
-        # 4. Using the road id and length, find the speed of the bus
-        # Okay to use local speed here?
-        if length >= road.L*road.b:
             if activation >= 0.5:
+                # The bus can enter the junction, but the flux on the outgoing road should also be considered
                 speed = j.get_speed(t, road_id, next_id) 
             else:
                 # Setting speed equal to 0 means that the bus stops before the junction...
                 # Should maybe set the speed as the minimum from the get_speed
                 # and the speed that ensures the bus reaches the junction...
-                speed = torch.tensor(0.0) # Differentiable...?
-        else:
-            new_length = length / road.L
-            speed = road.get_speed(new_length) * road.L # Need to multiply with L to get actual speed in m/s
+                # speed = torch.tensor(0.0) # Diff erentiable...?
+                speed = (road.L*road.b - length) / dt - 0.0001 # put speed so that the bus almost reaches the junction
+
+
         
         # At this point the position to the bus stop on this road can be used to update the
         # speed
@@ -315,8 +314,33 @@ class RoadNetwork:
                     slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt, t, slowdown_factors)
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
+
                 #-------------------------------------
-                # STEP 3: Solve internal system for each road
+                # STEP 3: Apply flux conditions for each Junction
+                #-------------------------------------
+                # if t < 1000:
+                for J in self.junctions:
+                    # Apply boundary conditions to all junctions
+                    #J.apply_bc_wo_opt(dt, t)
+                    J.apply_bc(dt,t)
+
+                #-------------------------------------
+                # STEP 4: Apply flux conditions for each Roundabout
+                #-------------------------------------
+                # if t < 1000:
+                for roundabout in self.roundabouts:
+                    # Apply boundary conditions to all roundabouts
+                    roundabout.apply_bc(dt, t)
+
+                #-------------------------------------
+                # STEP 5: Apply BC to roads with one or more edges not connected to junction
+                #-------------------------------------
+                for road in self.roads:
+                    # Add boundary conditions to remaining roads
+                    road.apply_bc(t, dt)
+                
+                #-------------------------------------
+                # STEP 6: Solve internal system for each road
                 #-------------------------------------
                 for i, road in enumerate(self.roads):
                     # Solve internally on all roads in network
@@ -330,30 +354,6 @@ class RoadNetwork:
                         road.solve_internally_slowdown(dt, slowdown_factors[i])
                     else:
                         road.solve_internally(dt)
-
-                #-------------------------------------
-                # STEP 4: Apply flux conditions for each Junction
-                #-------------------------------------
-                # if t < 1000:
-                for J in self.junctions:
-                    # Apply boundary conditions to all junctions
-                    #J.apply_bc_wo_opt(dt, t)
-                    J.apply_bc(dt,t)
-
-                #-------------------------------------
-                # STEP 5: Apply flux conditions for each Roundabout
-                #-------------------------------------
-                # if t < 1000:
-                for roundabout in self.roundabouts:
-                    # Apply boundary conditions to all roundabouts
-                    roundabout.apply_bc(dt, t)
-
-                #-------------------------------------
-                # STEP 5: Apply BC to roads with one or more edges not connected to junction
-                #-------------------------------------
-                for road in self.roads:
-                    # Add boundary conditions to remaining roads
-                    road.apply_bc(t, dt)
 
                 # At this point, the old internal values are not used anymore, so they can safely be 
                 # overwritten
