@@ -1,24 +1,17 @@
 #################################################################
 # Problem: Running out of memory if many iterations are performed
-# Need to release memory between iterations
-# One fix -> instead of creating new networks, just reset densities
-# and update parameters
+# -> Need to release memory between iterations of optimization algorithm
 
-# Multiple searches
-# Eliminate parts of domain already visited naively/greedily
+# No guarantee that global optimum found so multiple searches might be necessary
+# - How to pick starting points?
+# - Can parts of the search space be eliminated before? I.e. if the current 
+#   iterate has been visited before, it will lead to the same solution, so 
+#   algorithm should stop
 
-
-
-# Check that queue works as it should
-# How to check: If no flux is allowed to leave the system, then 
-# the integral of the road and the queue should be the same for different 
-# speeds.
 #################################################################
 
-# Full iterative approach of setting up road network and then iteratively 
-# choosing new speed limits
 import time as time
-# pyswarm - used to get approximation of exact solution
+# pyswarm - cam be used to get approximation of exact solution
 
 import loading_json as load
 # import road_network as rn
@@ -31,16 +24,23 @@ import FV_schemes as fv
 import matplotlib.pyplot as plt
 
 def jacobi(objective, params):
+    '''
+    Calculates the gradient of the objective function wrt the paramers.
+    Is this the most efficient way to do this?
+    Could maybe simply use .backward() to populate the gradients
+    '''
     j = torch.zeros(len(params))
 
     for i in range(len(params)):
         derivative =  torch.autograd.grad(objective, params[i], create_graph=True, allow_unused=True)[0]
         if derivative:
             j[i] = derivative
-
     return j
 
 def hessian(grad, params):
+    '''
+    Calculates the hessian matrix. Currently not being used
+    '''
     H = torch.zeros((len(params), len(params)))
 
     for i in range(len(params)):
@@ -48,7 +48,6 @@ def hessian(grad, params):
             derivative =  torch.autograd.grad(grad[i], params[j], create_graph=True, allow_unused=True)[0]
             if derivative:
                 H[i,j] = derivative
-
     return H
 
 
@@ -97,8 +96,6 @@ def point_flux(history, network):
     rho = history[road_idx]
     gamma = network.roads[road_idx].gamma
     max_dens = network.roads[road_idx].max_dens
-    # print("Gamma")
-    # print(gamma)
 
     times = list(rho.keys())
     sub_times = [t for t in times if time_interval[0] <= t <= time_interval[1]]
@@ -227,6 +224,17 @@ def exit_flux(history, network):
                 total_out += dt*(right + left) / 2
     return total_out
 
+def average_delay_time(delays, network):
+    total_delay = torch.tensor(0.0)
+    n_stops = 0
+    for bus_delays in delays:
+        for delay in bus_delays:
+            if delay > 0:
+                total_delay = total_delay + delay
+                n_stops += 1
+
+    total_delay = total_delay / n_stops
+    return total_delay
 
 def total_travel_flux_out(history, network):
     '''
@@ -234,17 +242,26 @@ def total_travel_flux_out(history, network):
     pass
 
 def project(params, Lower, Upper):
+    '''
+    Sometimes the direction giving the most decrease in the object function sends 
+    some parameters outside the feasible region. Whenever this happens
+    these parameters should instead be chosen as the upper/lower limits
+    '''
     out = params.clone()
     for i in range(len(Lower)):
         out[i] = max(Lower[i], min(Upper[i], params[i]))
     return out
 
 def project_int(params, Lower, Upper):
+    '''
+    Similar function to project() with the added constraint that parameters should be integers
+    '''
     out = params.clone()
     for i in range(len(Lower)):
         out[i] = int(max(Lower[i], min(Upper[i], params[i])))
     return out
 
+# Below is outdated
 def initialize_road_network(T, roads, junctions, all_params, limiter = "minmod"):
     # T, roads, junctions = read_json(filename)
 
@@ -634,8 +651,7 @@ def gradient_step_integer2(prev_grad, prev_all_params, upper_bounds, lower_bound
     
     # Gradient step and armijo condition is satisfied
     return new_all_params, new_grad, new_objective, True
-
-    
+   
 def optimize_parameters(filename, objective_type, tol=0.1, maxiter=10, c1 = 1e-4, c2=0.9, limiter = "minmod",
                         light_lower = 10, light_upper = 120, max_step = 10):
     '''

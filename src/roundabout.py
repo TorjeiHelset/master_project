@@ -286,6 +286,4 @@ class Roundabout:
             # No check for right of way, because the right of way has been manually added
             # to the roundabout junctions as it is known beforehand
             j.divide_flux(dt, t)
-
-        # Do not need to solve internally on the roads as this is already done
         

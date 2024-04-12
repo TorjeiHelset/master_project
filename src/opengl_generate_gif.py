@@ -845,7 +845,7 @@ if __name__ == "__main__":
             queues = data[1]
             bus_lengths = data[2]
             bus_delays = data[3]
-            T = 200 
+            T = 750 
             bus_network = gk.generate_kvadraturen_w_bus(T)
 
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,

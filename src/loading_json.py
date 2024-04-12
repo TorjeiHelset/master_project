@@ -150,45 +150,4 @@ def convert_from_tensor(rho):
                 out_dict[t][float(x)] = rho[t][x]
 
     return out_dict
-    
-if __name__ == "__main__":
-    file = 3
 
-    match file:
-        case 0:
-            read_json('networks/single_lane.json')
-
-        case 1:
-            read_json('networks/1-1.json')
-        
-        case 2:
-            roads, junctions, network = initialize_road_network('networks/1-1trafficLight.json')
-
-            for road in roads:
-                print(road.Vmax)
-
-            for junction in junctions:
-                for traffic in junction.trafficlights:
-                    print(traffic.cycle)
-        case 3:
-            roads, junctions, network = initialize_road_network('networks/2-2coupled.json')
-
-            for road in roads:
-                print(road.Vmax)
-
-            for junction in junctions:
-                for traffic in junction.trafficlights:
-                    print(traffic.cycle)
-                
-                for traffic in junction.coupled_trafficlights:
-                    print(traffic.cycle)
-                    print(traffic.a_entering)
-                    print(traffic.b_entering)
-                    print(traffic.a_leaving)
-                    print(traffic.b_leaving)
-
-            densities, queues = network.solve_cons_law()
-            import plotting as plot
-            import matplotlib.pyplot as plt
-            fig, ax = plot.plot_results(densities, queues, network)
-            plt.show()

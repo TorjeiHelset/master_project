@@ -404,6 +404,12 @@ class RoadNetwork:
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
     
+    def get_tensors():
+        '''
+        Return a list of all tensors requiring gradient of the network
+        '''
+        raise NotImplementedError("Returning all tensors of network not implemented yet")
+    
     def draw_network(self):
         # Function to draw a graph of the network to check that it is properly set up
 
@@ -542,93 +548,3 @@ class RoadNetwork:
                 road_pos[i][key] = pos[key]
 
         return road_pos
-    
-
-if __name__ == "__main__":
-    option = 1
-
-    match option:
-        case 0:
-            import road as r
-            import junction as j
-            import traffic_lights as tf
-            import plotting as plot
-            import initial_and_bc as ib
-
-            
-            road1 = r.Road(1, 1000, 50, [80, 80, 50], [10, 40], initial=ib.init_density(0.8, 1), inflow=1.)
-
-            road2 = r.Road(1, 1000, 50, [50, 50, 50], [10, 40], initial=ib.init_density(0.3, 1))
-            # road3 = r.Road(1, 1000, 50, [50, 50, 50], [10, 40])
-            # road4 = r.Road(1, 1000, 50, [50, 30, 40], [10, 40])
-            print(road1.rho)
-
-            trafficlight = tf.TrafficLightContinous(False, [0], [1], [25., 10.])
-            #coupledlight = tf.CoupledTrafficLight(False, [0], [2], [1], [3], [1.2,1.4,1.1,0.4])
-            junction = j.Junction([road1, road2], entering=[0], leaving=[1],
-                                    distribution=[1.], trafficlights=[trafficlight], coupled_trafficlights=[])
-
-            network = RoadNetwork([road1, road2], [junction], 120)
-
-            # print(road1.gamma)
-            # print(road2.gamma)
-            # print(road3.gamma)
-            # print(road4.gamma)
-
-
-            densities, queues = network.solve_cons_law()
-            # print(queues[0])
-
-            objective = torch.tensor(0.0)
-
-            # for t in densities[1].keys():
-            #     objective += torch.sum(densities[1][t])
-
-            for t in queues[0].keys():
-                objective += torch.sum(queues[0][t])
-
-            print(objective)
-            print(junction.trafficlights[0].cycle)
-            torch.autograd.set_detect_anomaly(True)
-            second = torch.autograd.grad(objective,junction.trafficlights[0].cycle[1], create_graph=True, allow_unused=True)[0]
-            third = torch.autograd.grad(objective, network.roads[0].Vmax[0], create_graph=True, allow_unused=True)[0]
-            fourth = torch.autograd.grad(objective, network.roads[1].Vmax[0], create_graph=True, allow_unused=True)[0]
-            first = torch.autograd.grad(objective,junction.trafficlights[0].cycle[0], create_graph=True, allow_unused=True)[0]
-
-            # first = torch.autograd.grad(objective,junction.trafficlights[0].cycle[0], create_graph=True, allow_unused=True)[0]
-            # second = torch.autograd.grad(objective,junction.trafficlights[0].cycle[1], create_graph=True, allow_unused=True)[0]
-            print(first, second, third, fourth)
-
-
-
-            
-
-
-        
-        case 1:
-            import loading_json as load
-            import plotting as plot
-
-
-            loaded_roads, loaded_junctions, network = load.initialize_road_network("networks/1-1.json")
-
-            # densities, queues = network.solve_cons_law()
-            # # print(densities)
-            # fig, axes = plot.plot_results(densities, queues, network)
-            # plt.show()
-            network.get_node_pos()
-
-         
-        case 2:
-            import loading_json as load
-            import plotting as plot
-
-
-            # loaded_roads, loaded_junctions, network = load.initialize_road_network("networks/1-1trafficLight.json")
-
-            loaded_roads, loaded_junctions, network = load.initialize_road_network("networks/2-2_coupledlights.json")
-
-            densities, queues = network.solve_cons_law()
-            # print(densities)
-            fig, axes = plot.plot_results(densities, queues, network)
-            plt.show()
