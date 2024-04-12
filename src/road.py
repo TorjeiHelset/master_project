@@ -441,6 +441,41 @@ class Road:
                 # (i+1)th time interval
                 return self.gamma[i]
         
+    def get_node_at_length(self, length):
+        n = self.rho.shape[0] - 2*self.pad
+        a = n / self.b
+        pos = a * length - 1/2
+
+        if pos < 0:
+            prev = 0
+            next = 0
+        elif pos > n-1:
+            prev = n-1
+            next = n-1
+        else:
+            prev = torch.floor(pos)
+            next = torch.ceil(pos)
+
+        return prev, next, pos
+    
+    def get_speed_at_node(self, prev, next, pos):
+        '''
+        Important: prev, next, pos refers to internal nodes
+        When using actual densities need to shift by the number of boundary nodes
+        '''
+        # prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)])
+        # next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)])
+        prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)+self.pad])
+        next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)+self.pad])
+        
+        if prev == next:
+            avg_speed = prev_speed
+        else:
+            # avg_speed = ((1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed) / 2
+            avg_speed = (pos - prev) * prev_speed + (next - pos) * next_speed
+
+        return avg_speed
+    
     def get_speed(self, length, printing = False):
         '''
         Return the speed calculated at a given length
@@ -471,12 +506,15 @@ class Road:
         # pos > n - 1 -> last internal cell
 
         if pos < 0:
+            # Speed given by first cell
             prev = 0
             next = 0
         elif pos > n - 1:
+            # Speed given by last cell
             prev = n-1
             next = n-1
         else:
+            # Speed given by combination of two cells
             prev = torch.floor(pos)
             next = torch.ceil(pos)
 
@@ -506,6 +544,7 @@ class Road:
             print(f"Speeds: {prev_speed} and {next_speed}")
             print(f"Densities: {self.rho[int(prev)]} and {self.rho[int(next)]}")
             print(f"Speed limit: {self.Vmax[self.idx]}, version {self.Vmax[self.idx]._version}")
+        
         if prev == next:
             avg_speed = prev_speed
         else:
@@ -514,5 +553,36 @@ class Road:
         
         if printing:
             print(f"Average speed: {avg_speed}")
-
+        
         return avg_speed
+    
+    def get_speed_updated(self, length, dt):
+        '''
+        Return the speed calculated at a given length
+        First calculate the local speed, and then use this speed to calculate the next position
+        Use this next position to calculate the speed also here
+        Take weighted average over the two speeds and use that as actual speed
+        '''
+        # Find which two nodes are closest to the length
+        # Then interpolate between the two nodes
+        
+        # length is between 0 and b
+        # 0 should map to node 1, b should map to node N
+        # (nodes 0 and N+1 are outside of road)
+        if length == 0:
+            length = torch.tensor(0.0)
+        
+        prev, next, pos = self.get_node_at_length(length)
+        speed = self.get_speed_at_node(prev, next, pos)
+        
+        # Update speed using the next position of the bus:
+        updated_length = length + dt*speed
+
+        if updated_length >= self.b:
+            updated_speed = self.gamma[self.idx] * (1. - self.rho[-1])
+        else:
+            # Next position is still on road
+            updated_prev, updated_next, updated_pos = self.get_node_at_length(updated_length)
+            updated_speed = self.get_speed_at_node(updated_prev, updated_next, updated_pos)
+        
+        return (1.2 * speed + 0.8 * updated_speed) / 2 

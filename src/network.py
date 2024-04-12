@@ -108,12 +108,13 @@ class RoadNetwork:
             # slowdown factors
             # Check roads close to index i
             opposite_road = None
-            if i > 0: 
-                if self.roads[i-1].id[:-2] == road.id[:-2]:
-                    opposite_road = self.roads[i-1]
-            if i < len(self.roads)-1:
-                if self.roads[i+1].id[:-2] == road.id[:-2]:
-                    opposite_road = self.roads[i+1]
+            if road.id[-2:] == "fw" or road.id[-2:] == "bw":
+                if i > 0: 
+                    if self.roads[i-1].id[:-2] == road.id[:-2]:
+                        opposite_road = self.roads[i-1]
+                if i < len(self.roads)-1:
+                    if self.roads[i+1].id[:-2] == road.id[:-2]:
+                        opposite_road = self.roads[i+1]
 
             if opposite_road is not None:
                 # Opposite road found - use densities on this road
@@ -122,38 +123,40 @@ class RoadNetwork:
                 # before
                 # If empty, reduce slowdown factor by 50(?)%
                 # Linear interpolation between the two
+                # Check that the number of nodes is equal for the two roads:
+                if len(opposite_road.rho) != len(road.rho):
+                    print(f"Roads {road.id} and {opposite_road.id} are of different sizes!")
 
-                # INPLACE OPERATION
-                # Maybe okay?
-                # This can be avoided by removing for loop
-                # left = opposite_road.rho[:-1]
-                # right = opposite_road.rho[1:]
-                # avg = (left + right) / 2
-                # ...
-                # print("Opposite road is ", opposite_road.id)
-
-                # TODO: Remove for loop below
-
-                for l in range(opposite_road.N_internal-1):
-                    avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 4
-                    slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
+                # OLD:
+                # for l in range(opposite_road.N_internal-1):
+                #     avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 2
+                #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
+                internal = torch.flip(opposite_road.rho[opposite_road.pad-1:-opposite_road.pad+1],dims=[0])
+                avg = (internal[1:] + internal[:-1]) / 2
+                slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / 2
 
         else:
             # Current road has more lanes
             # use only density/flux on this road to update the slowdown
             # factors
-            # TODO: Remove for loop
+            # OLD:
+            # avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
+            # for l in range(len(avg)-1):
+            #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
+
             n_extra_lanes = road.max_dens - 1
-            avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
-            for l in range(len(avg)-1):
-                slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
-    
+            internal = torch.flip(road.rho[road.pad-1:-road.pad+1],dims=[0])
+            avg = (internal[1:] + internal[:-1]) / 2
+            slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / (2**n_extra_lanes)
+        
         #------------------------------------------------------------
         # SLOWDOWN FACTORS FINISHED
         #------------------------------------------------------------
 
         new_length = length / road.L
-        speed = road.get_speed(new_length) * road.L
+        # speed = road.get_speed(new_length) * road.L
+        speed = road.get_speed_updated(new_length, dt) * road.L
+
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
@@ -174,16 +177,16 @@ class RoadNetwork:
                     break
             if activation >= 0.5:
                 # The bus can enter the junction, but the flux on the outgoing road should also be considered
-                speed = j.get_speed(t, road_id, next_id) 
+                speed = torch.minimum(speed, j.get_speed(t, road_id, next_id))
             else:
                 # Setting speed equal to 0 means that the bus stops before the junction...
                 # Should maybe set the speed as the minimum from the get_speed
                 # and the speed that ensures the bus reaches the junction...
                 # speed = torch.tensor(0.0) # Diff erentiable...?
-                speed = (road.L*road.b - length) / dt - 0.0001 # put speed so that the bus almost reaches the junction
+                # put speed so that the bus almost reaches the junction
+                speed = torch.minimum(speed, (road.L*road.b - length) / dt - 0.0001) 
 
 
-        
         # At this point the position to the bus stop on this road can be used to update the
         # speed
         # If the bus stop is close, then the speed can be reduced
@@ -239,8 +242,8 @@ class RoadNetwork:
                 speed = torch.tensor(0.0) # Differentiable...?
         else:
             new_length = length / road.L
-            speed = road.get_speed(new_length) * road.L # Need to multiply with L to get actual speed in m/s
-        
+            # speed = road.get_speed(new_length) * road.L # Need to multiply with L to get actual speed in m/s
+            speed = road.get_speed_updated(new_length, dt) * road.L
         # At this point the position to the bus stop on this road can be used to update the
         # speed
         # If the bus stop is close, then the speed can be reduced

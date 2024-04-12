@@ -838,7 +838,7 @@ if __name__ == "__main__":
             import generate_kvadraturen as gk
 
             print("Loading results...")
-            f = open("results/kvadraturen_roundabout_750.json")
+            f = open("results/kvadraturen_roundabout_750_internal_new.json")
             data = json.load(f)
             f.close()
             densities = data[0]
@@ -849,5 +849,5 @@ if __name__ == "__main__":
             bus_network = gk.generate_kvadraturen_w_bus(T)
 
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,
-                                    densities, output_name="roundabout_750.gif",
+                                    densities, output_name="roundabout_750_internal_new.gif",
                                     background_img="background_imgs/blurred_kvadraturen.png")
