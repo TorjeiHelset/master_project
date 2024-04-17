@@ -29,6 +29,10 @@ upper_time = 200.0
 lower_time = 10.0
 control_points = []
 
+################################
+# Updating global values:
+################################
+@memory_profiler.profile
 def update_npeeds_ncycles_controls(speed_limits, cycle_times, new_control_points):
     global n_speeds
     global n_cycles
@@ -48,6 +52,7 @@ def update_npeeds_ncycles_controls(speed_limits, cycle_times, new_control_points
 
     control_points = new_control_points
 
+@memory_profiler.profile
 def update_limits(upper_speed_limit, lower_speed_limit, upper_cycle_time, lower_cycle_time):
     global upper_speed
     global lower_speed
@@ -59,6 +64,10 @@ def update_limits(upper_speed_limit, lower_speed_limit, upper_cycle_time, lower_
     upper_time = upper_cycle_time
     lower_time = lower_cycle_time
 
+################################
+# Loading from file
+################################
+@memory_profiler.profile
 def load_bus_network(filename):
     '''
     Function for initializing a bus network modelling kvadraturen
@@ -83,11 +92,16 @@ def load_bus_network(filename):
     
     return T, N, speed_limits, cycle_times
 
+################################
+# Converting from list of params to nested list
+################################
+@memory_profiler.profile
 def create_network_from_params(T, N, params):
     speed_limits, cycle_times = get_speeds_cycles_from_params(params)
     bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
     return bus_network
 
+@memory_profiler.profile
 def extract_params(speed_limits, cycle_times):
     params = []
     for speeds in speed_limits:
@@ -100,6 +114,7 @@ def extract_params(speed_limits, cycle_times):
     
     return np.array(params)
 
+@memory_profiler.profile
 def get_speeds_cycles_from_params(params):
     idx = 0
     speed_limits = []
@@ -119,6 +134,7 @@ def get_speeds_cycles_from_params(params):
 
     return speed_limits, cycle_times
 
+@memory_profiler.profile
 def update_speeds_cycles(params, speed_structure, cycle_structure):
     idx = 0
     for i, speeds in enumerate(speed_structure):
@@ -132,6 +148,11 @@ def update_speeds_cycles(params, speed_structure, cycle_structure):
             idx += 1
     return speed_structure, cycle_structure
 
+
+################################
+# Helper function for gradient descent step
+################################
+@memory_profiler.profile
 def scale_gradient(gradient, prev_params, max_update):
     '''
     For now scale the gradient so that the largest updating step is equal to 20 km/h or 20 s. Note the gradient for the speeds
@@ -221,6 +242,7 @@ def scale_gradient(gradient, prev_params, max_update):
     # print(gradient * scaling_factor)
     return scaling_factor, gradient * scaling_factor
 
+@memory_profiler.profile
 def update_params(prev_params, scaled_grad):
     '''
     Tries to do the updating step
@@ -242,6 +264,7 @@ def update_params(prev_params, scaled_grad):
             new_params[i] = upper_time
     return new_params
 
+@memory_profiler.profile
 def check_armijo(prev_objective, new_objective, prev_gradient, scaling_factor, c1 = 1e-6):
     return new_objective <= prev_objective - c1 * scaling_factor * np.dot(prev_gradient, prev_gradient)
 
@@ -249,6 +272,7 @@ def check_armijo(prev_objective, new_objective, prev_gradient, scaling_factor, c
 # Objective functions:
 ################################
 
+@memory_profiler.profile
 def average_delay_time(bus_delays):
     avg_delay = torch.tensor(0.0)
     n_stops_reached = 0
@@ -269,6 +293,7 @@ def average_delay_time(bus_delays):
 # Gradient descent functions
 ################################
 
+@memory_profiler.profile
 def get_grad(objective, network):
     objective.backward()
     speed_limits = network.get_speed_limit_grads()
@@ -276,6 +301,7 @@ def get_grad(objective, network):
     gradient = speed_limits + traffic_lights
     return np.array(gradient)
 
+@memory_profiler.profile
 def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     '''
     First step of optimization approach. In this step there is no previous results to 
@@ -307,6 +333,19 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
 
     return gradient, objective_val
 
+@memory_profiler.profile
+def create_network_and_calculate(T, N, new_params, prev_objective):
+    # Creating the network:
+    bus_network = create_network_from_params(T, N, new_params)
+
+    # Calculating the objective and the gradient
+    new_gradient, new_objective = calculate_objective_and_grad(bus_network, prev_objective)
+
+    bus_network = None
+
+    return new_gradient, new_objective
+
+@memory_profiler.profile
 def calculate_objective_and_grad(bus_network, prev_objective, objective_fnc = average_delay_time):
     densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
     objective = objective_fnc(bus_delays)
@@ -326,6 +365,7 @@ def calculate_objective_and_grad(bus_network, prev_objective, objective_fnc = av
     bus_network = None
     return gradient, objective_val
 
+@memory_profiler.profile
 def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
     '''
     Performs gradient step with armijo line search.
@@ -358,17 +398,11 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         print(f"Updating the parameters...")
         new_params = update_params(prev_params, scaled_grad)
 
-        # 3. Create network using the new parameters
-        print(f"Creating the network with updated parameters")
-        bus_network = create_network_from_params(T, N, new_params)
-
-        # 4. Calculate objective and gradient - this should be done in separate function so that 
-        #    memory is released
-        print(f"Calculating the objective and gradient at the next iterate...")
-        new_gradient, new_objective = calculate_objective_and_grad(bus_network, prev_objective)
-        bus_network = None
+        # 3. Create network using the new parameters and calculate the objective and gradient
+        print(f"Creating the network with updated parameters and calculating the gradient/objective:")
+        new_gradient, new_objective = create_network_and_calculate(T, N, new_params, prev_objective)
         
-        # 5. Check armijo condition:
+        # 4. Check armijo condition:
         print(f"Checking the Armijo condition...")
         if new_gradient is None:
             armijo_satisfied == False
@@ -391,18 +425,20 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             # stop iterating and return the old iterate
             return prev_params, prev_gradient, prev_objective
 
-#@memory_profiler.profile
+@memory_profiler.profile
 def gradient_descent(filename,  debugging = True):
     '''
     Full method for the gradient descent algorithm. The funcion should take in a filename for 
     the initial configuration of the network. In addition the objetive type needs to be specified.
 
     Nothing inside this function should require gradient!
+    Important that any references to parameters requiring gradient is not kept inside here
     '''
 
     # 1. Load configuration from filename
     print("Loading from file")
     T, N, speed_limits, cycle_times = load_bus_network(filename)
+    # T = 40
     
     # 1.1 Map from speed_limits and cycle_times to one parameter list
     print("Extracting parameters")
@@ -428,7 +464,7 @@ def gradient_descent(filename,  debugging = True):
     # 3. Perform gradient descent steps until some criteria is reached
     curr_iter, max_iter, error, tol = 0, 100, 1, 1.e-4
     if debugging:
-        max_iter = 5
+        max_iter = 3
 
     while curr_iter < max_iter and error > tol:
 

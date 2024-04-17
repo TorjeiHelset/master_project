@@ -119,7 +119,8 @@ class Road:
             print(len(Vmax))
             print(len(control_points))
         assert(len(Vmax) == len(control_points)+1)
-        self.Vmax = [torch.tensor(float(v / 3.6), requires_grad=True) for v in Vmax]
+        #self.Vmax = [torch.tensor(float(v / 3.6), requires_grad=True) for v in Vmax]
+        self.Vmax = Vmax#[v / 3.6 for v in Vmax]
         self.control_points = control_points
     
         # Depending on the order of scheme, the padding might differ

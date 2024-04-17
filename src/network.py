@@ -404,11 +404,49 @@ class RoadNetwork:
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
     
-    def get_tensors():
+    def get_speed_limit_grads(self):
         '''
-        Return a list of all tensors requiring gradient of the network
+        Return a list of the derivative wrt the different speed limits of the roads
         '''
-        raise NotImplementedError("Returning all tensors of network not implemented yet")
+        tensors = []
+        ids_added = []
+        for road in self.roads:
+            # print(f"Looking at road {road.id}")
+            if road.id[-2:] in ["fw", "bw"]:
+                if road.id[:-3] not in ids_added:
+                    ids_added.append(road.id[:-3])
+                    for v in road.Vmax:
+                        # print(f"Adding {road.id}")
+                        # tensors.append(v.grad)
+                        tensors.append(v.grad.item())
+
+
+            else:
+                if road.id[:-1] not in ids_added:
+                    ids_added.append(road.id[:-1])
+                    for v in road.Vmax:
+                        # print(f"Adding {road.id}")
+                        # tensors.append(v.grad)
+                        tensors.append(v.grad.item())
+        return tensors
+
+    def get_traffic_light_grads(self):
+        '''
+        Return a list of the derivative wrt the different speed limits of the roads
+        '''
+        tensors = []
+        for junction in self.junctions:
+            for light in junction.trafficlights:
+                for c in light.cycle:
+                    # print(f"Adding regular light connecting {[road.id for road in junction.roads]}")
+                    tensors.append(c.grad)
+
+            for light in junction.coupled_trafficlights:
+                for c in light.cycle:
+                    # print(f"Adding coupled light connecting {[road.id for road in junction.roads]}")
+
+                    tensors.append(c.grad)
+        return tensors
     
     def draw_network(self):
         # Function to draw a graph of the network to check that it is properly set up
