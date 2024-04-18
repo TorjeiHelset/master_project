@@ -530,7 +530,7 @@ def draw_colored_line(colors, points):
     orthogonalEnd()
     glPopMatrix()
 
-def draw_busses(bus_positions):
+def draw_busses(bus_positions, color = [1.0, 0.0, 0.0]):
     glPushMatrix()
     orthogonalStart()
     iw = 800
@@ -542,14 +542,15 @@ def draw_busses(bus_positions):
         if bus_position != (None, None):
             glPointSize(7.0)
             glBegin(GL_POINTS)
-            glColor3f(1.0, 0.0, 0.0)
+            glColor3f(*color)
             glVertex2f(bus_position[0]*iw, bus_position[1]*ih)
             glEnd()
     orthogonalEnd()
     glPopMatrix()
 
 class BusDensityRenderer:
-    def __init__(self, colors, road_points, bus_points, interval_seconds, output_name):
+    def __init__(self, colors, road_points, bus_points, interval_seconds, output_name,
+                 old_bus_points = []):
         '''
         Road poitns is a list of points defining the network. This is fixed for all times
         Bus points is a list of points defining the position of the bus. This changes for each time step
@@ -557,6 +558,7 @@ class BusDensityRenderer:
         self.colors = colors
         self.road_points = road_points
         self.bus_points = bus_points
+        self.old_bus_points = old_bus_points
         self.current_idx = 0
         self.interval_seconds = interval_seconds
         self.last_update_time = time.time()
@@ -566,6 +568,27 @@ class BusDensityRenderer:
         if not output_name.endswith('.gif'):
             output_name += '.gif'
         self.output_name = output_name
+
+    def display_comparing(self):
+        # Clear window
+        glClearColor (0.0,0.0,0.0,0.0)
+        glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+        # Draw background
+        background()
+        # Draw densities on road
+        draw_colored_line(self.colors[self.current_idx], self.road_points[self.current_idx])
+        # Draw busses
+        draw_busses([points[self.current_idx] for points in self.bus_points], [0.0, 0.0, 1.0])
+        draw_busses([points[self.current_idx] for points in self.old_bus_points], [1.0, 0.0, 0.0])
+
+        gluLookAt (0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+        glutSwapBuffers()
+
+        # Read the content of the framebuffer and save as an image
+        data = glReadPixels(0, 0, 800, 600, GL_RGBA, GL_UNSIGNED_BYTE)
+        image = Image.frombytes("RGBA", (800, 600), data)
+        self.images.append(image.transpose(Image.FLIP_TOP_BOTTOM))
 
     def display(self):
         # Clear window
@@ -610,7 +633,6 @@ class BusDensityRenderer:
         print("Saving GIF as:", self.output_name)
         self.images[0].save(self.output_name, save_all=True, append_images=self.images[1:], optimize=False, duration=int(self.interval_seconds * 1000), loop=0) 
         print("GIF saved.")
-
 
 def main():
     global texture
@@ -668,9 +690,61 @@ def draw_busses_w_densities(bus_network, busses, bus_lengths, densities, output_
     glutTimerFunc(1000, renderer.timer, 0)
     glutMainLoop()
 
+def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_busses = [],
+                              old_lengths = [], output_name='animation.gif',
+                              background_img = 'kvadraturen_simple2.png',
+                              interval_seconds=0.05):
+    # Road positions go from -1 to 7 in x direction and 0 to 9 in y direction
+    # These need to be correctly mapped to the display window
+    # Map from [-1,7]x[0,9] to [0+left_margin,1-right_margin]x[0+bottom_margin,1-top_margin] 
+    # x = -1 should map to x = 0.015
+    # x = 7 should map to x = 0.92
+    # y = 0 should map to y = 0.92
+    # y = 9 should map to y = 0.22
+    # note that a high low y value of road position should map to a high pixel value in animation
+
+    # Converting points to correct format
+    try:
+        times = list(bus_lengths[0].keys())
+        lengths = [[float(bus_lengths[i][t]) for t in times] for i in range(len(busses))]
+        old_lengths = [[float(old_lengths[i][t]) for t in times] for i in range(len(old_busses))]
+
+    except:
+        times = list(bus_lengths['0'].keys())
+        # print("Times:", times)
+        lengths = [[float(bus_lengths[str(i)][t]) for t in times] for i in range(len(busses))]
+        old_lengths = [[float(old_lengths[str(i)][t]) for t in times] for i in range(len(old_busses))]
+
+
+    positions, x_shift, y_shift = find_points_of_busses(bus_network, busses, lengths)
+    old_positions, old_x_shift, old_y_shift = find_points_of_busses(bus_network, old_busses, old_lengths)
+
+    
+    # print(lengths)
+    road_points, bus_points = convert_bus_positions(bus_network, positions, x_shift, y_shift)
+    _, old_bus_points = convert_bus_positions(bus_network, old_positions, old_x_shift, old_y_shift)
+    colors, points = create_density_points_from_road_points(bus_network, densities, road_points)
+    # print(bus_points[0])
+    # Create object for displaying the simulation
+    renderer = BusDensityRenderer(colors, points, bus_points, interval_seconds, output_name,
+                                  old_bus_points)
+
+    # Initializing the window
+    global texture
+    glutInit()
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE)
+    glutInitWindowSize(800, 600)
+    glutCreateWindow(b"OpenGL Window")
+
+    # Setting up callback functions for the animation
+    glutDisplayFunc(renderer.display_comparing)
+    glutReshapeFunc(reshape)
+    texture = load_texture(background_img)
+    glutTimerFunc(1000, renderer.timer, 0)
+    glutMainLoop()
 
 if __name__ == "__main__":
-    scenario = 5
+    scenario = 6
     match scenario:
         case 0:
             import json
@@ -850,4 +924,42 @@ if __name__ == "__main__":
 
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,
                                     densities, output_name="roundabout_750_internal_new.gif",
+                                    background_img="background_imgs/blurred_kvadraturen.png")
+            
+        case 6:
+            import json
+            import bus
+            import network as nw
+            import generate_kvadraturen as gk
+
+            print("Loading results...")
+            f = open("results/kvadraturen_500_temp_opt.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+
+            f = open("kvadraturen_networks/1_1_temp_opt.json")
+            data = json.load(f)
+            f.close()
+            T = data["T"]
+            N = data["N"]
+            speed_limits = data["speed_limits"] # Nested list
+            control_points = data["control_points"] # Nested list
+            cycle_times = data["cycle_times"] # Nested list
+            bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+
+            f = open("results/kvadraturen_500_orig_lengths.json")
+            data = json.load(f)
+            f.close()
+
+            bus_network_2 = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+            old_busses = bus_network_2.busses
+            old_lengths = data[0]
+
+
+            draw_busses_compare_w_opt(bus_network, bus_network.busses, bus_lengths,
+                                    densities, old_busses, old_lengths, output_name="comparing_500.gif",
                                     background_img="background_imgs/blurred_kvadraturen.png")
