@@ -56,7 +56,7 @@ def long_stick_prob(x, d):
     if x <= 1 - d:
         return x / (1 - d)
     elif x <= d:
-        return 1
+        return torch.tensor(1.0)
     else:
         return (1 - x) / (1 - d)
     
@@ -101,11 +101,16 @@ def n_stick_quadrature(d_list):
     '''
     all lengths in d in d_list should satisfy 0 < d < 1
     Evaluate integral using trapezoidal rule
+
+    
     '''
     try:
-        return trapezoidal_rule(lambda x: 1 - torch.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])),
-                                0, 1, 4)
+        # return trapezoidal_rule(lambda x: 1 - torch.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])),
+        #                         0, 1, 4)
+        return trapezoidal_rule(lambda x : 1.0 - torch.prod(torch.stack([1.-stick_prob(x,d) for d in d_list])),
+                                0,1,4)
     except:
+        # This should probably never happen - maybe throw an exception...
         return trapezoidal_rule(lambda x: 1 - np.prod(torch.tensor([1-stick_prob(x,d) for d in d_list])),
                                 0, 1, 4)
     
