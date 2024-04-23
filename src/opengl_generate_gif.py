@@ -745,6 +745,7 @@ def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_b
 
 if __name__ == "__main__":
     scenario = 6
+    
     match scenario:
         case 0:
             import json
@@ -838,6 +839,7 @@ if __name__ == "__main__":
 
         case 2:
             main()
+        
         case 3:
             import json
             import bus

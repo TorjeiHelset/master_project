@@ -48,7 +48,9 @@ class TrafficLightContinous:
         assert(len(cycle) >= 2)
         # First time in cycle will be time spent in first state
         self.cycle_time = sum(cycle)
-        self.cycle = [torch.tensor(c, requires_grad=True) for c in cycle]      
+        # self.cycle = [torch.tensor(c, requires_grad=True) for c in cycle]  
+        self.cycle = cycle
+            
 
 
     def init_activation_function(self, T):
@@ -119,7 +121,8 @@ class CoupledTrafficLightContinuous:
         assert(len(cycle) >= 2)
         # First time in cycle will be time spent in first state
         self.cycle_time = sum(cycle)
-        self.cycle = [torch.tensor(c, requires_grad=True) for c in cycle]
+        # self.cycle = [torch.tensor(c, requires_grad=True) for c in cycle]
+        self.cycle = cycle
         self.delaytime = delaytime # Number of seconds where both lights are red
 
     
