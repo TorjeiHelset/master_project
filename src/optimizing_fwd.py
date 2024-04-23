@@ -19,6 +19,7 @@ import generate_kvadraturen as gk
 import numpy as np
 import memory_profiler
 from torch.func import jacfwd
+from torch.autograd.functional import jacobian
 
 
 n_speeds = []
@@ -303,7 +304,7 @@ def run_simulation_from_params(params, T, N):
     objective_val = objective.detach().item()
     print(f"Objective: {objective_val}")
 
-    return objective, objective
+    return objective# , objective
 
 # @memory_profiler.profile
 def gradient_descent_calc_step(T, N, params):
@@ -312,7 +313,10 @@ def gradient_descent_calc_step(T, N, params):
     compare with.
     '''
 
-    gradient, objective_val = jacfwd(run_simulation_from_params, has_aux=True)(params, T, N)
+    # gradient, objective_val = jacfwd(run_simulation_from_params, has_aux=True)(params, T, N)
+    run_simulation_temp = lambda x : run_simulation_from_params(x, T, N)
+    gradient = jacobian(run_simulation_temp, params, vectorize=True, strategy="forward-mode")
+    objective_val = run_simulation_from_params(params, T, N)
 
     return gradient, objective_val
 
