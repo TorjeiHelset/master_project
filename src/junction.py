@@ -245,6 +245,28 @@ class Junction:
             
         return control_point
 
+    def check_roads_contained(self, id_1, id_2):
+        id_1_in = False
+        in_idx = -1
+        for i in self.entering:
+            if self.roads[i].id == id_1:
+                id_1_in = True
+                in_idx = i
+                break
+        
+        id_2_in = False
+        out_idx = -1
+        for i in self.leaving:
+            if self.roads[i].id == id_2:
+                id_2_in = True
+                out_idx = i
+                break
+        
+        if not id_1_in or not id_2_in:
+            return False
+        else:
+            return True
+        
     def get_activation(self, t, id_1, id_2):
         '''
         Given a time t, this function returns the activation of roads with id_1 and id_2

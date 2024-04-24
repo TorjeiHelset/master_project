@@ -95,7 +95,7 @@ class RoadNetwork:
         #---------------------------------------------------
 
         # 2. Use position of bus to calculate the slowdown factors
-        slowdown_factors[i], bus_started = bus.get_slowdown_factor(slowdown_factors[i].clone(), road_id,
+        slowdown_factors[i], bus_started, stop_factor = bus.get_slowdown_factor(slowdown_factors[i].clone(), road_id,
                                                       length, road)
         if bus_started:
             slowing_idx = i
@@ -155,7 +155,9 @@ class RoadNetwork:
 
         new_length = length / road.L
         # speed = road.get_speed(new_length) * road.L
-        speed = road.get_speed_updated(new_length, dt) * road.L
+        # Use the distance to the bus stop to calculate the slowdown
+        # Also multiply by 1. - stop_factor to get the slowdown of the bus
+        speed = road.get_speed_updated(new_length, dt) * road.L * (1.0 - stop_factor)
 
 
         activation = torch.tensor(1.0)
@@ -177,19 +179,21 @@ class RoadNetwork:
                     break
             if activation >= 0.5:
                 # The bus can enter the junction, but the flux on the outgoing road should also be considered
-                speed = torch.minimum(speed, j.get_speed(t, road_id, next_id))
+                # Here there is an error! 
+                # Need to use the correct junction!!!
+                for j in self.junctions:
+                    if j.check_roads_contained(road_id, next_id):
+                        jnc_speed = torch.maximum((road.L*road.b - length) / dt - 0.0001,
+                                                  j.get_speed(t, road_id, next_id))
+                        speed = torch.minimum(speed, jnc_speed)
+                        break
             else:
                 # Setting speed equal to 0 means that the bus stops before the junction...
                 # Should maybe set the speed as the minimum from the get_speed
                 # and the speed that ensures the bus reaches the junction...
-                # speed = torch.tensor(0.0) # Diff erentiable...?
+                # speed = torch.tensor(0.0) # Differentiable...?
                 # put speed so that the bus almost reaches the junction
                 speed = torch.minimum(speed, (road.L*road.b - length) / dt - 0.0001) 
-
-
-        # At this point the position to the bus stop on this road can be used to update the
-        # speed
-        # If the bus stop is close, then the speed can be reduced
 
         relative_length = road.L*road.b - length # Remaining length
         # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
@@ -234,7 +238,10 @@ class RoadNetwork:
         # Okay to use local speed here?
         if length >= road.L*road.b:
             if activation >= 0.5:
-                speed = j.get_speed(t, road_id, next_id) 
+                for j in self.junctions:
+                    if j.check_roads_contained(road_id, next_id):
+                        speed = torch.maximum((road.L*road.b - length) / dt - 0.0001,
+                                                  j.get_speed(t, road_id, next_id))
             else:
                 # Setting speed equal to 0 means that the bus stops before the junction...
                 # Should maybe set the speed as the minimum from the get_speed

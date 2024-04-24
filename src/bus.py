@@ -130,8 +130,9 @@ class Bus:
         next_idx = -1
         if next_id != "":
             # Next road is also a part of the simulation
-            for i, road in enumerate(self.ids):
-                if road == next_id:
+            # for i, road in enumerate(self.ids):
+            for i, road in enumerate(network.roads):
+                if road.id == next_id:
                     next_idx = i
                     break
 
@@ -166,10 +167,11 @@ class Bus:
         '''
         if not self.active:
             # Bus not actually a part of the simulation yet
-            return slowdown_factor, False
+            return slowdown_factor, False, torch.tensor(0.0)
         
         # ADDING new tensor factors at each iteration - could maybe use slowdown_factor directly
         factors = torch.ones(road.N_internal+1)
+        stop_factor = torch.tensor(0.0)
         for stop in self.stops:
             if stop[0] == road_id:
                 # This stop is on the road - need to calculate the distance from the bus:
@@ -185,7 +187,7 @@ class Bus:
                 interface_factors = calculate_slowdown_factor(length - interface_positions*road.L)
                 factors = torch.minimum(factors, 1.0 - interface_factors*stop_factor)     
         
-        return factors, True
+        return factors, True, stop_factor
 
     def update_position(self, dt, t, speed, activation, length, printing = False):
         '''
