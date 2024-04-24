@@ -334,7 +334,6 @@ def shift_single_point(id, left, right):
         shifted_right = right
     return shifted_left, shifted_right
 
-
 def create_density_points_from_road_points(network, densities,
                                            road_points):
     colors = []
@@ -360,11 +359,50 @@ def create_density_points_from_road_points(network, densities,
             road = network.roads[i]
             # Shifting of left and right points
             left, right = shift_single_point(road.id, road_points[i][0], road_points[i][1])
+
             n = len(colors[-1][i])
             x = np.linspace(left[0], right[0], n)
             y = np.linspace(left[1], right[1], n)
             points[-1][i] = [(x[i], y[i]) for i in range(len(x))]
     return colors, points
+
+def create_density_points_from_road_points_w_arrows(network, densities,
+                                           road_points):
+    colors = []
+    points = []
+    arrows = []
+    try:
+        times = list(densities[0].keys())
+    except:
+        times = list(densities['0'].keys())
+
+    for t in times:
+        # Get densities at time t
+        try:
+            density = [densities[i][t] for i in range(len(densities))]
+        except:
+            density = [densities[str(i)][t] for i in range(len(densities))]
+
+        # Transform densities to colors
+        colors.append([None] * len(density))
+        points.append([None] * len(density))
+        for i, d in enumerate(density):
+            # d is an array of densities -> convert to colors
+            colors[-1][i] = [map_density_to_color(rho) for rho in d]
+            road = network.roads[i]
+            if t == times[0]:
+                if road.id in ["h_w_1", "h_w_2", "tollbod_1bw"]:
+                    arrows.append(True)
+                else:
+                    arrows.append(False)
+            # Shifting of left and right points
+            left, right = shift_single_point(road.id, road_points[i][0], road_points[i][1])
+
+            n = len(colors[-1][i])
+            x = np.linspace(left[0], right[0], n)
+            y = np.linspace(left[1], right[1], n)
+            points[-1][i] = [(x[i], y[i]) for i in range(len(x))]
+    return colors, points, arrows
 
 def draw_arrows_with_orientation(start, end, iw, ih, line_width=1):
     # Draws two red arrows in the orientation of the road
@@ -530,6 +568,18 @@ def draw_colored_line(colors, points):
     orthogonalEnd()
     glPopMatrix()
 
+def draw_colored_line_w_arrows(colors, points, arrows):
+    glPushMatrix()
+    orthogonalStart()
+    iw = 800
+    ih = 600
+    glTranslatef( -iw/2, -ih/2, 0 )
+    line_width = 6.0  # Adjust the line width as needed
+    for i in range(len(colors)):
+        draw_line_with_colors(colors[i], points[i], line_width, iw, ih, arrow=arrows[i])
+    orthogonalEnd()
+    glPopMatrix()
+
 def draw_busses(bus_positions, color = [1.0, 0.0, 0.0]):
     glPushMatrix()
     orthogonalStart()
@@ -550,7 +600,7 @@ def draw_busses(bus_positions, color = [1.0, 0.0, 0.0]):
 
 class BusDensityRenderer:
     def __init__(self, colors, road_points, bus_points, interval_seconds, output_name,
-                 old_bus_points = []):
+                 old_bus_points = [], arrows = None):
         '''
         Road poitns is a list of points defining the network. This is fixed for all times
         Bus points is a list of points defining the position of the bus. This changes for each time step
@@ -568,6 +618,9 @@ class BusDensityRenderer:
         if not output_name.endswith('.gif'):
             output_name += '.gif'
         self.output_name = output_name
+        if arrows is None:
+            arrows = [True for _ in range(len(road_points[0]))]
+        self.arrows = arrows
 
     def display_comparing(self):
         # Clear window
@@ -577,7 +630,8 @@ class BusDensityRenderer:
         # Draw background
         background()
         # Draw densities on road
-        draw_colored_line(self.colors[self.current_idx], self.road_points[self.current_idx])
+        draw_colored_line_w_arrows(self.colors[self.current_idx], self.road_points[self.current_idx],
+                                   self.arrows)
         # Draw busses
         draw_busses([points[self.current_idx] for points in self.bus_points], [0.0, 0.0, 1.0])
         draw_busses([points[self.current_idx] for points in self.old_bus_points], [1.0, 0.0, 0.0])
@@ -723,11 +777,15 @@ def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_b
     # print(lengths)
     road_points, bus_points = convert_bus_positions(bus_network, positions, x_shift, y_shift)
     _, old_bus_points = convert_bus_positions(bus_network, old_positions, old_x_shift, old_y_shift)
-    colors, points = create_density_points_from_road_points(bus_network, densities, road_points)
+    # colors, points = create_density_points_from_road_points(bus_network, densities, road_points)
+    colors, points, arrows = create_density_points_from_road_points_w_arrows(bus_network, densities, road_points)
+
     # print(bus_points[0])
     # Create object for displaying the simulation
+    # renderer = BusDensityRenderer(colors, points, bus_points, interval_seconds, output_name,
+    #                               old_bus_points)
     renderer = BusDensityRenderer(colors, points, bus_points, interval_seconds, output_name,
-                                  old_bus_points)
+                                  old_bus_points, arrows)
 
     # Initializing the window
     global texture
@@ -935,7 +993,7 @@ if __name__ == "__main__":
             import generate_kvadraturen as gk
 
             print("Loading results...")
-            f = open("results/kvadraturen_500_temp_opt.json")
+            f = open("results/kvadraturen_500_temp_opt_internal.json")
             data = json.load(f)
             f.close()
             densities = data[0]
@@ -963,5 +1021,5 @@ if __name__ == "__main__":
 
 
             draw_busses_compare_w_opt(bus_network, bus_network.busses, bus_lengths,
-                                    densities, old_busses, old_lengths, output_name="comparing_500.gif",
-                                    background_img="background_imgs/blurred_kvadraturen.png")
+                                    densities, old_busses, old_lengths, output_name="comparing_500_w_stops.gif",
+                                    background_img="background_imgs/blurred_kvadraturen_w_stops.png")
