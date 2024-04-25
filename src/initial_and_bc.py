@@ -32,7 +32,6 @@ def init_density(max_dens, type):
                 return torch.linspace(max_dens, 0, len(x))
             return lin_decr
 
-
 def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_jumps = [], 
                         in_speed = 50, L = 50, amplitude = 0.3, period = 100, 
                         flux_amplitude = 0.01):
@@ -93,8 +92,3 @@ def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_
         case 4:
             # Fluxes given by sinus wave centered around fluxes[0]
             raise NotImplementedError("Sinus boundary condition for flux on incoming road not implemented")
-            
-
-                    
-
-

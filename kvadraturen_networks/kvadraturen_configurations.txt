@@ -1,0 +1,56 @@
+Short explanation of the network configurations described in the different files
+This folder consists of two types of files, network_x.json files and config_x_y.json files.
+The network files contain the number of internal cells to be used for every 25 metres, as well 
+as the total time of the simulation. In addition it contains starting points for the speed limits and the 
+cycle times for the traffic lights. 
+The speed limits may vary in time, in which case both of the speed limits as well as the time
+it changes need to be specified.
+
+The configuration files describe in more detail the initial and boundary conditions being used in one
+of the networks in the network files.
+We assume a constant density on each road, but this density may vary from road to road. The config 
+file specifies the initial densities on all roads.
+In addition it specifies parameters used for the boundary conditions. In most cases we make use of a 
+step function.
+
+Network files:
+    1:
+        Small network for the purposes of testing that optimization works as intended
+        For this network the cell size is 12.5 metres
+        Upper and lower speed limits are 20 and 50 km/h for every road (also roundabouts)
+        Upper and lower times for red and green lights are 10 and 200 seconds
+        The total simulation time is 30 seconds
+
+    2:
+        For this network the cell size is 12.5 metres
+        Upper and lower speed limits are 20 and 50 km/h for every road (also roundabouts)
+        Upper and lower times for red and green lights are 10 and 200 seconds
+        The total simulation time is 750 seconds
+        The speed limits may change after 10 minutes
+        All cycles of traffic lights only consists of two times
+        The total number of parameters being optimized is 
+        7 * 2 + 13 * 2 = 40
+        (7 different speed limits that may change in time and 13 traffic lights each with two
+        parameters)
+
+    3:
+        Similar network as 1-1, but with smaller cell sizes and longer simulation time
+        For this network the cell size is 5 metres
+        Upper and lower speed limits are 20 and 50 km/h for every road (also roundabouts)
+        Upper and lower times for red and green lights are 10 and 200 seconds
+        The total simulation time is 1 hour
+        The speed limits may change every 10 minutes
+        The total number of parameters being optimized is 
+        7*6 + 13*2 = 68
+
+    4:
+        Similar network as 1-1, but with smaller cell sizes and longer simulation time
+        For this network the cell size is 5 metres
+        Upper and lower speed limits are 20 and 50 km/h for every road (also roundabouts)
+        Upper and lower times for red and green lights are 10 and 200 seconds
+        The total simulation time is 3 hours
+        The speed limits may change every 30 minutes
+        The total number of parameters being optimized is 68
+
+Configuration files:
+

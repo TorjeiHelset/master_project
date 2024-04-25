@@ -11,7 +11,7 @@ w1 = 0
 h1 = 0
 y_shift_const = 0.008 # relative to the [0,1]x[0,1] coordinate system
 x_shift_const = y_shift_const * 3/4
-color_gradient = 0
+color_gradient = 1
 arrow_length = 5
 
 def reshape(w, h):
@@ -240,7 +240,12 @@ def map_density_to_color(value):
             r = 1.0 - value
             g = 1.0 - value
             b = 1.0 - value
-        case 1: # Blue/red with intermediate steps
+        case 1: # Red monochrome scale
+            r = 1.0
+            g = 1.0 - value
+            b = 1.0 - value
+
+        case 2: # Blue/red with intermediate steps
             # Interpolate between blue and red
             # 0.0 -> blue, 
             # 0.25 -> cyan
@@ -268,7 +273,7 @@ def map_density_to_color(value):
                 g = -4 * value + 4
                 b = 0
 
-        case 2: # Blue Red
+        case 3: # Blue Red
             # 0.0 -> blue, 
             # 0.25 -> (0, 0.5, 0.5)
             # 0.5 -> green
@@ -284,7 +289,7 @@ def map_density_to_color(value):
                 g = 1.0 - 2.0 * (value - 0.5)
                 b = 0.0
 
-        case 3: # Green/red
+        case 4: # Green/red
             # Interpolate between green and red
             # 0.0 -> green, 0.5 -> yellow, 1.0 -> red
             if value <= 0.5:
@@ -633,8 +638,22 @@ class BusDensityRenderer:
         draw_colored_line_w_arrows(self.colors[self.current_idx], self.road_points[self.current_idx],
                                    self.arrows)
         # Draw busses
-        draw_busses([points[self.current_idx] for points in self.bus_points], [0.0, 0.0, 1.0])
-        draw_busses([points[self.current_idx] for points in self.old_bus_points], [1.0, 0.0, 0.0])
+        match color_gradient:
+            case 0: # Black white scale
+                # Pick red and blue busses
+                color_1 = [0.0, 0.0, 1.0]
+                color_2 = [1.0, 0.0, 0.0]
+            case 1: # Red monochrome
+                # yellow and blue busses
+                color_1 = [0.0, 0.0, 1.0]
+                color_2 = [0.8, 1.0, 0.0]
+            case _: 
+                # 2 gray scale busses
+                color_1 = [0.2, 0.2, 0.2]
+                color_2 = [0.8, 0.8, 0.8]
+
+        draw_busses([points[self.current_idx] for points in self.bus_points], color_1)
+        draw_busses([points[self.current_idx] for points in self.old_bus_points], color_2)
 
         gluLookAt (0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
         glutSwapBuffers()
@@ -1020,6 +1039,37 @@ if __name__ == "__main__":
             old_lengths = data[0]
 
 
-            draw_busses_compare_w_opt(bus_network, bus_network.busses, bus_lengths,
-                                    densities, old_busses, old_lengths, output_name="comparing_500_w_stops.gif",
-                                    background_img="background_imgs/blurred_kvadraturen_w_stops.png")
+            # draw_busses_compare_w_opt(bus_network, [bus_network.busses[0]], [bus_lengths['0']],
+            #                         densities, [old_busses[0]], [old_lengths['0']], output_name="comparing_500_w_stops_test.gif",
+            #                         background_img="background_imgs/blurred_kvadraturen_w_stops.png")
+            
+            # draw_busses_compare_w_opt(bus_network, bus_network.busses, bus_lengths,
+            #                         densities, old_busses, old_lengths, output_name="comparing_500_w_stops_test.gif",
+            #                         background_img="background_imgs/blurred_kvadraturen_w_stops.png")
+            
+            # for t, length in bus_lengths['2'].items():
+            #     print(f"Length at time {t}: {length}")
+
+
+            try:
+                times = list(bus_lengths[0].keys())
+                lengths = [[float(bus_lengths[i][t]) for t in times] for i in range(len(bus_network.busses))]
+                old_lengths = [[float(old_lengths[i][t]) for t in times] for i in range(len(old_busses))]
+
+            except:
+                times = list(bus_lengths['0'].keys())
+                # print("Times:", times)
+                lengths = [[float(bus_lengths[str(i)][t]) for t in times] for i in range(len(bus_network.busses))]
+                old_lengths = [[float(old_lengths[str(i)][t]) for t in times] for i in range(len(old_busses))]
+
+
+            positions, x_shift, y_shift = find_points_of_busses(bus_network, bus_network.busses, lengths)
+            old_positions, old_x_shift, old_y_shift = find_points_of_busses(bus_network, old_busses, old_lengths)
+
+            for i in range(len(positions)):
+                print(len(positions[i]))
+                print(len(old_positions[i]))
+
+
+            # for i, t in enumerate(times):
+            #     print(f"Position at time {t}: {old_positions[0][i]}")
