@@ -108,6 +108,12 @@ class RoundaboutJunction:
             self.secondary_in.right = True
             self.secondary_out.left = True
 
+            # if self.secondary_in.id == "e18_w_2bw":
+            #     print(f"e18_w_2bw is entering a roundabout!")
+
+            # if self.secondary_out.id == "e18_w_2bw":
+            #     print(f"e18_w_2bw is leaving a roundabout!")
+
     def divide_flux(self, dt, t):
         '''
         The junction of a roundabout are special, and the explicit solution is known

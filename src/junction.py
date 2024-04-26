@@ -174,6 +174,13 @@ class Junction:
         self.road_in = [self.roads[i] for i in self.entering]
         self.road_out = [self.roads[i] for i in self.leaving]
 
+        # for road in self.road_in:
+        #     if road.id == "e18_w_2bw":
+        #         print(f"e18_w_2bw is entering a junction!")
+
+        # for road in self.road_out:
+        #     if road.id == "e18_w_2bw":
+        #         print(f"e18_w_2bw is leaving a junction!")
 
         self.duty_to_gw = duty_to_gw
         # Add check on format of priorities and crossing_connections
