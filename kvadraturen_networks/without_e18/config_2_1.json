@@ -1,0 +1,66 @@
+{
+    "init_densities" : [
+        0.2,
+        0.2, 
+        0.2,
+        0.2,
+        0.2, 
+        0.2,
+        0.2,
+        0.2,
+        0.2
+    ],
+    "boundary_fncs" : [
+        {
+            "type" : 1,
+            "max_dens" : 1,
+            "densities" : [
+                0.3,
+                0.1,
+                0.3
+            ],
+            "jumps" : [
+                300,
+                600
+            ],
+            "in_speed" : 30.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 2,
+            "densities" : [
+                0.05,
+                0.6,
+                0.1
+            ],
+            "jumps" : [
+                100,
+                400
+            ],
+            "in_speed" : 50.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 2,
+            "densities" : [
+                0.15,
+                0.2,
+                0.15
+            ],
+            "jumps" : [
+                200,
+                800
+            ],
+            "in_speed" : 50.0
+        }
+    ],
+    "fwd_schedules" : [
+
+    ],
+    "bwd_schedules" : [
+
+    ],
+    "roundabout_inflows" : [
+
+    ]
+}

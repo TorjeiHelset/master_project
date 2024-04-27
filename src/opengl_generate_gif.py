@@ -821,7 +821,7 @@ def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_b
     glutMainLoop()
 
 if __name__ == "__main__":
-    scenario = 6
+    scenario = 7
     
     match scenario:
         case 0:
@@ -1073,3 +1073,24 @@ if __name__ == "__main__":
 
             # for i, t in enumerate(times):
             #     print(f"Position at time {t}: {old_positions[0][i]}")
+
+        case 7:
+            import json
+            import bus
+            import network as nw
+            import generate_kvadraturen as gk
+
+            print("Loading results...")
+            f = open("results/test_w_e18.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            queues = data[1]
+            bus_lengths = data[2]
+            bus_delays = data[3]
+ 
+            bus_network = gk.generate_kvadraturen_w_e18_w_busses(T=500)
+
+            draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,
+                                    densities, output_name="test_e18.gif",
+                                    background_img="background_imgs/white_background.png")

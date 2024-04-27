@@ -1687,6 +1687,73 @@ def create_busses(fwd_schedules, bwd_schedules, network):
 
     return busses
 
+
+def create_busses_e18(schedules, network):
+    # The busses share the same stops
+    ids_fw_19 = ["vs_mainline_3", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw", "festning_4fw", "tollbod_2fw",
+        "elvegata_fw", "lundsbro_fw"]
+    stops_fw_19 = [("h_w_2", 130), ("festning_4fw", 35), ("tollbod_2fw", 30), ("tollbod_2fw", 260)]
+
+    ids_bw_19 = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw",
+        "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw","vs_mainline_1", "vs_mainline_2"]
+    stops_bw_19 = [("tollbod_2bw", 45), ("tollbod_1bw", 80), ("tollbod_1bw", 235), ("v_strand_1bw", 25)]
+
+    ids_fw_m1 = ["e18_1fw", "e18_w_1fw", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw",
+                 "festning_4fw", "tollbod_2fw", "elvegata_fw", "lundsbro_fw"]
+    stops_fw_m1 = []
+    ids_bw_m1 = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw",
+                 "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw", "vs_mainline_1", 
+                 "vs_mainline_2", "vs_mainline_3", "e18_w_1bw", "e18_1bw"]
+    stops_bw_m1 = []
+
+    ids_fw_custom = ["h_w_1", "v_strand_2fw", "v_strand_3fw", "v_strand_4fw", "v_strand_5fw", "v_strand_6fw",
+                     "dronning_1fw", "dronning_2fw", "festning_5bw", "festning_4bw", "festning_3bw",
+                     "festning_2bw", "festning_1bw", "fn_mainline_1", "e18_e_2fw", "e18_4fw"]
+    stops_fw_custom = []
+    ids_bw_custom = ["e18_4bw", "e18_e_1fw", "festning_1fw", "festning_2fw", "festning_3fw", "festning_4fw",
+                     "tollbod_1bw", "v_strand_5bw", "v_strand_4bw", "v_strand_3bw", "v_strand_2bw",
+                     "v_strand_1bw", "vs_mainline_1", "vs_mainline_2", "vs_mainline_3",
+                     "e18_w_1bw", "e18_1bw"]
+    stops_bw_custom = []
+
+    busses = []
+    fw_19_id = 1
+    bw_19_id = 1
+    fw_m1_id = 1
+    bw_m1_id = 1
+    fw_custom_id = 1
+    bw_custom_id = 1
+
+    for schedule in schedules:
+        # Add forward going bus with schedule specified in config
+        start = schedule["start_time"]
+        times = schedule["times"]
+        match schedule["busline"]:
+            case "19_fw":
+                new_bus = bus.Bus(ids_fw_19, stops_fw_19, times, network, id = "19_fw" + str(fw_19_id), start_time=start)
+                fw_19_id += 1
+            case "19_bw":
+                new_bus = bus.Bus(ids_bw_19, stops_bw_19, times, network, id = "19_bw" + str(bw_19_id), start_time=start)
+                bw_19_id += 1
+            case "m1_fw":
+                new_bus = bus.Bus(ids_fw_m1, stops_fw_m1, times, network, id = "m1_fw" + str(fw_m1_id), start_time=start)
+                fw_m1_id += 1
+            case "m1_bw":
+                new_bus = bus.Bus(ids_bw_m1, stops_bw_m1, times, network, id = "m1_bw" + str(bw_m1_id), start_time=start)
+                bw_m1_id += 1
+            case "custom_fw":
+                new_bus = bus.Bus(ids_fw_custom, stops_fw_custom, times, network, id = "custom_fw" + str(fw_custom_id), start_time=start)
+                fw_custom_id += 1
+            case "custom_bw":
+                new_bus = bus.Bus(ids_bw_custom, stops_bw_custom, times, network, id = "custom_bw" + str(bw_custom_id), start_time=start)
+                bw_custom_id += 1
+            case _:
+                raise ValueError(f"{schedule['busline']} is not a valid bus line!")
+            
+        busses.append(new_bus)
+
+
+    return busses
 ###########################################
 # Functions for creating full road networks
 ###########################################
@@ -1952,6 +2019,77 @@ def generate_kvadraturen_w_e18(T = 30):
 
     return network
 
+def generate_kvadraturen_w_e18_w_busses(T = 30):
+    v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
+    elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
+    lundsbro_fw, lundsbro_bw, e18_fw, e18_bw, e18_west_out_fw, \
+    e18_west_out_bw, e18_east_out_fw, e18_east_out_bw = create_roads_w_e18(track_grad=False)
+
+
+    v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs, e18_jncs = create_minimal_junctions_w_params_w_18(v_strand_fw, v_strand_bw, h_w, tollbod_fw, 
+                                                                                                                           tollbod_bw, elvegata_fw, elvegata_bw,
+                                                                                                                           dronning_fw, dronning_bw, festning_fw,
+                                                                                                                           festning_bw, lundsbro_fw, lundsbro_bw, e18_fw,
+                                                                                                                           e18_bw, e18_west_out_fw, e18_west_out_bw,
+                                                                                                                           e18_east_out_fw, e18_east_out_bw, track_grad=False)
+
+
+    mainline_roads, roundabouts = create_roundabouts_w_e18(v_strand_fw[0], v_strand_bw[0], festning_fw[0], festning_bw[0],
+                                                           e18_west_out_fw, e18_west_out_bw, e18_east_out_fw,
+                                                           e18_east_out_bw, track_grad=False)
+    
+    roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
+            elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + \
+            lundsbro_bw + mainline_roads + e18_fw + e18_bw + e18_west_out_fw + e18_west_out_bw + \
+            e18_east_out_fw + e18_east_out_bw
+    
+    junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs + e18_jncs
+
+    temp_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts)
+
+    # Creating the busses:
+    schedules = [
+        {   
+            "busline" : "19_fw",
+            "start_time" : 0.0,
+            "times" : [
+                3, 110, 130, 230
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 0.0,
+            "times" : [
+                4, 130, 190, 250
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 0.0,
+            "times" : []
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 0.0,
+            "times" : []
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 0.0,
+            "times" : []
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 0.0,
+            "times" : []
+        }
+    ]
+
+    busses = create_busses_e18(schedules, temp_network)
+
+    bus_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts, busses=busses)
+    return bus_network
+
 
 
 def generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times, config = None, track_grad = True):
@@ -2023,7 +2161,7 @@ def generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cyc
         return bus_network
 
 if __name__ == "__main__":
-    scenario = 1
+    scenario = 2
 
     match scenario:
         case 0:
@@ -2048,4 +2186,8 @@ if __name__ == "__main__":
 
         case 1:
             network = generate_kvadraturen_w_e18()
+            network.solve_cons_law()
+
+        case 2:
+            network = generate_kvadraturen_w_e18_w_busses(T = 500)
             network.solve_cons_law()
