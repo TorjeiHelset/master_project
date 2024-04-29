@@ -708,7 +708,7 @@ def create_roundabouts(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
 
     # Initial distribution functions:
     if initial_densities is None:
-        initial_fncs = [lambda x : torch.ones_like(x) * 0.2 for _ in range(7)]
+        initial_fncs = [lambda x : torch.ones_like(x) * 0.2 for _ in range(2)]
     else:
         initial_fncs = [ibc.init_density(initial_densities[-2], 1), 
                         ibc.init_density(initial_densities[-1], 1)]
@@ -841,7 +841,7 @@ def create_roundabouts_w_e18(v_strand_fw, v_strand_bw, festning_fw, festning_bw,
 
     # Initial distribution functions:
     if initial_densities is None:
-        initial_fncs = [lambda x : torch.ones_like(x) * 0.2 for _ in range(7)]
+        initial_fncs = [lambda x : torch.ones_like(x) * 0.2 for _ in range(2)]
     else:
         initial_fncs = [ibc.init_density(initial_densities[-2], 1), 
                         ibc.init_density(initial_densities[-1], 1)]
@@ -2019,11 +2019,11 @@ def generate_kvadraturen_w_e18(T = 30):
 
     return network
 
-def generate_kvadraturen_w_e18_w_busses(T = 30):
+def generate_kvadraturen_w_e18_w_busses(T = 30, track_grad=False):
     v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
     elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
     lundsbro_fw, lundsbro_bw, e18_fw, e18_bw, e18_west_out_fw, \
-    e18_west_out_bw, e18_east_out_fw, e18_east_out_bw = create_roads_w_e18(track_grad=False)
+    e18_west_out_bw, e18_east_out_fw, e18_east_out_bw = create_roads_w_e18(track_grad=track_grad)
 
 
     v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs, e18_jncs = create_minimal_junctions_w_params_w_18(v_strand_fw, v_strand_bw, h_w, tollbod_fw, 
@@ -2031,12 +2031,12 @@ def generate_kvadraturen_w_e18_w_busses(T = 30):
                                                                                                                            dronning_fw, dronning_bw, festning_fw,
                                                                                                                            festning_bw, lundsbro_fw, lundsbro_bw, e18_fw,
                                                                                                                            e18_bw, e18_west_out_fw, e18_west_out_bw,
-                                                                                                                           e18_east_out_fw, e18_east_out_bw, track_grad=False)
+                                                                                                                           e18_east_out_fw, e18_east_out_bw, track_grad=track_grad)
 
 
     mainline_roads, roundabouts = create_roundabouts_w_e18(v_strand_fw[0], v_strand_bw[0], festning_fw[0], festning_bw[0],
                                                            e18_west_out_fw, e18_west_out_bw, e18_east_out_fw,
-                                                           e18_east_out_bw, track_grad=False)
+                                                           e18_east_out_bw, track_grad=track_grad)
     
     roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
             elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + \
@@ -2098,78 +2098,86 @@ def generate_kvadraturen_w_e18_w_busses(T = 30):
     bus_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts, busses=busses)
     return bus_network
 
-
-
 def generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times, config = None, track_grad = True):
-    if config is None:
-        return generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times, track_grad=track_grad)
-    else:
-        # Check that config is on the correct format, then create a bus network using the config
-        # Check that all needed keys exist
-        assert "init_densities" in config
-        assert "boundary_fncs" in config
-        assert "fwd_schedules" in config
-        assert "bwd_schedules" in config
-        assert "roundabout_inflows" in config
+    # Checking the input:
+    # assert len(speed_limits) == 12
+    # assert len(control_points) == 12
+    
+    # Check that config is on the correct format, then create a bus network using the config
+    # Check that all needed keys exist
+    # assert "init_densities" in config
+    # assert "boundary_fncs" in config
+    # assert "schedules" in config
+    # assert "roundabout_inflows" in config
 
-        # Check that the number of initial densities, boundary_fncs and roundabout inflow fncs are correct
-        assert len(config["init_densities"]) == 9
-        assert len(config["boundary_fncs"]) == 3
-        assert len(config["roundabout_inflows"]["speeds"]) == 5
-        assert len(config["roundabout_inflows"]["inflows"]) == 5
+    # Check that the number of initial densities, boundary_fncs and roundabout inflow fncs are correct
+    # assert len(config["init_densities"]) == 9
+    # assert len(config["boundary_fncs"]) == 3
+    # assert len(config["roundabout_inflows"]["speeds"]) == 5
+    # assert len(config["roundabout_inflows"]["inflows"]) == 5
 
 
-        # Initialize roads from configuration:
-        v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
-        elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
-        lundsbro_fw, lundsbro_bw = create_roads_minimal_junctions_for_roundabout(N, speed_limits[0], control_points[0],
-                                                                             speed_limits[1], control_points[1],
-                                                                             speed_limits[2], control_points[2],
-                                                                             speed_limits[3], control_points[3],
-                                                                             speed_limits[4], control_points[4],
-                                                                             speed_limits[5], control_points[5],
-                                                                             speed_limits[6], control_points[6],
-                                                                             init_densities=config["init_densities"],
-                                                                             boundary_configs=config["boundary_fncs"],
-                                                                             track_grad = track_grad)
-        # Initialize junctions
-        v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs = create_minimal_junctions_w_params(v_strand_fw, v_strand_bw, h_w,
-                                                                                                            tollbod_fw, tollbod_bw, elvegata_fw,
-                                                                                                            elvegata_bw, dronning_fw, dronning_bw,
-                                                                                                            festning_fw, festning_bw, lundsbro_fw,
-                                                                                                            lundsbro_bw, 
-                                                                                                            [cycle_times[0], cycle_times[1], cycle_times[2], cycle_times[3], 
-                                                                                                            cycle_times[4], cycle_times[5]], cycle_times[6], cycle_times[7],
-                                                                                                            [cycle_times[8], cycle_times[9], cycle_times[10]],
-                                                                                                            [cycle_times[11], cycle_times[12]],
-                                                                                                            track_grad=track_grad)
+    # Initialize roads from configuration:
+    v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, \
+    elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
+    lundsbro_fw, lundsbro_bw, e18_fw, e18_bw, e18_west_out_fw, \
+    e18_west_out_bw, e18_east_out_fw, e18_east_out_bw = create_roads_w_e18(N, speed_limits[0], control_points[0],
+                                                                            speed_limits[1], control_points[1],
+                                                                            speed_limits[2], control_points[2],
+                                                                            speed_limits[3], control_points[3],
+                                                                            speed_limits[4], control_points[4],
+                                                                            speed_limits[5], control_points[5],
+                                                                            speed_limits[6], control_points[6],
+                                                                            speed_limits[7], control_points[7],
+                                                                            speed_limits[8], control_points[8],
+                                                                            speed_limits[9], control_points[9],
+                                                                            speed_limits[10], control_points[10],
+                                                                            speed_limits[11], control_points[11],
+                                                                            init_densities=config["init_densities"],
+                                                                            boundary_configs=config["boundary_fncs"],
+                                                                            track_grad = track_grad)
 
-        # Initialize roundabouts from configuration
-        mainline_roads, roundabouts = create_roundabouts(v_strand_fw[0], v_strand_bw[0],
-                                                     festning_fw[0], festning_bw[0],
-                                                     speed_limits[7], speed_limits[8], 
-                                                     control_points[6], control_points[7], N,
-                                                     initial_densities = config["init_densities"],
-                                                     inflow_configs = config["roundabout_inflows"],
-                                                     track_grad=track_grad)
-        
-        # Create the network
-        roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
-                elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + \
-                lundsbro_bw + mainline_roads
-        junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs
+    # Initialize junctions
+    v_strand_jncs, h_w_jncs, tollbod_jncs, dronning_jncs, festning_jncs, e18_jncs = create_minimal_junctions_w_params_w_18(v_strand_fw, v_strand_bw, h_w, tollbod_fw, 
+                                                                                                                           tollbod_bw, elvegata_fw, elvegata_bw,
+                                                                                                                           dronning_fw, dronning_bw, festning_fw,
+                                                                                                                           festning_bw, lundsbro_fw, lundsbro_bw, e18_fw,
+                                                                                                                           e18_bw, e18_west_out_fw, e18_west_out_bw,
+                                                                                                                           e18_east_out_fw, e18_east_out_bw, 
+                                                                                                                           [cycle_times[0], cycle_times[1], cycle_times[2], cycle_times[3], 
+                                                                                                                            cycle_times[4], cycle_times[5]], cycle_times[6], cycle_times[7],
+                                                                                                                            [cycle_times[8], cycle_times[9], cycle_times[10]],
+                                                                                                                            [cycle_times[11], cycle_times[12]],
+                                                                                                                            track_grad=track_grad)
 
-        temp_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts)
+    # Initialize roundabouts from configuration
+    mainline_roads, roundabouts = create_roundabouts_w_e18(v_strand_fw[0], v_strand_bw[0], festning_fw[0], festning_bw[0],
+                                                           e18_west_out_fw, e18_west_out_bw, e18_east_out_fw,
+                                                           e18_east_out_bw, speed_limits[12], speed_limits[13],
+                                                           control_points[12], control_points[13],
+                                                           initial_densities=config["init_densities"],
+                                                           inflow_configs = config["roundabout_inflows"],
+                                                           track_grad=False)
+    
+    # Create the network
+    roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
+            elvegata_bw + dronning_fw + dronning_bw + festning_fw + festning_bw + lundsbro_fw + \
+            lundsbro_bw + mainline_roads + e18_fw + e18_bw + e18_west_out_fw + e18_west_out_bw + \
+            e18_east_out_fw + e18_east_out_bw
+    
+    junctions = v_strand_jncs + h_w_jncs + tollbod_jncs + dronning_jncs + festning_jncs + e18_jncs
 
-        # Initialize busses from configuration
-        busses = create_busses(config["fwd_schedules"], config["bwd_schedules"], temp_network)
+    temp_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts)
 
-        bus_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts, 
-                                     busses = busses, store_densities=True)
-        return bus_network
+    # Initialize busses from configuration
+    busses = create_busses_e18(config["schedules"], temp_network)
+
+    bus_network = nw.RoadNetwork(roads, junctions, T, roundabouts=roundabouts, 
+                                    busses = busses, store_densities=True)
+    return bus_network
 
 if __name__ == "__main__":
-    scenario = 2
+    scenario = 3
 
     match scenario:
         case 0:
@@ -2198,4 +2206,28 @@ if __name__ == "__main__":
 
         case 2:
             network = generate_kvadraturen_w_e18_w_busses(T = 500)
+            network.solve_cons_law()
+
+
+        case 3:
+            # Testing initializing e18 network from json file:
+            import json
+
+
+            f = open("kvadraturen_networks/with_e18/network_1.json")
+            data = json.load(f)
+            f.close()
+            T = data["T"]
+            # T = 30
+            N = data["N"]
+            speed_limits = data["speed_limits"] # Nested list
+            control_points = data["control_points"] # Nested list
+            cycle_times = data["cycle_times"] # Nested list
+
+            f = open("kvadraturen_networks/with_e18/config_1_1.json")
+            config = json.load(f)
+            f.close()
+
+            network = generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
+                                                           config, track_grad=False)
             network.solve_cons_law()

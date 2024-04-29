@@ -1,0 +1,140 @@
+{
+    "init_densities" : [
+        0.2, 
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.7,
+        0.5,
+        0.5, 
+        0.5,
+        0.5,
+        0.2,
+        0.2
+    ],
+    "boundary_fncs" : [
+        {
+            "type" : 1,
+            "max_dens" : 1,
+            "densities" : [
+                0.2,
+                0.1,
+                0.2
+            ],
+            "jumps" : [
+                300,
+                600
+            ],
+            "in_speed" : 30.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 2,
+            "densities" : [
+                0.3,
+                0.4,
+                0.25
+            ],
+            "jumps" : [
+                100,
+                400
+            ],
+            "in_speed" : 50.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 2,
+            "densities" : [
+                0.6,
+                0.3,
+                0.42
+            ],
+            "jumps" : [
+                200,
+                800
+            ],
+            "in_speed" : 50.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 4,
+            "densities" : [
+                0.5
+            ],
+            "jumps" : [],
+            "in_speed" : 80.0
+        },
+        {
+            "type" : 1,
+            "max_dens" : 4,
+            "densities" : [
+                0.5
+            ],
+            "jumps" : [],
+            "in_speed" : 80.0
+        }
+    ],
+    "schedules" : [
+        {   
+            "busline" : "19_fw",
+            "start_time" : 0.0,
+            "times" : [
+                3, 110, 130, 230
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 0.0,
+            "times" : [
+                4, 130, 190, 250
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 0.0,
+            "times" : [
+                50, 100
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 0.0,
+            "times" : [
+                50, 100
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 0.0,
+            "times" : [
+                50, 100
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 0.0,
+            "times" : [
+                50, 100, 150
+            ]
+        }
+    ],
+    "roundabout_inflows" : {
+        "speeds" : [
+            50.0
+        ],
+        "inflows" : [
+            {
+                "densities" : [
+                    0.35
+                ],
+                "jumps" : [
+
+                ],
+                "max_dens" : 1
+            }
+        ]
+    }
+}

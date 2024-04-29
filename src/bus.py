@@ -26,7 +26,6 @@ class Bus:
         self.times = times # List of times the bus should be at each stop
         self.stops = stops # List of lengths of the route at which the stops are located
         # stops could alternatively be a list of tuples with the id of the road and the length on that road
-        self.times = times # List of times the bus should be at each stop
         self.lengths = self.get_lengths(network)
         self.length_travelled = torch.tensor(0.0)
         self.at_stop = False # True if bus is at a stop
@@ -350,4 +349,173 @@ class Bus:
                         self.length_travelled = self.length_travelled + torch.minimum(speed * dt, length)
                     except:
                         self.length_travelled = self.length_travelled + min(speed * dt, length)
+
+    def update_position_restarting(self, dt, t, speed, activation, length, printing = False):
+        '''
+        Calculates the next position given the current position and the speed and the
+        time step
+        Need the time t to compare to the time the bus should be at a stop
+        Assume the bus should always stop at bus stops
+        If the bus reaches the bus stop before the scheduled time, it should wait
+
+        The speed is calculated at the current node at the current time. This is not
+        100% accurate, but try as an initial guess
+
+        The activation is a number specifying how much of the flux reaching the next junction
+        will pass through. This is used to simulate the traffic lights. If the activation is
+        lower than 0.5, the bus should wait at the junction, and if it is higher, the bus should
+        pass through.
+
+        Should maybe take in the slowdown factor as well so that the bus actually slows down 
+        before and after stops
+
+        At this point, the member function specifying the slowdown factor 
+        of the bus is calculated, and can be used when calculating the
+        speed
+
+        speed = (1-self.stop_factor) * speed
+        '''
+        stopping = False
+        delay = torch.tensor(0.0)
+        # Update the speed using the slowing factor
+        speed = (1-self.stop_factor)*speed
+        self.stop_factor = torch.tensor(0.0)
+        
+        if not self.active:
+            # Bus has not started its route yet
+            if t > self.start_time:
+                # This should only be reached once for each bus
+                # Bus should start its route
+                dt = t - self.start_time
+                self.active = True
+            else:
+                # Bus should not start yet
+                return False, None
+
+        if self.at_stop:
+            if printing:
+                print(f"Bus is at stop!")
+
+            if self.remaining_stop_time > dt:
+                # The bus is still waiting...
+                if printing:
+                    print(f"Bus should wait for {self.remaining_stop_time} seconds, more than the next time step")
+                self.remaining_stop_time = self.remaining_stop_time - dt
+            else:
+                # The bus can start moving again
+                if printing:
+                    print("The bus has waited long enough!")
+                moving_dt = dt - self.remaining_stop_time
+                self.remaining_stop_time = torch.tensor(0.0)
+                self.at_stop = False
+                if activation >= 0.5:
+                    # The bus can cross the junction
+                    # Does this actually take into account the density of the next road?
+                    self.length_travelled = self.length_travelled + speed * moving_dt
+                else:
+                    # The bus must stop at the junction
+                    try:
+                        self.length_travelled = self.length_travelled + torch.minimum(speed * moving_dt, length)
+                    except:
+                        self.length_travelled = self.length_travelled + min(speed * moving_dt, length)
+                
+        else:
+            # Check if the bus should stop at the next stop
+            # Assume that two stops are not too close
+            length_of_next_stop = self.stop_lengths[self.next_stop]
+            if activation >= 0.5:
+                # Bus can pass through the junction
+                if self.length_travelled + speed * dt >= length_of_next_stop:
+                    if printing:
+                        print("Bus should stop at the busstop in this time step")
+                        try:
+                            print(f"Length travelled verison: {self.length_travelled._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of timestep: {dt._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of speed: {speed._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of length: {length._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of length_of_next_stop: {length_of_next_stop._version}")
+                        except:
+                            pass
+
+                        try:
+                            print(f"Version of dt: {dt._version}")
+                        except:
+                            pass
+                    
+                    actual_dt = (length_of_next_stop - self.length_travelled)/speed
+                    # The bus should stop at the next stop
+                    stopping = True
+                    self.at_stop = True
+                    # This should maybe be a torch tensor that requires tracking the gradient...
+                    self.remaining_stop_time = torch.maximum(torch.tensor(30.0), self.times[self.next_stop] - t)  - (dt - actual_dt)
+                    print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
+                    # Calculate delay time
+                    if self.next_stop < len(self.times):
+                        # At least one stop left
+                        self.delays[self.next_stop] = self.delays[self.next_stop] + torch.maximum(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                        # self.delays[self.next_stop] = self.delays[self.next_stop].clone() + torch.max(torch.tensor(0.0), t.clone() + actual_dt.clone() - self.times[self.next_stop])
+                        # inplace is fine
+                        delay = self.delays[self.next_stop]
+                        self.next_stop += 1
+                    
+                    # self.length_travelled = self.length_travelled.clone() + speed * actual_dt # Could set equal to length_of_next_stop, but
+                    # then it would not be possible to differentiate
+                    self.length_travelled = self.length_travelled + speed * actual_dt
+                else:
+                    if printing:
+                        print(f"Bus should travel full distance of {speed*dt} meters")
+                        
+                    # print(f"t = {t}, bus should travel full distance of {speed*dt} meters")
+                    # self.length_travelled = self.length_travelled.clone() + speed * dt
+                    self.length_travelled = self.length_travelled + speed * dt
+
+            else:
+                # Bus should stop at the junction, but the length of the next stop could be closer
+                if length + self.length_travelled >= length_of_next_stop:
+                    # Bus could be stopped at the next stop
+                    if self.length_travelled + speed * dt >= length_of_next_stop:
+                        actual_dt = (length_of_next_stop - self.length_travelled)/speed
+                        # The bus should stop at the next stop
+                        stopping = True
+                        self.at_stop = True
+                        self.remaining_stop_time = torch.maximum(torch.tensor(30.0), self.times[self.next_stop] - t) - (dt - actual_dt)
+                        print(f"Bus {self.id} reached bus stop {self.next_stop} at time {t}, should wait for {self.remaining_stop_time} seconds")
+                        
+                        # Calculate delay time
+                        if self.next_stop < len(self.times):
+                            # self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                            # self.delays[self.next_stop] = self.delays[self.next_stop].clone() + torch.max(torch.tensor(0.0), t.clone() + actual_dt.clone() - self.times[self.next_stop])
+                            self.delays[self.next_stop] = self.delays[self.next_stop] + torch.max(torch.tensor(0.0), t + actual_dt - self.times[self.next_stop])
+                            delay = self.delays[self.next_stop]
+
+                            self.next_stop += 1
+                        self.length_travelled = self.length_travelled + speed * actual_dt
+                    else:
+                        self.length_travelled = self.length_travelled + speed * dt
+
+                else:
+                    if printing:
+                        print(f"Busshould stop at the junction!")
+                    # Bus could be stopped at the junction
+                    try:
+                        self.length_travelled = self.length_travelled + torch.minimum(speed * dt, length)
+                    except:
+                        self.length_travelled = self.length_travelled + min(speed * dt, length)
+        return stopping, delay
         
