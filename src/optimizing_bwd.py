@@ -18,16 +18,21 @@ import json
 import generate_kvadraturen as gk
 import numpy as np
 import memory_profiler
+import os
+import json
+
+# torch.autograd.set_detect_anomaly(True)
 
 
 n_speeds = []
 last_speed_idx = 0
 n_cycles = []
-upper_speed = 80.0
-lower_speed = 10.0
+upper_speeds = []
+lower_speeds = []
 upper_time = 200.0
 lower_time = 10.0
 control_points = []
+config = None
 
 ################################
 # Updating global values:
@@ -54,27 +59,32 @@ def update_npeeds_ncycles_controls(speed_limits, cycle_times, new_control_points
 
 # @memory_profiler.profile
 def update_limits(upper_speed_limit, lower_speed_limit, upper_cycle_time, lower_cycle_time):
-    global upper_speed
-    global lower_speed
+    global upper_speeds
+    global lower_speeds
     global upper_time
     global lower_time
 
-    upper_speed = upper_speed_limit
-    lower_speed = lower_speed_limit
+    upper_speeds = upper_speed_limit
+    lower_speeds = lower_speed_limit
     upper_time = upper_cycle_time
     lower_time = lower_cycle_time
+
+def update_config(config_data):
+    global config
+    
+    config = config_data
 
 ################################
 # Loading from file
 ################################
 # @memory_profiler.profile
-def load_bus_network(filename):
+def load_bus_network(network_file, config_file):
     '''
     Function for initializing a bus network modelling kvadraturen
     with initial speed limits and speed limits as specified in the file
     filename. The grid spacing is also specified in the file
     '''
-    f = open(filename)
+    f = open(network_file)
     data = json.load(f)
     f.close()
     T = data["T"]
@@ -90,15 +100,23 @@ def load_bus_network(filename):
     update_npeeds_ncycles_controls(speed_limits, cycle_times, control_points)
     update_limits(upper_speed_limit, lower_speed_limit, upper_cycle_time, lower_cycle_time)
     
+    f = open(config_file)
+    data = json.load(f)
+    f.close()
+    update_config(data)
+
     return T, N, speed_limits, cycle_times
 
 ################################
 # Converting from list of params to nested list
 ################################
 # @memory_profiler.profile
-def create_network_from_params(T, N, params):
+def create_network_from_params(T, N, params, track_grad = True):
     speed_limits, cycle_times = get_speeds_cycles_from_params(params)
-    bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+    
+    bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points,
+                                                          cycle_times, config, track_grad=track_grad)
     return bus_network
 
 # @memory_profiler.profile
@@ -171,15 +189,15 @@ def scale_gradient(gradient, prev_params, max_update):
 
     # Set elements on boundary equal to 0:
     for i in range(last_speed_idx):
-        if prev_params[i] <= lower_speed and gradient[i] > 1.e-5:
+        if prev_params[i] <= lower_speeds[i] and gradient[i] > 1.e-5:
             gradient[i] = 0
-        elif prev_params[i] >= upper_speed and gradient[i] <- 1.e-5:
+        elif prev_params[i] >= upper_speeds[i] and gradient[i] <- 1.e-5:
             gradient[i] = 0
         
     for i in range(last_speed_idx, len(gradient)):
         if prev_params[i] <= lower_time and gradient[i] >  1.e-5:
             gradient[i] = 0
-        elif prev_params[i] >= upper_speed and gradient[i] < - 1.e-5:
+        elif prev_params[i] >= upper_time and gradient[i] < - 1.e-5:
             gradient[i] = 0
         
     # Scale gradient either so that a new parameter reaches boundary, or so that the largest 
@@ -193,13 +211,13 @@ def scale_gradient(gradient, prev_params, max_update):
         elif gradient[i] < 0:
             # Going towards upper boundary
             # print(i, upper_speed - prev_params[i])
-            pot_factor = (prev_params[i] - upper_speed) / gradient[i]
+            pot_factor = (prev_params[i] - upper_speeds[i]) / gradient[i]
             # if pot_factor < 0:
             #     print(f"Scaling less than 0 at for component {i}, parameter: {prev_params[i]}")
         else:
             # Going towards lower boundary
             # print(i, prev_params[i] - lower_speed)
-            pot_factor = (prev_params[i] - lower_speed) / gradient[i]
+            pot_factor = (prev_params[i] - lower_speeds[i]) / gradient[i]
             # if pot_factor < 0:
             #     print(f"Scaling less than 0 at for component {i}, parameter: {prev_params[i]}")
 
@@ -245,10 +263,10 @@ def update_params(prev_params, scaled_grad):
     new_params = prev_params - scaled_grad
 
     for i in range(last_speed_idx):
-        if new_params[i] < lower_speed:
-            new_params[i] = lower_speed
-        elif new_params[i] > upper_speed:
-            new_params[i] = upper_speed
+        if new_params[i] < lower_speeds[i]:
+            new_params[i] = lower_speeds[i]
+        elif new_params[i] > upper_speeds[i]:
+            new_params[i] = upper_speeds[i]
 
     for i in range(last_speed_idx, len(scaled_grad)):
         if new_params[i] < lower_time:
@@ -303,7 +321,9 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     
     # Create first network
     print("Creating the network...")
-    bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+    bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
+                                                          config, track_grad=True)
     
     # Solve conservation law
     print("Solving the conservation law...")
@@ -388,7 +408,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # print(prev_params - scaled_grad)
         # # 2. Use previous gradient and prFTevious parameters to update parameters
         # new_params = update_params(old_params, gradient, upper_limits, lower_limits)
-        print(f"Updating the parameters...")
+        print(f"Updating the parameters...\n")
         new_params = update_params(prev_params, scaled_grad)
 
         # 3. Create network using the new parameters and calculate the objective and gradient
@@ -398,7 +418,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # 4. Check armijo condition:
         print(f"Checking the Armijo condition...")
         if new_gradient is None:
-            armijo_satisfied == False
+            armijo_satisfied = False
         else:
             armijo_satisfied = check_armijo(prev_objective, new_objective, prev_gradient, scaling_factor)
 
@@ -419,7 +439,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             return prev_params, prev_gradient, prev_objective
 
 # @memory_profiler.profile
-def gradient_descent(filename, max_iter = 10, tol = 1.e-4, debugging = True):
+def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 10, tol = 1.e-4, debugging = True):
     '''
     Full method for the gradient descent algorithm. The funcion should take in a filename for 
     the initial configuration of the network. In addition the objetive type needs to be specified.
@@ -428,12 +448,30 @@ def gradient_descent(filename, max_iter = 10, tol = 1.e-4, debugging = True):
     Important that any references to parameters requiring gradient is not kept inside here
     '''
 
+    # Check if the result_file exists:
+    if os.path.isfile(result_file):
+        print(f"File {result_file} already exists!")
+        # File already exists
+        if overwrite:
+            # The file will be overwritten
+            print(f"The file will be overwritten!")
+            
+        else:
+            # Modify the file name slightly to prevent overwriting
+            result_file = result_file[:-5]+"_copy.json"
+            print(f"Saving results to {result_file} instead")
+            
+    else:
+        print(f"{result_file} does not exists!")
+        print(f"Saving results to {result_file}")
+
+
     # 1. Load configuration from filename
     print("Loading from file")
-    T, N, speed_limits, cycle_times = load_bus_network(filename)
+    T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
     if debugging:
-        T = 30
-    
+        T = 40
+
     # 1.1 Map from speed_limits and cycle_times to one parameter list
     print("Extracting parameters")
     prev_params = extract_params(speed_limits, cycle_times) # Turns the nested lists into one combined np.array
@@ -442,6 +480,33 @@ def gradient_descent(filename, max_iter = 10, tol = 1.e-4, debugging = True):
     print("\n------------------------------------------------------")
     print("Starting the first step of the gradient descent algorithm:")
     prev_grad, prev_objective = gradient_descent_first_step(T, N, speed_limits, cycle_times)
+
+    # 2.0 Initialize result file:
+    result_dict = {
+        "network_file" : network_file,
+        "config_file" : config_file,
+        "ad_method" : "backward",
+        "upper_speeds" : upper_speeds,
+        "lower_speeds" : lower_speeds,
+        "upper_time" : upper_time,
+        "lower_time" : lower_time,
+        "n_speeds" : n_speeds,
+        "last_speed_idx" : last_speed_idx,
+        "n_cycles" : n_cycles,
+        "control_points" : control_points,
+        "parameters" : [
+            list(prev_params)
+        ],
+        "gradients" : [
+            list(prev_grad)
+        ],
+        "objectives" : [
+            prev_objective
+        ]
+    }
+
+    with open(result_file, "w") as outfile:
+        outfile.write(json.dumps(result_dict, indent=4))
 
     # 2.1 Store results from first iteration
     params_history = [prev_params]
@@ -490,8 +555,37 @@ def gradient_descent(filename, max_iter = 10, tol = 1.e-4, debugging = True):
         objective_history.append(new_objective)
         prev_params, prev_grad, prev_objective = new_params, new_grad, new_objective
 
-        # 3.5 If it is not possible to do multiple iterations at once, try to load the params and 
-        # gradient to a 
+        # 3.5 Save results to result file
+        print("Saving results to file...")
+        new_result_dict = {}
+        with open(result_file, "r") as openfile:
+            prev_result_dict = json.load(openfile)
+            new_result_dict["network_file"] = prev_result_dict["network_file"]
+            new_result_dict["config_file"] = prev_result_dict["config_file"]
+            new_result_dict["ad_method"] = prev_result_dict["ad_method"]
+            new_result_dict["upper_speeds"] = prev_result_dict["upper_speeds"]
+            new_result_dict["lower_speeds"] = prev_result_dict["lower_speeds"]
+            new_result_dict["upper_time"] = prev_result_dict["upper_time"]
+            new_result_dict["lower_time"] = prev_result_dict["lower_time"]
+            new_result_dict["n_speeds"] = prev_result_dict["n_speeds"]
+            new_result_dict["last_speed_idx"] = prev_result_dict["last_speed_idx"]
+            new_result_dict["n_cycles"] = prev_result_dict["n_cycles"]
+            new_result_dict["control_points"] = prev_result_dict["control_points"]
+
+            old_params = prev_result_dict["parameters"]
+            old_params.append(list(prev_params))
+            new_result_dict["parameters"] = old_params
+
+            old_grads = prev_result_dict["gradients"]
+            old_grads.append(list(prev_grad))
+            new_result_dict["gradients"] = old_grads
+
+            old_objectives = prev_result_dict["objectives"]
+            old_objectives.append(prev_objective)
+            new_result_dict["objectives"] = old_objectives
+        
+        with open(result_file, "w") as outfile:
+            outfile.write(json.dumps(new_result_dict, indent=4))
 
     # 4. Stopping criteria reached. Return results from simulation
     print("Stopping criteria reached! Exiting the algorithm...")
@@ -499,7 +593,7 @@ def gradient_descent(filename, max_iter = 10, tol = 1.e-4, debugging = True):
 
 
 if __name__ == "__main__":
-    option = 0
+    option = 3
     match option:
         case 0:
             filename = "kvadraturen_networks/1_1.json"
@@ -512,4 +606,11 @@ if __name__ == "__main__":
         case 2:
             # Run largest example
             pass
-    
+
+        case 3:
+            # Run small example with e18
+            network_file = "kvadraturen_networks/with_e18/network_1.json"
+            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
+            result_file = "optimization_results/network1_config11_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)

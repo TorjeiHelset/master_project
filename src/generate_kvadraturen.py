@@ -10,7 +10,7 @@ import bus
 
 '''
 Ideas for visualizing the network:
-
+from_config
 - All roads have a position from (-1, 0) to (8, 9)
 - If ending of id is fw or bw then the road is 2-way, and the visualization need to shift them somewhat (right/left or up/down
     depending on the direction)
@@ -674,24 +674,24 @@ def create_roads_w_e18(N = 2, v_strand_speeds = [torch.tensor(50.0)], v_strand_c
     # Now we add the road sections that enter and leave e18:
     # Adding roads leading into vestre strandgate roundabout from the west
     e18_west_out_fw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-1, -1), right_pos=(-0.13, -0.3),
-                                 id="e18_w_1fw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
+                                 id="e18_w_infw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
     e18_west_out_bw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-0.13, -0.3), right_pos=(-1, -1),
-                                 id="e18_w_1bw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
+                                 id="e18_w_inbw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
     # Adding roads leading into vestre strandgate roundabout from the east
     e18_west_out_fw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(0.27, -0.25), right_pos=(1, -1),
-                                 id="e18_w_2fw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
+                                 id="e18_w_outfw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
     e18_west_out_bw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(1, -1), right_pos=(0.27, -0.25),
-                                 id="e18_w_2bw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
+                                 id="e18_w_outbw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
     # Adding roads leading into festningsgate roundabout from the west
     e18_east_out_fw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.75, -2), right_pos=(3+9*tilt-0.16, offset-0.51),
-                                 id="e18_e_1fw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
+                                 id="e18_e_infw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
     e18_east_out_bw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.16, offset-0.51), right_pos=(3+9*tilt-0.75, -2),
-                                 id="e18_e_1bw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
+                                 id="e18_e_inbw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
     # Adding roads leading into festningsgate roundabout from the east
     e18_east_out_fw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_e_2_controls, left_pos=(3+9*tilt+0.11, offset-0.51), right_pos=(3+9*tilt+0.75, -1.5),
-                                 id="e18_e_2fw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
+                                 id="e18_e_outfw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
     e18_east_out_bw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_w_2_controls, left_pos=(3+9*tilt+0.75, -1.5), right_pos=(3+9*tilt+0.11, offset-0.51),
-                                 id="e18_e_2bw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
+                                 id="e18_e_outbw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
 
     return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
         lundsbro_fw, lundsbro_bw, e18_fw, e18_bw, e18_west_out_fw, e18_west_out_bw, e18_east_out_fw, e18_east_out_bw
@@ -1698,22 +1698,22 @@ def create_busses_e18(schedules, network):
         "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw","vs_mainline_1", "vs_mainline_2"]
     stops_bw_19 = [("tollbod_2bw", 45), ("tollbod_1bw", 80), ("tollbod_1bw", 235), ("v_strand_1bw", 25)]
 
-    ids_fw_m1 = ["e18_1fw", "e18_w_1fw", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw",
+    ids_fw_m1 = ["e18_1fw", "e18_w_infw", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw",
                  "festning_4fw", "tollbod_2fw", "elvegata_fw", "lundsbro_fw"]
     stops_fw_m1 = [("h_w_2", 90), ("festning_4fw", 130)]
     ids_bw_m1 = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw",
                  "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw", "vs_mainline_1", 
-                 "vs_mainline_2", "vs_mainline_3", "e18_w_1bw", "e18_1bw"]
+                 "vs_mainline_2", "vs_mainline_3", "e18_w_inbw", "e18_1bw"]
     stops_bw_m1 = [("tollbod_1bw", 50), ("tollbod_1bw", 180)]
 
     ids_fw_custom = ["h_w_1", "v_strand_2fw", "v_strand_3fw", "v_strand_4fw", "v_strand_5fw", "v_strand_6fw",
                      "dronning_1fw", "dronning_2fw", "festning_5bw", "festning_4bw", "festning_3bw",
-                     "festning_2bw", "festning_1bw", "fn_mainline_1", "e18_e_2fw", "e18_4fw"]
+                     "festning_2bw", "festning_1bw", "fn_mainline_1", "e18_e_outfw", "e18_4fw"]
     stops_fw_custom = [("festning_4bw", 20), ("festning_2bw", 70)]
-    ids_bw_custom = ["e18_4bw", "e18_e_1fw", "festning_1fw", "festning_2fw", "festning_3fw", "festning_4fw",
+    ids_bw_custom = ["e18_4bw", "e18_e_infw", "festning_1fw", "festning_2fw", "festning_3fw", "festning_4fw",
                      "tollbod_1bw", "v_strand_5bw", "v_strand_4bw", "v_strand_3bw", "v_strand_2bw",
                      "v_strand_1bw", "vs_mainline_1", "vs_mainline_2", "vs_mainline_3",
-                     "e18_w_1bw", "e18_1bw"]
+                     "e18_w_inbw", "e18_1bw"]
     stops_bw_custom = [("festning_2fw", 75), ("tollbod_1bw", 50), ("tollbod_1bw", 180)]
 
     busses = []
@@ -2155,7 +2155,7 @@ def generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cyc
                                                            e18_west_out_fw, e18_west_out_bw, e18_east_out_fw,
                                                            e18_east_out_bw, speed_limits[12], speed_limits[13],
                                                            control_points[12], control_points[13],
-                                                           initial_densities=config["init_densities"],
+                                                           initial_densities = config["init_densities"],
                                                            inflow_configs = config["roundabout_inflows"],
                                                            track_grad=False)
     
@@ -2230,4 +2230,3 @@ if __name__ == "__main__":
 
             network = generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
                                                            config, track_grad=False)
-            network.solve_cons_law()

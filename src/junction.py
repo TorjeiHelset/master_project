@@ -653,10 +653,10 @@ class Junction:
         # Here, for loops are necessary
         # LIST OF TENSORS
         for i, road in enumerate(self.road_in):
-            road.update_right_boundary(fluxes_in[i], dt)
+            road.update_right_boundary(fluxes_in[i] / road.max_dens, dt)
         
         for j, road in enumerate(self.road_out):
-            road.update_left_boundary(fluxes_out[j], dt)
+            road.update_left_boundary(fluxes_out[j] / road.max_dens, dt)
     
     def get_speed(self, t, id_1, id_2):
         '''

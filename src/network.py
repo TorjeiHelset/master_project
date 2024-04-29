@@ -400,7 +400,7 @@ class RoadNetwork:
         '''
         printing = False
         
-        t = torch.tensor(0)
+        t = torch.tensor(0.0)
         if self.store_densities:
             rho_timesteps = {i : {0 : self.roads[i].rho} for i in range(len(self.roads))}
             # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
@@ -734,7 +734,10 @@ class RoadNetwork:
                     for v in road.Vmax:
                         # print(f"Adding {road.id}")
                         # tensors.append(v.grad)
-                        tensors.append(v.grad.item())
+                        if v.grad is not None:
+                            tensors.append(v.grad.item())
+                        else:
+                            tensors.append(0.0)
 
 
             else:
@@ -743,7 +746,10 @@ class RoadNetwork:
                     for v in road.Vmax:
                         # print(f"Adding {road.id}")
                         # tensors.append(v.grad)
-                        tensors.append(v.grad.item())
+                        if v.grad is not None:
+                            tensors.append(v.grad.item())
+                        else:
+                            tensors.append(0.0)
         return tensors
 
     def get_traffic_light_grads(self):
@@ -755,13 +761,19 @@ class RoadNetwork:
             for light in junction.trafficlights:
                 for c in light.cycle:
                     # print(f"Adding regular light connecting {[road.id for road in junction.roads]}")
-                    tensors.append(c.grad)
+                    if c.grad is not None:
+                            tensors.append(c.grad.item())
+                    else:
+                        tensors.append(0.0)
 
             for light in junction.coupled_trafficlights:
                 for c in light.cycle:
                     # print(f"Adding coupled light connecting {[road.id for road in junction.roads]}")
 
-                    tensors.append(c.grad)
+                    if c.grad is not None:
+                        tensors.append(c.grad.item())
+                    else:
+                        tensors.append(0.0)
         return tensors
     
     def draw_network(self):

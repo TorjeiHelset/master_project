@@ -256,6 +256,9 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+        # Avoid 0 division:
+        if torch.abs(max_flux) < 1e-5:
+            max_flux = torch.tensor(0.000001)
         # return CFL * self.dx / (max_flux)
         
         return CFL * self.dx / (self.max_dens * max_flux) # Should max_dens really be here?
