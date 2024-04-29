@@ -449,7 +449,7 @@ def create_roads_w_e18(N = 2, v_strand_speeds = [torch.tensor(50.0)], v_strand_c
     for v in tollbod_speed:
         v.requires_grad = track_grad
     tollbod_control_points = tollbod_controls
-    tollbod_bw[0] = rd.Road(2*6, L, N, tollbod_speed, tollbod_control_points, left_pos=(3-offset+2*tilt, 7), right_pos=(0+offset, 7),
+    tollbod_bw[0] = rd.Road(2*6, L, N, tollbod_speed, tollbod_control_points, left_pos=(3-offset+2*tilt, 7.1), right_pos=(0+offset, 7.1),
                             id="tollbod_" + str(1) + "bw", initial=initial_fncs[2], boundary_fnc=None)
     tollbod_bw[1] = rd.Road(2*6, L, N, tollbod_speed, tollbod_control_points, left_pos=(6-offset, 7), right_pos=(3+offset+2*tilt, 7),
                             id="tollbod_" + str(2) + "bw", initial=initial_fncs[2], boundary_fnc=None)
@@ -650,47 +650,47 @@ def create_roads_w_e18(N = 2, v_strand_speeds = [torch.tensor(50.0)], v_strand_c
         v.requires_grad = track_grad
 
     # First we add the first 100 metres, including west incoming boundary conditions
-    e18_fw[0] = rd.Road(4, L, N, e18_speed_limit, e18_controls, left_pos=(-2, -0.25), right_pos=(-1, -0.5),
+    e18_fw[0] = rd.Road(4, L, N, e18_speed_limit, e18_controls, left_pos=(-2, -0.25), right_pos=(-1, -1),
                         id="e18_1fw", initial=initial_fncs[7], boundary_fnc=boundary_fncs[3],
                         max_dens = 2)
-    e18_bw[0] = rd.Road(4, L, N, e18_speed_limit, e18_controls, left_pos=(-1, -0.5), right_pos=(-2, -0.25),
+    e18_bw[0] = rd.Road(4, L, N, e18_speed_limit, e18_controls, left_pos=(-1, -1), right_pos=(-2, -0.25),
                         id="e18_1bw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
     # Next we add the 200 metres to the left right of the vestre strandgate roundabout
-    e18_fw[1] = rd.Road(8, L, N, e18_speed_limit, e18_controls, left_pos=(-1, -0.5), right_pos=(1, -0.5),
+    e18_fw[1] = rd.Road(8, L, N, e18_speed_limit, e18_controls, left_pos=(-1, -1), right_pos=(1, -1),
                         id="e18_2fw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
-    e18_bw[1] = rd.Road(8, L, N, e18_speed_limit, e18_controls, left_pos=(1, -0.5), right_pos=(-1, -0.5),
+    e18_bw[1] = rd.Road(8, L, N, e18_speed_limit, e18_controls, left_pos=(1, -1), right_pos=(-1, -1),
                         id="e18_2bw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
     # Next we add the 150 and 250 metres between the two roundabouts
-    e18_fw[2] = rd.Road(10, L, N, e18_speed_limit, e18_controls, left_pos=(1, -0.5), right_pos=(3+9*tilt+0.75, -1),
+    e18_fw[2] = rd.Road(10, L, N, e18_speed_limit, e18_controls, left_pos=(1, -1), right_pos=(3+9*tilt+0.75, -1.5),
                         id="e18_3fw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
-    e18_bw[2] = rd.Road(6, L, N, e18_speed_limit, e18_controls, left_pos=(3+9*tilt-0.75, -1.5), right_pos=(1, -0.5),
+    e18_bw[2] = rd.Road(6, L, N, e18_speed_limit, e18_controls, left_pos=(3+9*tilt-0.75, -2), right_pos=(1, -1),
                         id="e18_3bw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
     # Finally we add the last 250 and 150 metres of e18 that we model
-    e18_fw[3] = rd.Road(6, L, N, e18_speed_limit, e18_controls, left_pos=(3+9*tilt+0.75, -1, -1), right_pos=(7, -1),
+    e18_fw[3] = rd.Road(6, L, N, e18_speed_limit, e18_controls, left_pos=(3+9*tilt+0.75, -1.5), right_pos=(7, -1),
                         id="e18_4fw", initial=initial_fncs[7], boundary_fnc=None, max_dens = 2)
-    e18_bw[3] = rd.Road(10, L, N, e18_speed_limit, e18_controls, left_pos=(7, -1), right_pos=(3+9*tilt-0.75, -1.5),
+    e18_bw[3] = rd.Road(10, L, N, e18_speed_limit, e18_controls, left_pos=(7, -1), right_pos=(3+9*tilt-0.75, -2),
                         id="e18_4bw", initial=initial_fncs[7], boundary_fnc=boundary_fncs[4], max_dens = 2)
     
     # Now we add the road sections that enter and leave e18:
     # Adding roads leading into vestre strandgate roundabout from the west
-    e18_west_out_fw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-1, -0.5), right_pos=(-0.13, -0.3),
+    e18_west_out_fw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-1, -1), right_pos=(-0.13, -0.3),
                                  id="e18_w_1fw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
-    e18_west_out_bw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-0.13, -0.3), right_pos=(-1, -0.5),
+    e18_west_out_bw[0] = rd.Road(4, L, N, e18_w_1_speed_limit, e18_w_1_controls, left_pos=(-0.13, -0.3), right_pos=(-1, -1),
                                  id="e18_w_1bw", initial=initial_fncs[8], boundary_fnc=None, max_dens=1)
     # Adding roads leading into vestre strandgate roundabout from the east
-    e18_west_out_fw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(0.27, -0.25), right_pos=(1, -0.5),
+    e18_west_out_fw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(0.27, -0.25), right_pos=(1, -1),
                                  id="e18_w_2fw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
-    e18_west_out_bw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(1, -0.5), right_pos=(0.27, -0.25),
+    e18_west_out_bw[1] = rd.Road(4, L, N, e18_w_2_speed_limit, e18_w_2_controls, left_pos=(1, -1), right_pos=(0.27, -0.25),
                                  id="e18_w_2bw", initial=initial_fncs[9], boundary_fnc=None, max_dens=1)
     # Adding roads leading into festningsgate roundabout from the west
-    e18_east_out_fw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.75, -1.5), right_pos=(3+9*tilt-0.16, offset-0.51),
+    e18_east_out_fw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.75, -2), right_pos=(3+9*tilt-0.16, offset-0.51),
                                  id="e18_e_1fw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
-    e18_east_out_bw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.16, offset-0.51), right_pos=(3+9*tilt-0.75, -1.5),
+    e18_east_out_bw[0] = rd.Road(2, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.16, offset-0.51), right_pos=(3+9*tilt-0.75, -2),
                                  id="e18_e_1bw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
     # Adding roads leading into festningsgate roundabout from the east
-    e18_east_out_fw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_e_2_controls, left_pos=(3+9*tilt+0.11, offset-0.51), right_pos=(3+9*tilt+0.75, -1),
+    e18_east_out_fw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_e_2_controls, left_pos=(3+9*tilt+0.11, offset-0.51), right_pos=(3+9*tilt+0.75, -1.5),
                                  id="e18_e_2fw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
-    e18_east_out_bw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_w_2_controls, left_pos=(3+9*tilt+0.75, -1), right_pos=(3+9*tilt-0.16, offset-0.51),
+    e18_east_out_bw[1] = rd.Road(2, L, N, e18_e_2_speed_limit, e18_w_2_controls, left_pos=(3+9*tilt+0.75, -1.5), right_pos=(3+9*tilt+0.11, offset-0.51),
                                  id="e18_e_2bw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
 
     return v_strand_fw, v_strand_bw, h_w, tollbod_fw, tollbod_bw, elvegata_fw, elvegata_bw, dronning_fw, dronning_bw, festning_fw, festning_bw, \
@@ -1700,21 +1700,21 @@ def create_busses_e18(schedules, network):
 
     ids_fw_m1 = ["e18_1fw", "e18_w_1fw", "vs_mainline_4", "v_strand_1fw", "h_w_2", "festning_3fw",
                  "festning_4fw", "tollbod_2fw", "elvegata_fw", "lundsbro_fw"]
-    stops_fw_m1 = []
+    stops_fw_m1 = [("h_w_2", 90), ("festning_4fw", 130)]
     ids_bw_m1 = ["lundsbro_bw", "elvegata_bw", "tollbod_2bw", "tollbod_1bw", "v_strand_5bw",
                  "v_strand_4bw", "v_strand_3bw", "v_strand_2bw", "v_strand_1bw", "vs_mainline_1", 
                  "vs_mainline_2", "vs_mainline_3", "e18_w_1bw", "e18_1bw"]
-    stops_bw_m1 = []
+    stops_bw_m1 = [("tollbod_1bw", 50), ("tollbod_1bw", 180)]
 
     ids_fw_custom = ["h_w_1", "v_strand_2fw", "v_strand_3fw", "v_strand_4fw", "v_strand_5fw", "v_strand_6fw",
                      "dronning_1fw", "dronning_2fw", "festning_5bw", "festning_4bw", "festning_3bw",
                      "festning_2bw", "festning_1bw", "fn_mainline_1", "e18_e_2fw", "e18_4fw"]
-    stops_fw_custom = []
+    stops_fw_custom = [("festning_4bw", 20), ("festning_2bw", 70)]
     ids_bw_custom = ["e18_4bw", "e18_e_1fw", "festning_1fw", "festning_2fw", "festning_3fw", "festning_4fw",
                      "tollbod_1bw", "v_strand_5bw", "v_strand_4bw", "v_strand_3bw", "v_strand_2bw",
                      "v_strand_1bw", "vs_mainline_1", "vs_mainline_2", "vs_mainline_3",
                      "e18_w_1bw", "e18_1bw"]
-    stops_bw_custom = []
+    stops_bw_custom = [("festning_2fw", 75), ("tollbod_1bw", 50), ("tollbod_1bw", 180)]
 
     busses = []
     fw_19_id = 1
@@ -2066,22 +2066,30 @@ def generate_kvadraturen_w_e18_w_busses(T = 30):
         {   
             "busline" : "m1_fw",
             "start_time" : 0.0,
-            "times" : []
+            "times" : [
+                50, 100
+                ]
         },
         {   
             "busline" : "m1_bw",
             "start_time" : 0.0,
-            "times" : []
+            "times" : [
+                50, 100
+            ]
         },
         {   
             "busline" : "custom_fw",
             "start_time" : 0.0,
-            "times" : []
+            "times" : [
+                50, 100
+            ]
         },
         {   
             "busline" : "custom_bw",
             "start_time" : 0.0,
-            "times" : []
+            "times" : [
+                50, 100, 150
+            ]
         }
     ]
 

@@ -13,6 +13,7 @@ y_shift_const = 0.008 # relative to the [0,1]x[0,1] coordinate system
 x_shift_const = y_shift_const * 3/4
 color_gradient = 1
 arrow_length = 5
+with_e18 = False
 
 def reshape(w, h):
     # Global to update w1 and h1
@@ -192,19 +193,30 @@ def convert_bus_positions(network, bus_positions, x_shift, y_shift):
     # 7 * a_x + b_x = 0.95 -> 15 * b_x - 14*0.01 = 0.95
     # -> b_x = (0.95 + 14*0.01) / 15
     # -> a_x = 2*(0.95 + 14*0.01) / 15 - 2*0.01
-    left_x = 0.03
-    right_x = 0.99
-    b_x = (right_x + 14*left_x) / 15
-    a_x = 2*(right_x + 14*left_x) / 15 - 2*left_x
 
     # b_y = 0.92
     # 9 * a_y + b_y = 0.15
     # -> a_y = (0.15 - b_y) / 9
     # -> a_y = (0.15 - 0.92) / 9
-    top_y = 0.92
-    bottom_y = 0.12
+
+    if not with_e18:
+        left_x = 0.03
+        right_x = 0.99
+        top_y = 0.92
+        bottom_y = 0.12
+    else: 
+        left_x = 0.175
+        right_x = 0.99
+        top_y = 0.78
+        bottom_y = 0.1
+
+    b_x = (right_x + 14*left_x) / 15
+    a_x = 2*(right_x + 14*left_x) / 15 - 2*left_x
+    
+    
     b_y = top_y
     a_y = (bottom_y - top_y) / 9
+
 
     points = [[None, None] for i in range(len(network.roads))]
     for i, road in enumerate(network.roads):
@@ -569,7 +581,9 @@ def draw_colored_line(colors, points):
     glTranslatef( -iw/2, -ih/2, 0 )
     line_width = 6.0  # Adjust the line width as needed
     for i in range(len(colors)):
-        draw_line_with_colors(colors[i], points[i], line_width, iw, ih)
+        # draw_line_with_colors(colors[i], points[i], line_width, iw, ih)
+        draw_line_with_colors(colors[i], points[i], line_width, iw, ih,arrow=False)
+
     orthogonalEnd()
     glPopMatrix()
 
@@ -820,6 +834,9 @@ def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_b
     glutTimerFunc(1000, renderer.timer, 0)
     glutMainLoop()
 
+def update_e18_bool():
+    global with_e18
+    with_e18 = True
 if __name__ == "__main__":
     scenario = 7
     
@@ -1080,6 +1097,11 @@ if __name__ == "__main__":
             import network as nw
             import generate_kvadraturen as gk
 
+            # global with_e18
+
+            # with_e18 = True
+            update_e18_bool()
+
             print("Loading results...")
             f = open("results/test_w_e18.json")
             data = json.load(f)
@@ -1093,4 +1115,4 @@ if __name__ == "__main__":
 
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,
                                     densities, output_name="test_e18.gif",
-                                    background_img="background_imgs/white_background.png")
+                                    background_img="background_imgs/background_e18_cropped.png")
