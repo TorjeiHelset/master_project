@@ -383,8 +383,8 @@ class Road:
             # For right boundary, set boundary elements equal to closest interior
             # This means all flux is allowed to exit
             if not self.right:
-                # INPLACR
-                # Right boundary not attached to junction
+                # INPLACE
+                # Right boundary not attached to junction - set denity equal to closest interior point
                 self.rho[-self.pad:] = self.rho[-self.pad-1]
 
             # For left boundary some inflow conditions are necessary       
@@ -398,7 +398,11 @@ class Road:
 
                     if self.queue_length > 0:
                         # Set the influx to the maximum possible
-                        D = fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone())
+                        # This needs to be modified so that the queue length does not 
+                        # become negative at any points!
+                        D = torch.min(fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()),
+                                      f_in + self.queue_length / dt)
+                        # D = fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone())
                     else:
                         # Set the influx to the mimum of actual and maximum
                         D = torch.min(f_in, fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()))
