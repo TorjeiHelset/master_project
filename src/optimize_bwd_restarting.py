@@ -582,9 +582,16 @@ if __name__ == "__main__":
             
         case 1:
             # Run larger example with e18
-            network_file = "kvadraturen_networks/with_e18/network_2.json"
+            network_file = "kvadraturen_networks/with_e18/network_2_1.json"
             config_file = "kvadraturen_networks/with_e18/config_2_1.json"
-            result_file = "optimization_results/network2_config21_restart.json"
+            result_file = "optimization_results/network21_config21_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
             
+        case 2:
+            # Run larger example with e18 with different starting point
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_1.json"
+            result_file = "optimization_results/network22_config21_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
