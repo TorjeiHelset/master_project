@@ -13,7 +13,7 @@ y_shift_const = 0.008 # relative to the [0,1]x[0,1] coordinate system
 x_shift_const = y_shift_const * 3/4
 color_gradient = 1
 arrow_length = 5
-with_e18 = False
+with_e18 = True
 
 def reshape(w, h):
     # Global to update w1 and h1
@@ -199,7 +199,7 @@ def convert_bus_positions(network, bus_positions, x_shift, y_shift):
     # -> a_y = (0.15 - b_y) / 9
     # -> a_y = (0.15 - 0.92) / 9
 
-    if not with_e18:
+    if with_e18:
         left_x = 0.03
         right_x = 0.99
         top_y = 0.92
@@ -834,11 +834,53 @@ def draw_busses_compare_w_opt(bus_network, busses, bus_lengths, densities, old_b
     glutTimerFunc(1000, renderer.timer, 0)
     glutMainLoop()
 
+def draw_densities(network, densities, output_name='animation.gif',
+                            background_img = 'kvadraturen_simple2.png', interval_seconds=0.05):
+    # Road positions go from -1 to 7 in x direction and 0 to 9 in y direction
+    # These need to be correctly mapped to the display window
+    # Map from [-1,7]x[0,9] to [0+left_margin,1-right_margin]x[0+bottom_margin,1-top_margin] 
+    # x = -1 should map to x = 0.015
+    # x = 7 should map to x = 0.92
+    # y = 0 should map to y = 0.92
+    # y = 9 should map to y = 0.22
+    # note that a high low y value of road position should map to a high pixel value in animation
+
+    # Converting points to correct format
+    try:
+        times = list(densities[0].keys())
+
+    except:
+        times = list(densities['0'].keys())
+
+    positions, x_shift, y_shift = find_points_of_busses(network, [], [])
+
+    # print(lengths)
+    road_points, bus_points = convert_bus_positions(network, positions, x_shift, y_shift)
+    colors, points = create_density_points_from_road_points(network, densities, road_points)
+    # print(bus_points[0])
+    # Create object for displaying the simulation
+    renderer = BusDensityRenderer(colors, points, bus_points, interval_seconds, output_name)
+
+    # Initializing the window
+    global texture
+    glutInit()
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE)
+    glutInitWindowSize(800, 600)
+    glutCreateWindow(b"OpenGL Window")
+
+    # Setting up callback functions for the animation
+    glutDisplayFunc(renderer.display)
+    glutReshapeFunc(reshape)
+    texture = load_texture(background_img)
+    glutTimerFunc(1000, renderer.timer, 0)
+    glutMainLoop()
+
+
 def update_e18_bool():
     global with_e18
     with_e18 = True
 if __name__ == "__main__":
-    scenario = 7
+    scenario = 9
     
     match scenario:
         case 0:
@@ -1116,3 +1158,155 @@ if __name__ == "__main__":
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths,
                                     densities, output_name="test_e18.gif",
                                     background_img="background_imgs/background_e18_cropped.png")
+            
+        case 8:
+            import json
+            import road as rd
+            import network as nw
+            import traffic_lights as tl
+            import junction as jn
+            import initial_and_bc as ibc
+            import torch
+
+            print("Loading results...")
+            f = open("examples_for_presentation/results/traffic_lights.json")
+            data = json.load(f)
+            f.close()
+            densities = data
+
+            L = 25
+            N = 2
+            b = 4
+            init_fnc = lambda x : torch.ones_like(x) * 0.2
+            boundary_fnc = ibc.boundary_conditions(1, max_dens=1, densities=torch.tensor([0.2]), time_jumps=[], 
+                                                in_speed=torch.tensor(50.0/3.6), L = L)
+            road_1 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc, boundary_fnc=boundary_fnc,
+                            left_pos=(0, 3), right_pos=(2.9, 3), id="road_1", max_dens=1)
+            road_2 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc, boundary_fnc=None,
+                            left_pos=(3.1, 3), right_pos=(6, 3), id = "road_2", max_dens=1)
+
+            roads = [road_1, road_2]
+
+            # Creating the traffic light and the junction
+            traffic_light = tl.TrafficLightContinous(True, [0], [1], [torch.tensor(30.0), torch.tensor(50.0)])
+            junction = jn.Junction(roads, [0], [1], [[1.0]], [traffic_light], [])
+
+            # Creating the network
+            network = nw.RoadNetwork(roads, [junction], T = 100)
+
+            draw_densities(network, densities, output_name="examples_for_presentation/gifs/traffic_lights.gif",
+                           background_img="background_imgs/white_background.png", interval_seconds = 0.1)
+            
+        case 9:
+            import json
+            import road as rd
+            import network as nw
+            import traffic_lights as tl
+            import junction as jn
+            import initial_and_bc as ibc
+            import torch
+
+            print("Loading results...")
+            f = open("examples_for_presentation/results/with_duty_to_gw.json")
+            data = json.load(f)
+            f.close()
+            densities = data
+
+            L = 25
+            N = 2
+            b = 4
+
+            distribution = [[1.0, 0.0], [0.0, 1.0]]
+            priorities = [[1,0],[1,0]]
+            crossings = [[[], []],
+                        [[], [(0,0)]]]
+
+            init_fnc_1 = lambda x : torch.ones_like(x) * 0.6
+            init_fnc_2 = lambda x : torch.ones_like(x) * 0.2
+
+            boundary_fnc_1 = ibc.boundary_conditions(1, max_dens=1, densities=torch.tensor([0.6]), time_jumps=[], 
+                                                    in_speed=torch.tensor(50.0/3.6), L = L)
+            boundary_fnc_2 = ibc.boundary_conditions(1, max_dens=1, densities=torch.tensor([0.2]), time_jumps=[], 
+                                                    in_speed=torch.tensor(50.0/3.6), L = L)
+
+            # Main roads
+            road_1 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_1, boundary_fnc=boundary_fnc_1,
+                            left_pos=(0, 3), right_pos=(2.9, 3), id="road_1", max_dens=1)
+            road_2 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_1, boundary_fnc=None,
+                            left_pos=(3.1, 3), right_pos=(6, 3), id="road_2", max_dens=1)
+            # Secondary roads
+            road_3 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_1, boundary_fnc=boundary_fnc_2,
+                            left_pos=(3, 0), right_pos=(3, 2.9), id="road_3", max_dens=1)
+            road_4 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_2, boundary_fnc=None,
+                            left_pos=(3, 3.1), right_pos=(3, 6), id="road_4", max_dens=1)
+            roads = [road_1, road_2, road_3, road_4]
+
+            # Creating the junction
+            junction = jn.Junction(roads, [0,2], [1,3], distribution, [],  [], True, priorities, crossings)
+
+            # Creating the network
+            network = nw.RoadNetwork(roads, [junction], T = 100)
+
+            draw_densities(network, densities, output_name="examples_for_presentation/gifs/with_duty_to_gw.gif",
+                           background_img="background_imgs/white_background.png", interval_seconds = 0.1)
+            
+        case 10:
+            import json
+            import road as rd
+            import network as nw
+            import traffic_lights as tl
+            import junction as jn
+            import initial_and_bc as ibc
+            import torch
+
+            print("Loading results...")
+            f = open("examples_for_presentation/results/without_duty_to_gw.json")
+            data = json.load(f)
+            f.close()
+            densities = data
+
+            L = 25
+            N = 2
+            b = 4
+
+            distribution = [[1.0, 0.0], [0.0, 1.0]]
+            priorities = [[1,0],[1,0]]
+            crossings = [[[], []],
+                        [[], [(0,0)]]]
+
+            init_fnc_1 = lambda x : torch.ones_like(x) * 0.6
+            init_fnc_2 = lambda x : torch.ones_like(x) * 0.6
+            init_fnc_3 = lambda x : torch.ones_like(x) * 0.2
+
+            boundary_fnc_1 = ibc.boundary_conditions(1, max_dens=1, densities=torch.tensor([0.6]), time_jumps=[], 
+                                                    in_speed=torch.tensor(50.0/3.6), L = L)
+            boundary_fnc_2 = ibc.boundary_conditions(1, max_dens=1, densities=torch.tensor([0.2]), time_jumps=[], 
+                                                    in_speed=torch.tensor(50.0/3.6), L = L)
+
+            # Main roads
+            road_1 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_1, boundary_fnc=boundary_fnc_1,
+                            left_pos=(0, 3), right_pos=(2.9, 3), id="road_1", max_dens=1)
+            road_2 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_1, boundary_fnc=None,
+                            left_pos=(3.1, 3), right_pos=(6, 3), id="road_2", max_dens=1)
+            # Secondary roads
+            road_3 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_2, boundary_fnc=boundary_fnc_2,
+                            left_pos=(3, 0), right_pos=(3, 2.9), id="road_3", max_dens=1)
+            road_4 = rd.Road(b, L, N, [torch.tensor(50/3.6)], [], initial=init_fnc_3, boundary_fnc=None,
+                            left_pos=(3, 3.1), right_pos=(3, 6), id="road_4", max_dens=1)
+            roads = [road_1, road_2, road_3, road_4]
+
+            # Creating the junction
+            junction = jn.Junction(roads, [0,2], [1,3], distribution, [],  [], True, priorities, crossings)
+
+            # Creating the network
+            network = nw.RoadNetwork(roads, [junction], T = 100)
+
+            draw_densities(network, densities, output_name="examples_for_presentation/gifs/without_duty_to_gw.gif",
+                           background_img="background_imgs/white_background.png", interval_seconds = 0.1)
+
+
+
+
+
+
+

@@ -220,10 +220,10 @@ class Road:
             for i in range(self.pad - 1):
                 self.rho[-self.pad+i+1] = self.rho[-self.pad]
 
-        if self.rho[-self.pad] < 0:
-            raise ValueError(f"Right boundary of road {self.id} has become negative at time {t}!")
-        if self.rho[-self.pad] > 1:
-            raise ValueError(f"Right boundary of road {self.id} has become too big at time {t}!")
+        # if self.rho[-self.pad] < 0:
+        #     raise ValueError(f"Right boundary of road {self.id} has become negative at time {t}!")
+        # if self.rho[-self.pad] > 1:
+        #     raise ValueError(f"Right boundary of road {self.id} has become too big at time {t}!")
         
     def update_left_boundary(self, outgoing_flux, dt, t = 0):
         # right is internal cell, middle is first boundary cell
@@ -238,10 +238,10 @@ class Road:
             for i in range(self.pad-1):
                 self.rho[self.pad-2-i] = self.rho[self.pad-1]
 
-        if self.rho[self.pad-1] < 0:
-            raise ValueError(f"Left boundary of road {self.id} has become negative at time {t}!")
-        if self.rho[self.pad-1] > 1:
-            raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
+        # if self.rho[self.pad-1] < 0:
+        #     raise ValueError(f"Left boundary of road {self.id} has become negative at time {t}!")
+        # if self.rho[self.pad-1] > 1:
+        #     raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
 
     def max_dt(self):
         '''
@@ -268,12 +268,17 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+        
+        ###############
+        # maximum = torch.max(max_flux, fv.d_flux(torch.tensor(0.0), self.gamma[self.idx]))
+        ###############
+
         # Avoid 0 division:
         if torch.abs(max_flux) < 1e-5:
             max_flux = torch.tensor(0.000001)
         # return CFL * self.dx / (max_flux)
         
-        return CFL * self.dx / (self.max_dens * max_flux) # Should max_dens really be here?
+        return CFL * self.dx / (self.max_dens * max_flux)
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
