@@ -593,7 +593,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 4
+    option = 3
     match option:
         case 0:
             filename = "kvadraturen_networks/1_1.json"
@@ -609,16 +609,8 @@ if __name__ == "__main__":
 
         case 3:
             # Run small example with e18
-            network_file = "kvadraturen_networks/with_e18/network_1_2.json"
+            network_file = "kvadraturen_networks/with_e18/network_1_1.json"
             config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network12_config11_bwd.json"
-            gradient_descent(network_file, config_file, result_file,
-                             overwrite=False, debugging=False)
-            
-        case 4:
-            # Run larger example with e18
-            network_file = "kvadraturen_networks/with_e18/network_2.json"
-            config_file = "kvadraturen_networks/with_e18/config_2_1.json"
-            result_file = "optimization_results/network2_config21_bwd.json"
+            result_file = "optimization_results/network11_config11_bwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)

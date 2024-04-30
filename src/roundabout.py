@@ -183,16 +183,16 @@ class RoundaboutJunction:
             out_fluxes[1] = self.alpha*in_fluxes[0]
 
             # Update the densities of roads:
-            self.mainline_in.update_right_boundary(in_fluxes[0], dt)
-            self.mainline_out.update_left_boundary(out_fluxes[0], dt)
-            self.secondary_in.update_right_boundary(in_fluxes[1], dt)
-            self.secondary_out.update_left_boundary(out_fluxes[1], dt)
+            self.mainline_in.update_right_boundary(in_fluxes[0] / self.mainline_in.max_dens, dt, t)
+            self.mainline_out.update_left_boundary(out_fluxes[0] / self.mainline_out.max_dens, dt, t)
+            self.secondary_in.update_right_boundary(in_fluxes[1] / self.secondary_in.max_dens, dt, t)
+            self.secondary_out.update_left_boundary(out_fluxes[1] / self.secondary_out.max_dens, dt, t)
 
 
         else:
             # Secondary roads not a part of the simulation
             main_rho_in = self.mainline_in.rho[-self.mainline_in.pad]
-            main_rho_out = self.mainline_out.rho[-self.mainline_out.pad]
+            main_rho_out = self.mainline_out.rho[self.mainline_out.pad]
             main_max_dens = self.mainline_in.max_dens
             main_gamma = self.mainline_in.gamma[self.mainline_in.idx]
 
@@ -241,8 +241,8 @@ class RoundaboutJunction:
             in_fluxes[1] = torch.min(demands[1], max_second_in)
 
             # Update densities of roads:
-            self.mainline_in.update_right_boundary(in_fluxes[0], dt)
-            self.mainline_out.update_left_boundary(out_flux, dt)
+            self.mainline_in.update_right_boundary(in_fluxes[0] / self.mainline_in.max_dens, dt, t)
+            self.mainline_out.update_left_boundary(out_flux / self.mainline_out.max_dens, dt, t)
             # Update queue length:
             self.secondary_in.update_queue(in_fluxes[1], dt, t)
 

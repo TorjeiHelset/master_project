@@ -35,4 +35,4 @@ def single_junction_network(T, N, speed1 = [torch.tensor(30.0)], control_points1
                             speed2 = [torch.tensor(30.0)], control_points2 = [],
                             cycle_times = [torch.tensor(60.0), torch.tensor(60.0)], 
                             track_grad = True):
-    
+    ...

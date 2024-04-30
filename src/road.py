@@ -202,9 +202,11 @@ class Road:
     def supply(self):
         # Clone needed?
         # CLONING
-        return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
+        # return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
+        return self.max_dens * fv.S(self.rho[0].clone(), self.gamma[self.idx])
+
     
-    def update_right_boundary(self, incoming_flux, dt):
+    def update_right_boundary(self, incoming_flux, dt, t = 0):
         # left is internal cell, middle is first boundary cell
         left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
         # Calculate rusanov flux:
@@ -217,8 +219,13 @@ class Road:
             # More than one boundary cell -> put all other boundary cells equal to this one
             for i in range(self.pad - 1):
                 self.rho[-self.pad+i+1] = self.rho[-self.pad]
+
+        if self.rho[-self.pad] < 0:
+            raise ValueError(f"Right boundary of road {self.id} has become negative at time {t}!")
+        if self.rho[-self.pad] > 1:
+            raise ValueError(f"Right boundary of road {self.id} has become too big at time {t}!")
         
-    def update_left_boundary(self, outgoing_flux, dt):
+    def update_left_boundary(self, outgoing_flux, dt, t = 0):
         # right is internal cell, middle is first boundary cell
         right, middle = self.rho[self.pad], self.rho[self.pad-1]
         # Calculate Rusanov flux:
@@ -230,6 +237,11 @@ class Road:
         if self.pad > 1:
             for i in range(self.pad-1):
                 self.rho[self.pad-2-i] = self.rho[self.pad-1]
+
+        if self.rho[self.pad-1] < 0:
+            raise ValueError(f"Left boundary of road {self.id} has become negative at time {t}!")
+        if self.rho[self.pad-1] > 1:
+            raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
 
     def max_dt(self):
         '''

@@ -489,6 +489,7 @@ class Junction:
             # Need to use quadrature rule
             xi = self.calculate_xi_n_crossing(cloned_fluxes, crossing_connections, max_flux_in)
 
+        # xi should be somewhere in the interval [0,1]
         epsilon = epsilon * max_flux_in[i]
         return torch.minimum(demand_ij, epsilon + xi*(max_flux_in[i] - epsilon))
     
@@ -611,7 +612,8 @@ class Junction:
         # rho_in = [road.rho[-road.pad] for road in self.road_in]
         rho_in = [road.rho[-road.pad].clone() for road in self.road_in]
         gamma_in = [road.gamma[road.idx] for road in self.road_in]
-        max_flux_in = [fv.fmax(gamma) for gamma in gamma_in]
+        # max_flux_in = [fv.fmax(gamma) for gamma in gamma_in] # not multiplied with max_dens!
+        max_flux_in = [fv.fmax(gamma)*road.max_dens for gamma,road in zip(gamma_in, self.road_in)]
 
         # Steps of the algorithm:
         # 1. Calculate how much of the demand is limited by traffic lights
@@ -653,10 +655,10 @@ class Junction:
         # Here, for loops are necessary
         # LIST OF TENSORS
         for i, road in enumerate(self.road_in):
-            road.update_right_boundary(fluxes_in[i] / road.max_dens, dt)
+            road.update_right_boundary(fluxes_in[i] / road.max_dens, dt, t)
         
         for j, road in enumerate(self.road_out):
-            road.update_left_boundary(fluxes_out[j] / road.max_dens, dt)
+            road.update_left_boundary(fluxes_out[j] / road.max_dens, dt, t)
     
     def get_speed(self, t, id_1, id_2):
         '''

@@ -471,6 +471,8 @@ class RoadNetwork:
                 # STEP 3: Apply flux conditions for each Junction
                 #-------------------------------------
                 # if t < 1000:
+                # print(t)
+                # print()
                 for J in self.junctions:
                     # Apply boundary conditions to all junctions
                     #J.apply_bc_wo_opt(dt, t)
@@ -539,7 +541,13 @@ class RoadNetwork:
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
     
-    def solve_cons_law_restarting(self):
+    def solve_cons_law_with_restarting(self):
+        '''
+        Runs the full simulation with restaring after each bus stop is reached
+        '''
+
+        
+    def _solve_cons_law_restarting(self, t = torch.tensor(0)):
         '''
         Takes in a road network consisting of roads and junctions.
         Each road defines has its own numerical scheme limiter if second order and speed limit.
@@ -556,17 +564,17 @@ class RoadNetwork:
         '''
         printing = False
         
-        t = torch.tensor(0)
+        # t = torch.tensor(0)
         if self.store_densities:
-            rho_timesteps = {i : {0 : self.roads[i].rho} for i in range(len(self.roads))}
+            rho_timesteps = {i : {t : self.roads[i].rho} for i in range(len(self.roads))}
             # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
-            queue_timesteps = {i : {0 : self.roads[i].queue_length} for i in range(len(self.roads))}
+            queue_timesteps = {i : {t : self.roads[i].queue_length} for i in range(len(self.roads))}
 
         else:
             rho_timesteps = {i : {} for i in range(len(self.roads))}
             queue_timesteps = {i : {} for i in range(len(self.roads))}
 
-        bus_timesteps = {i : {0 : self.busses[i].length_travelled} for i in range(len(self.busses))}
+        bus_timesteps = {i : {t : self.busses[i].length_travelled} for i in range(len(self.busses))}
 
         i_count = 0
         while t < self.T:
@@ -618,35 +626,16 @@ class RoadNetwork:
                 slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
                 slowdown_indexes = []
                 stop_reached = False
-                next_delay = torch.tensor(0.0)
+                next_delay = []
                 for bus in self.busses:
                     # slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
                     slowdown_factors, slowing_idx, stopping, delay = self.update_position_of_bus_restarting(bus, dt, t, slowdown_factors)
-                    if stopping == True and stop_reached == False:
+                    if stopping == True:
                         stop_reached = True
-                        next_delay = delay
+                        next_delay.append(delay)
+
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
-
-                if stop_reached:
-                    # Calculate gradient and reset variables
-                    print(f"A bus stop was reached at time {t}")
-                    print(f"The bus was delayed by {next_delay}")
-                    # Populating the gradient:
-                    next_delay.backward()
-
-                    # Resetting parameters:
-                    for road in self.roads:
-                        road.rho = road.rho.detach().clone()
-
-                    t = t.detach().clone()
-                    dt = dt.detach().clone()
-                    for bus in self.busses:
-                        bus.length_travelled = bus.length_travelled.detach().clone()
-                        bus.stop_factor = bus.stop_factor.detach().clone()
-
-                    for factor in slowdown_factors:
-                        factor = factor.detach().clone()
 
                 #-------------------------------------
                 # STEP 3: Apply flux conditions for each Junction
@@ -705,6 +694,39 @@ class RoadNetwork:
 
                 for i in range(len(self.busses)):
                     bus_timesteps[i][t] = self.busses[i].length_travelled.detach()
+
+                # If any stops have been reached during this iteration, the 
+                # function should be exited and relevant member variables should be 
+                # detached
+
+                if stop_reached:
+                    # Calculating the gradient:
+                    for delay in next_delay:
+                        # Calling .backward() adds the contribution to the 
+                        # existing gradient
+                        delay.backward()
+
+                    # Resetting all values:
+                    for road in self.roads:
+                        road.rho = road.rho.detach().clone()
+                        road.queue_length = road.queue_length.detach().clone()
+
+                    for bus in self.busses:
+                        bus.length_travelled = bus.length_travelled.detach().clone()
+                        bus.remaining_stop_time = bus.remaining_stop_time.detach().clone()
+                        bus.stop_factor = torch.tensor(0.0)
+
+                    for roundabout in self.roundabouts:
+                        for j in roundabout.junctions:
+                            if j.queue_junction:
+                                j.secondary_in.queue_length = j.secondary_in.queue_length.detach().clone()
+
+                    bus_delays = {i : self.busses[i].delays.detach() for i in range(len(self.busses))}
+                    
+                    return rho_timesteps, queue_timesteps, bus_timesteps, bus_delays, len(next_delay)
+
+                    
+
 
                 if self.debugging:
                     i_count += 1
