@@ -541,13 +541,7 @@ class RoadNetwork:
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
     
-    def solve_cons_law_with_restarting(self):
-        '''
-        Runs the full simulation with restaring after each bus stop is reached
-        '''
-
-        
-    def _solve_cons_law_restarting(self, t = torch.tensor(0)):
+    def solve_until_stop_reached(self, t = torch.tensor(0)):
         '''
         Takes in a road network consisting of roads and junctions.
         Each road defines has its own numerical scheme limiter if second order and speed limit.
@@ -566,17 +560,16 @@ class RoadNetwork:
         
         # t = torch.tensor(0)
         if self.store_densities:
-            rho_timesteps = {i : {t : self.roads[i].rho} for i in range(len(self.roads))}
+            rho_timesteps = {i : {t : self.roads[i].rho.clone()} for i in range(len(self.roads))}
             # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
-            queue_timesteps = {i : {t : self.roads[i].queue_length} for i in range(len(self.roads))}
+            queue_timesteps = {i : {t : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
 
         else:
             rho_timesteps = {i : {} for i in range(len(self.roads))}
             queue_timesteps = {i : {} for i in range(len(self.roads))}
 
-        bus_timesteps = {i : {t : self.busses[i].length_travelled} for i in range(len(self.busses))}
+        bus_timesteps = {i : {t : self.busses[i].length_travelled.clone()} for i in range(len(self.busses))}
 
-        i_count = 0
         while t < self.T:
             # Iterate untill time limit is reached
             controlpoint = self.T
@@ -701,46 +694,24 @@ class RoadNetwork:
 
                 if stop_reached:
                     # Calculating the gradient:
+                    tot_delay = torch.tensor(0.0)
                     for delay in next_delay:
                         # Calling .backward() adds the contribution to the 
                         # existing gradient
-                        delay.backward()
+                        # delay.backward()
+                        tot_delay += delay
+                    print("Calculating the gradient of the delay...")
+                    if tot_delay > 0:
+                        tot_delay.backward()
 
-                    # Resetting all values:
-                    for road in self.roads:
-                        road.rho = road.rho.detach().clone()
-                        road.queue_length = road.queue_length.detach().clone()
+                    # Return the current densities, queues and bus_times
+                    bus_delays = {i : [d.detach().clone() for d in self.busses[i].delays] for i in range(len(self.busses))}
 
-                    for bus in self.busses:
-                        bus.length_travelled = bus.length_travelled.detach().clone()
-                        bus.remaining_stop_time = bus.remaining_stop_time.detach().clone()
-                        bus.stop_factor = torch.tensor(0.0)
+                    return rho_timesteps, queue_timesteps, bus_timesteps, bus_delays, t.detach().clone(), len(next_delay)
 
-                    for roundabout in self.roundabouts:
-                        for j in roundabout.junctions:
-                            if j.queue_junction:
-                                j.secondary_in.queue_length = j.secondary_in.queue_length.detach().clone()
+        bus_delays = {i : [d.detach().clone() for d in self.busses[i].delays] for i in range(len(self.busses))}
 
-                    bus_delays = {i : self.busses[i].delays.detach() for i in range(len(self.busses))}
-                    
-                    return rho_timesteps, queue_timesteps, bus_timesteps, bus_delays, len(next_delay)
-
-                    
-
-
-                if self.debugging:
-                    i_count += 1
-                    if i_count >= self.iters:
-                        t = self.T+1
-                
-                if printing:
-                    print("-----------------------------------------\n")
-
-        history_of_network = rho_timesteps
-        queues = queue_timesteps
-        bus_times = bus_timesteps
-        bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
-        return history_of_network, queues, bus_times, bus_delays
+        return rho_timesteps, queue_timesteps, bus_timesteps, bus_delays, self.T, 0
 
     def get_speed_limit_grads(self):
         '''

@@ -20,6 +20,7 @@ import numpy as np
 import memory_profiler
 import os
 import json
+import restarting_network as nw
 
 # torch.autograd.set_detect_anomaly(True)
 
@@ -110,14 +111,6 @@ def load_bus_network(network_file, config_file):
 ################################
 # Converting from list of params to nested list
 ################################
-# @memory_profiler.profile
-def create_network_from_params(T, N, params, track_grad = True):
-    speed_limits, cycle_times = get_speeds_cycles_from_params(params)
-    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
-    
-    bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points,
-                                                          cycle_times, config, track_grad=track_grad)
-    return bus_network
 
 # @memory_profiler.profile
 def extract_params(speed_limits, cycle_times):
@@ -251,7 +244,8 @@ def scale_gradient(gradient, prev_params, max_update):
         raise ValueError("Scaling factor should be positive")
     # print(scaling_factor)
     # print(gradient * scaling_factor)
-    return scaling_factor, gradient * scaling_factor
+    scaled_gradient = [g * scaling_factor for g in gradient]
+    return scaling_factor, scaled_gradient
 
 # @memory_profiler.profile
 def update_params(prev_params, scaled_grad):
@@ -321,62 +315,43 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     
     # Create first network
     print("Creating the network...")
-    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
-    bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
-                                                          config, track_grad=True)
-    
-    # Solve conservation law
+    restart_network = nw.RestartingRoadNetwork(T, N, speed_limits, control_points, cycle_times, config)
+
     print("Solving the conservation law...")
-    densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
-    densities = None
-    queues = None
-    lengths = None
+    _, _, _, bus_delays, n_stops_reached, speed_grads, light_grads = restart_network.solve_cons_law()
+    objective = 0.0
+    for i in range(len(bus_delays)):
+        for delay in bus_delays[i]:
+            objective += delay
 
-    # Calculate objective function to minimize
-    print("Calculating the objective value...")
-    objective = average_delay_time(bus_delays)
-    objective_val = objective.detach().item()
-    print(f"Objective: {objective_val}")
-    # Calculate gradient wrt parameters:
-    print("Calculating the gradient...")
-    gradient = get_grad(objective, bus_network)
+    objective = objective / n_stops_reached
+    gradient = speed_grads + light_grads
 
-    objective = None
-    bus_network = None
+    print(f"Objective: {objective}")
 
-    return gradient, objective_val
+    return gradient, objective
 
 # @memory_profiler.profile
-def create_network_and_calculate(T, N, new_params, prev_objective):
+def create_network_and_calculate(T, N, new_params):
     # Creating the network:
-    bus_network = create_network_from_params(T, N, new_params)
+    speed_limits, cycle_times = get_speeds_cycles_from_params(new_params)
 
-    # Calculating the objective and the gradient
-    new_gradient, new_objective = calculate_objective_and_grad(bus_network, prev_objective)
+    restart_network = nw.RestartingRoadNetwork(T, N, speed_limits, control_points, cycle_times, config)
 
-    bus_network = None
+    _, _, _, bus_delays, n_stops_reached, speed_grads, light_grads = restart_network.solve_cons_law()
+    objective = 0.0
+    for i in range(len(bus_delays)):
+        for delay in bus_delays[i]:
+            objective += delay
 
-    return new_gradient, new_objective
+    objective = objective / n_stops_reached
+    gradient = speed_grads + light_grads
 
-# @memory_profiler.profile
-def calculate_objective_and_grad(bus_network, prev_objective, objective_fnc = average_delay_time):
-    densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
-    objective = objective_fnc(bus_delays)
-    objective_val = objective.detach().item()
-    print(f"Objective: {objective_val}")
+    print(f"Objective: {objective}")
 
-    if objective_val >= prev_objective:
-        # Do not need to calculate the gradient - this iteration will be thrown away anyways
-        gradient = None
-    else:
-        gradient = get_grad(objective, bus_network)
 
-    densities = None
-    queues = None
-    lengths = None
-    bus_delays = None
-    bus_network = None
-    return gradient, objective_val
+    return gradient, objective
+
 
 # @memory_profiler.profile
 def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
@@ -413,11 +388,13 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
 
         # 3. Create network using the new parameters and calculate the objective and gradient
         print(f"Creating the network with updated parameters and calculating the gradient/objective:")
-        new_gradient, new_objective = create_network_and_calculate(T, N, new_params, prev_objective)
+        new_gradient, new_objective = create_network_and_calculate(T, N, new_params)
         
         # 4. Check armijo condition:
         print(f"Checking the Armijo condition...")
         if new_gradient is None:
+            armijo_satisfied = False
+        elif new_objective > prev_objective:
             armijo_satisfied = False
         else:
             armijo_satisfied = check_armijo(prev_objective, new_objective, prev_gradient, scaling_factor)
@@ -501,7 +478,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
             list(prev_grad)
         ],
         "objectives" : [
-            prev_objective
+            float(prev_objective)
         ]
     }
 
@@ -581,7 +558,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
             new_result_dict["gradients"] = old_grads
 
             old_objectives = prev_result_dict["objectives"]
-            old_objectives.append(prev_objective)
+            old_objectives.append(float(prev_objective))
             new_result_dict["objectives"] = old_objectives
         
         with open(result_file, "w") as outfile:
@@ -596,21 +573,17 @@ if __name__ == "__main__":
     option = 3
     match option:
         case 0:
-            filename = "kvadraturen_networks/1_1.json"
-            gradient_descent(filename, debugging=True)
-
-        case 1:
-            # Run longer/more interesting example
-            pass
-
-        case 2:
-            # Run largest example
-            pass
-
-        case 3:
             # Run small example with e18
             network_file = "kvadraturen_networks/with_e18/network_1_1.json"
             config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network11_config11_bwd.json"
+            result_file = "optimization_results/network11_config11_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 1:
+            # Run larger example with e18
+            network_file = "kvadraturen_networks/with_e18/network_1_1.json"
+            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
+            result_file = "optimization_results/network11_config11_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
