@@ -416,7 +416,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             return prev_params, prev_gradient, prev_objective
 
 # @memory_profiler.profile
-def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 10, tol = 1.e-4, debugging = True):
+def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 100, tol = 1.e-4, debugging = True):
     '''
     Full method for the gradient descent algorithm. The funcion should take in a filename for 
     the initial configuration of the network. In addition the objetive type needs to be specified.
@@ -570,7 +570,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 3
+    option = 1
     match option:
         case 0:
             # Run small example with e18
@@ -582,8 +582,9 @@ if __name__ == "__main__":
             
         case 1:
             # Run larger example with e18
-            network_file = "kvadraturen_networks/with_e18/network_1_1.json"
-            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network11_config11_restart.json"
+            network_file = "kvadraturen_networks/with_e18/network_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_1.json"
+            result_file = "optimization_results/network2_config21_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
+            
