@@ -2157,7 +2157,7 @@ def generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cyc
                                                            control_points[12], control_points[13],
                                                            initial_densities = config["init_densities"],
                                                            inflow_configs = config["roundabout_inflows"],
-                                                           track_grad=False)
+                                                           track_grad=False, N = N)
     
     # Create the network
     roads = v_strand_fw + v_strand_bw + h_w + tollbod_fw[1:] + tollbod_bw + elvegata_fw + \
