@@ -310,11 +310,18 @@ def run_simulation_from_params(params, T, N):
     
     # 2. Solve conservation law
     print("Solving the conservation law...")
-    _, _, _, bus_delays = bus_network.solve_cons_law()
+    # _, _, _, bus_delays = bus_network.solve_cons_law()
+    _, _, _, bus_delays, n_stops_reached = bus_network.solve_cons_law_counting()
+
 
     # 3. Calculate objective function to minimize
     print("Calculating the objective value...")
-    objective = average_delay_time(bus_delays)
+    # objective = average_delay_time(bus_delays)
+    if n_stops_reached > 0:
+        objective = average_delay_time(bus_delays) / n_stops_reached
+    else:
+        objective = average_delay_time(bus_delays)
+
     objective_val = objective.detach().item()
     print(f"Objective: {objective_val}")
 
@@ -573,21 +580,9 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 3
+    option = 1
     match option:
         case 0:
-            filename = "kvadraturen_networks/1_1.json"
-            gradient_descent(filename, debugging=True)
-
-        case 1:
-            # Run longer/more interesting example
-            pass
-
-        case 2:
-            # Run largest example
-            pass
-
-        case 3:
             # Run small e18 example:
             network_file = "kvadraturen_networks/with_e18/network_1.json"
             config_file = "kvadraturen_networks/with_e18/config_1_1.json"
@@ -596,3 +591,18 @@ if __name__ == "__main__":
 
             gradient_descent(network_file, config_file, result_file, overwrite = False, debugging=False)
 
+        case 1:
+            # Run larger example with e18
+            network_file = "kvadraturen_networks/with_e18/network_2_1.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_1.json"
+            result_file = "optimization_results/network21_config21_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 2:
+            # Run larger example with e18
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_1.json"
+            result_file = "optimization_results/network22_config21_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)

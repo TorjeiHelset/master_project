@@ -541,6 +541,164 @@ class RoadNetwork:
         bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
         return history_of_network, queues, bus_times, bus_delays
     
+    def solve_cons_law_counting(self):
+        '''
+        Takes in a road network consisting of roads and junctions.
+        Each road defines has its own numerical scheme limiter if second order and speed limit.
+        
+
+        Later add possibility of having different flux functions
+        Can also add different flux functions for each road
+
+        Solves model of road untill time T
+        '''
+        printing = False
+        n_stops_reached = 0
+        
+        t = torch.tensor(0.0)
+        if self.store_densities:
+            rho_timesteps = {i : {0 : self.roads[i].rho} for i in range(len(self.roads))}
+            # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
+            queue_timesteps = {i : {0 : self.roads[i].queue_length} for i in range(len(self.roads))}
+
+        else:
+            rho_timesteps = {i : {} for i in range(len(self.roads))}
+            queue_timesteps = {i : {} for i in range(len(self.roads))}
+
+        bus_timesteps = {i : {0 : self.busses[i].length_travelled} for i in range(len(self.busses))}
+
+        i_count = 0
+        while t < self.T:
+            # Iterate untill time limit is reached
+            controlpoint = self.T
+            for road in self.roads:
+                # Update index of controlpoint in use for each road
+                # Get the first controlpoint reached and use as upper limit of 
+                # how large time step dt can be
+                new_time = road.update_index(t)
+                if new_time == -1:
+                    new_time = self.T
+
+                ######################################################################
+                # The time of jumps should also be added as control points, to ensure
+                # That they are reached when simulating
+                ######################################################################
+
+                controlpoint = min(controlpoint, new_time)
+
+            for j in self.junctions:
+                controlpoint= min(controlpoint, j.get_next_control_point(t))
+                
+            if self.print_control_points:
+                print("\n-----------------------------------------")
+                print(f"Controlpoint: {controlpoint}")
+                print("-----------------------------------------\n")
+                print(f"road index {road.idx}")
+                print(f"Speed limit on road {road.Vmax[road.idx]}")
+                print(f"Gamma parameter {road.gamma[road.idx]}")
+                
+            while t < controlpoint:
+                #-------------------------------------
+                # STEP 1: Find appropriate timestep
+                #-------------------------------------                
+                dt = controlpoint - t
+                
+                for road in self.roads:
+                    dt = torch.min(dt, road.max_dt())
+            
+                t = t + dt
+
+                #-------------------------------------
+                # STEP 2: Update positions of busses
+                # This should be a separate function...
+                #-------------------------------------
+                # Sowdown_factors is a list of how much to reduce the flux on each
+                # cell interface for each road determined by the bus
+                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_indexes = []
+                for bus in self.busses:
+                    # slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
+                    slowdown_factors, slowing_idx, stopping, _ = self.update_position_of_bus_restarting(bus, dt, t, slowdown_factors)
+                    if stopping:
+                        n_stops_reached += 1
+
+                    if slowing_idx is not None:
+                        slowdown_indexes.append(slowing_idx)
+
+                #-------------------------------------
+                # STEP 3: Apply flux conditions for each Junction
+                #-------------------------------------
+                # if t < 1000:
+                # print(t)
+                # print()
+                for J in self.junctions:
+                    # Apply boundary conditions to all junctions
+                    #J.apply_bc_wo_opt(dt, t)
+                    J.apply_bc(dt,t)
+
+                #-------------------------------------
+                # STEP 4: Apply flux conditions for each Roundabout
+                #-------------------------------------
+                # if t < 1000:
+                for roundabout in self.roundabouts:
+                    # Apply boundary conditions to all roundabouts
+                    roundabout.apply_bc(dt, t)
+
+                #-------------------------------------
+                # STEP 5: Apply BC to roads with one or more edges not connected to junction
+                #-------------------------------------
+                for road in self.roads:
+                    # Add boundary conditions to remaining roads
+                    road.apply_bc(dt, t)
+                
+                #-------------------------------------
+                # STEP 6: Solve internal system for each road
+                #-------------------------------------
+                for i, road in enumerate(self.roads):
+                    # Solve internally on all roads in network
+                    # Before updating internal values, values near boundary should maybe be saved to 
+                    # update boundary properly
+                    # Right now values near boundary at next time step is used to update boundary.
+                    # Solution: Make road.solve_internally(dt) return a copy of the densities
+                    # for each road instead of overwriting the values
+                    # Update internal values later
+                    if i in slowdown_indexes:
+                        road.solve_internally_slowdown(dt, slowdown_factors[i])
+                    else:
+                        road.solve_internally(dt)
+
+                # At this point, the old internal values are not used anymore, so they can safely be 
+                # overwritten
+
+                #-------------------------------------
+                # STEP 6: Store solution after time t
+                # Maybe a bit too much to store the solution at all times
+                # If the objective function could be calculated here instead, ¨
+                # it would probably save a lot of memory...
+                #-------------------------------------
+                if self.store_densities:
+                    for i in range(len(self.roads)):
+                        rho_timesteps[i][t] = self.roads[i].rho
+                        # queue_timesteps[i][t] = self.roads[i].queue_length.clone()
+                        queue_timesteps[i][t] = self.roads[i].queue_length
+
+                for i in range(len(self.busses)):
+                    bus_timesteps[i][t] = self.busses[i].length_travelled.clone()
+
+                if self.debugging:
+                    i_count += 1
+                    if i_count >= self.iters:
+                        t = self.T+1
+                
+                if printing:
+                    print("-----------------------------------------\n")
+
+        history_of_network = rho_timesteps
+        queues = queue_timesteps
+        bus_times = bus_timesteps
+        bus_delays = {i : self.busses[i].delays for i in range(len(self.busses))}
+        return history_of_network, queues, bus_times, bus_delays, n_stops_reached
+    
     def solve_until_stop_reached(self, t = torch.tensor(0)):
         '''
         Takes in a road network consisting of roads and junctions.
