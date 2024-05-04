@@ -53,7 +53,7 @@ def Rusanov_Flux(rho, gamma):
 def Lax_Wendroff_Flux(rho, dx, dt, gamma):
     left = rho[:-1]
     right = rho[1:]
-    a = d_flux(0.5*(left + right))
+    a = d_flux(0.5*(left + right), gamma)
     return 0.5 * (flux(left, gamma) + flux(right, gamma)) - a*0.5*dt/dx * (flux(right, gamma) - flux(left, gamma))
 
 @torch.jit.script
@@ -167,6 +167,55 @@ def SSP_RK(rho, dx, limiter, dt, gamma):
     rho__ = rho_ + dt * L_operator(rho_, dx, limiter, gamma)
     rho_new = .5 * (rho + rho__)
     return rho_new
+
+@torch.jit.script
+def get_left_boundary_flux(rho, dx, limiter, dt, gamma):
+    F = torch.tensor(0.0)
+    sigma_ = slope(rho[:6], limiter) # Tensor of length 4
+    left = rho[1:5] + torch.tensor(.5) * sigma_ # Tensor of length 4
+    right = rho[1:5] - torch.tensor(.5) * sigma_ # Tensor of length 4
+
+    F_Rus_ = Rusanov_Flux_2(left[:-1], right[1:], gamma) # Tensor of length 3
+
+    F = F + 0.5 * F_Rus_[0] # Store left flux from first iteration
+
+    # Create rho*
+    new_rho = rho[:4].clone()
+    new_rho[2:] = new_rho[2:] - dt/dx * (F_Rus_[1:] - F_Rus_[:-1])
+
+    sigma__ = slope(new_rho, limiter) # Tensor of length 2
+    left_ = new_rho[1:-1] + torch.tensor(.5) * sigma__ # Tensor of length 2
+    right_ = new_rho[1:-1] - torch.tensor(.5) * sigma__ # Tensor of length 2
+    F_Rus__ = Rusanov_Flux_2(left_[:-1], right_[1:], gamma) # Tensor of length 1
+
+    F = F + 0.5 * F_Rus__
+
+    return F
+
+@torch.jit.script
+def get_right_boundary_flux(rho, dx, limiter, dt, gamma):
+    F = torch.tensor(0.0)
+    sigma_ = slope(rho[-6:], limiter) # Tensor of length 4
+    left = rho[-5:-1] + torch.tensor(.5) * sigma_ # Tensor of length 4
+    right = rho[-5:-1] - torch.tensor(.5) * sigma_ # Tensor of length 4
+
+    F_Rus_ = Rusanov_Flux_2(left[:-1], right[1:], gamma) # Tensor of length 3
+
+    F = F + 0.5 * F_Rus_[-1] # Store left flux from first iteration
+
+    # Create rho*
+    new_rho = rho[-4:].clone() # Tensor of length 4
+    new_rho[:2] = new_rho[:2] - dt/dx * (F_Rus_[1:] - F_Rus_[:-1]) # Tensor of length 2
+
+    sigma__ = slope(new_rho, limiter) # Tensor of length 2
+    left_ = new_rho[1:-1] + torch.tensor(.5) * sigma__ # Tensor of length 2
+    right_ = new_rho[1:-1] - torch.tensor(.5) * sigma__ # Tensor of length 2
+    F_Rus__ = Rusanov_Flux_2(left_[:-1], right_[1:], gamma) # Tensor of length 1
+
+    F = F + 0.5 * F_Rus__
+
+    return F
+
 
 def Euler_slowdown(rho, dx, limiter, dt, gamma, slowdown_factors):
     rho_new = rho + dt * L_operator_slowdown(rho, dx, limiter, gamma, slowdown_factors)

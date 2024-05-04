@@ -183,7 +183,6 @@ class Road:
         self.left_boundary = self.rho[:self.pad]
         self.right_boundary = self.rho[-self.pad:]
         
-
     def calculate_gamma(self, T):
         '''
         Calculate dimensionless parameter gamma using total 
@@ -245,7 +244,7 @@ class Road:
         # if self.rho[self.pad-1] > 1:
         #     raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
 
-    def update_right_boundary(self, incoming_flux, dt, t = 0):
+    def update_right_boundary_old_2(self, incoming_flux, dt, t = 0):
         # The boundary cells are updated using a first order scheme
         # Calculate the rusanov flux between the last internal cell and the first boundary
         # cell. If there are more boundary cells, calculate the flux between the boundary
@@ -259,8 +258,8 @@ class Road:
         F[-1] = incoming_flux.clone()
 
         self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
-        
-    def update_left_boundary(self, outgoing_flux, dt, t = 0):
+
+    def update_left_boundary_old_2(self, outgoing_flux, dt, t = 0):
         # Update boundary cells using a first order rusanov scheme
         # The leftmost flux is coming from either a regular junction or a roundabout junction
 
@@ -270,6 +269,47 @@ class Road:
         F = torch.zeros(self.pad+1)
         F[1:] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
         F[0] = outgoing_flux.clone()
+        # print(f"Updating left boundary of road {self.id}")
+        # print(f"Flux calculated as {F}")
+        # print(f"Previous left boundary: {self.left_boundary}")
+
+        self.left_boundary = self.left_boundary - dt / self.dx * (F[1:] - F[:-1])
+        # print(f"Next left boundary: {self.left_boundary}")
+        # print("-----------------------------------------------------\n")
+
+    def update_right_boundary(self, incoming_flux, dt, t = 0):
+        # The boundary cells are updated using a first order scheme
+        # Calculate the rusanov flux between the last internal cell and the first boundary
+        # cell. If there are more boundary cells, calculate the flux between the boundary
+        # cells
+
+        left = self.rho[-2]
+        right = self.rho[-1]
+
+        F = torch.zeros(self.pad + 1)
+
+        F[-2] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[-1] = incoming_flux.clone()
+        
+        if self.pad > 1:
+            F[0] = fv.get_right_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt,self.gamma[self.idx])
+
+        self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
+        
+    def update_left_boundary(self, outgoing_flux, dt, t = 0):
+        # Update boundary cells using a first order rusanov scheme
+        # The leftmost flux is coming from either a regular junction or a roundabout junction
+
+        left = self.rho[0]
+        right = self.rho[1]
+
+        F = torch.zeros(self.pad+1)
+
+        F[1] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[0] = outgoing_flux.clone()
+
+        if self.pad > 1:
+            F[2] = fv.get_left_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt, self.gamma[self.idx])
 
         self.left_boundary = self.left_boundary - dt / self.dx * (F[1:] - F[:-1])
 
@@ -298,6 +338,7 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+        max_flux = self.gamma[self.idx]
         
         ###############
         # maximum = torch.max(max_flux, fv.d_flux(torch.tensor(0.0), self.gamma[self.idx]))
@@ -335,10 +376,17 @@ class Road:
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 1:
                 # Rusanov scheme
-                F = fv.Rusanov_Flux(self.rho, self.gamma[self.idx])
-                self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
+                # print(f"Densities: {self.rho}")
+                new_rho = torch.zeros_like(self.rho)
+
+                F = fv.Rusanov_Flux(self.rho.clone(), self.gamma[self.idx])
+                new_rho[1:-1] = -dt/self.dx * (F[self.pad:] - F[:-self.pad])
+                self.rho = self.rho + new_rho.clone()
+                # self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 2:
                 F = fv.Lax_Wendroff_Flux(self.rho, self.dx, dt, self.gamma[self.idx])
+                
+
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 3:
                 # self.rho = fv.SSP_RK_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],

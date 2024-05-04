@@ -674,6 +674,7 @@ class RoadNetwork:
 
                 # At this point, the old internal values are not used anymore, so they can safely be 
                 # overwritten
+                road.update_boundaries()
 
                 #-------------------------------------
                 # STEP 6: Store solution after time t
@@ -832,6 +833,8 @@ class RoadNetwork:
                         road.solve_internally_slowdown(dt, slowdown_factors[i])
                     else:
                         road.solve_internally(dt)
+
+                    road.update_boundaries()
 
                 # At this point, the old internal values are not used anymore, so they can safely be 
                 # overwritten

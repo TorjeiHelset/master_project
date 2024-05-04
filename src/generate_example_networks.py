@@ -38,11 +38,12 @@ def single_junction_network(T, N, speed1 = [torch.tensor(30.0)], control_points1
     ...
 
 
-def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0)], speed2 = [torch.tensor(50.0)],
-                              speed3 = [torch.tensor(50.0)], cycle1 = [torch.tensor(60.0), torch.tensor(80.0)],
+def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0/3.6)], speed2 = [torch.tensor(50.0/3.6)],
+                              speed3 = [torch.tensor(50.0/3.6)], cycle1 = [torch.tensor(60.0), torch.tensor(80.0)],
                               cycle2 = [torch.tensor(50.0), torch.tensor(50.0)],
                               cycle3 = [torch.tensor(70.0), torch.tensor(70.0)], 
-                              densities = [0.3, 0.3, 0.3], track_grad = False):
+                              densities = [0.3, 0.3, 0.3], track_grad = False,
+                              scheme = 3):
     '''
     Create a closed smaller network for comparing the resolution of different grid sizes
     The network consists of a three armed network where each arm leads to a junction. In each junction there is a 
@@ -69,17 +70,17 @@ def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0)], speed2 = [tor
     # Creating the roads:
     for i in range(3):
         outer_fw[i] = rd.Road(5, L, N, speed1, [], initial=init_fncs[0], left_pos=outer_positions[i], 
-                              right_pos=outer_positions[(i+1)%3], id="outer_"+str(i+1)+"fw")
+                              right_pos=outer_positions[(i+1)%3], id="outer_"+str(i+1)+"fw", scheme=scheme)
         outer_bw[i] = rd.Road(5, L, N, speed1, [], initial=init_fncs[0], left_pos=outer_positions[(i+1)%3], 
-                              right_pos=outer_positions[i], id="outer_"+str(i+1)+"bw")
+                              right_pos=outer_positions[i], id="outer_"+str(i+1)+"bw", scheme=scheme)
         
         inner_fw[i] = rd.Road(2, L, N, speed2, [], initial=init_fncs[1], left_pos=outer_positions[i], 
-                              right_pos=inner_positions[i], id="inner_"+str(i+1)+"fw")
+                              right_pos=inner_positions[i], id="inner_"+str(i+1)+"fw", scheme=scheme)
         inner_bw[i] = rd.Road(2, L, N, speed2, [], initial=init_fncs[1], left_pos=inner_positions[i], 
-                              right_pos=outer_positions[i], id="inner_"+str(i+1)+"bw")
+                              right_pos=outer_positions[i], id="inner_"+str(i+1)+"bw", scheme=scheme)
         
         mainlines[i] = rd.Road(1, L, N, speed3, [], initial=init_fncs[2], left_pos=inner_positions[i],
-                               right_pos=inner_positions[(i+1)%3], id="mainline_"+str(i+1))
+                               right_pos=inner_positions[(i+1)%3], id="mainline_"+str(i+1), scheme=scheme)
 
     # Creating the traffic lights:
     traffic_lights = [None for _ in range(3)]
@@ -105,6 +106,12 @@ def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0)], speed2 = [tor
                                      entering=[0,3,5], leaving=[1,2,4], distribution=distribution,
                                      trafficlights=[], coupled_trafficlights=[traffic_lights[i]],
                                      duty_to_gw=True, priorities=priorities, crossing_connections=crossings)
+
+        # outer_jncs[i] = jn.Junction([outer_fw[i], outer_bw[i], outer_fw[(i+1)%3],
+        #                              outer_bw[(i+1)%3], inner_fw[i], inner_bw[i]],
+        #                              entering=[0,3,5], leaving=[1,2,4], distribution=distribution,
+        #                              trafficlights=[], coupled_trafficlights=[],
+        #                              duty_to_gw=True, priorities=priorities, crossing_connections=crossings)
         
     # Creating the roundabout junctions:
     roundabout_jncs = [None for _ in range(3)]
