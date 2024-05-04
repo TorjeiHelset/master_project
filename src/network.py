@@ -386,7 +386,7 @@ class RoadNetwork:
         relative_length = road.L*road.b - length # Remaining length
         bus.update_position(dt, t, speed, activation, relative_length, printing=False)
         return #slowdown_factors
-
+    
     def solve_cons_law(self):
         '''
         Takes in a road network consisting of roads and junctions.
@@ -508,6 +508,11 @@ class RoadNetwork:
                         road.solve_internally_slowdown(dt, slowdown_factors[i])
                     else:
                         road.solve_internally(dt)
+
+                    ######################################
+                    # Adding a line here:
+                    ######################################
+                    road.update_boundaries()
 
                 # At this point, the old internal values are not used anymore, so they can safely be 
                 # overwritten

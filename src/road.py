@@ -179,6 +179,9 @@ class Road:
         self.id = id
 
         self.boundary_fnc = boundary_fnc
+
+        self.left_boundary = self.rho[:self.pad]
+        self.right_boundary = self.rho[-self.pad:]
         
 
     def calculate_gamma(self, T):
@@ -205,8 +208,7 @@ class Road:
         # return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
         return self.max_dens * fv.S(self.rho[0].clone(), self.gamma[self.idx])
 
-    
-    def update_right_boundary(self, incoming_flux, dt, t = 0):
+    def update_right_boundary_old(self, incoming_flux, dt, t = 0):
         # left is internal cell, middle is first boundary cell
         left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
         # Calculate rusanov flux:
@@ -224,8 +226,8 @@ class Road:
         #     raise ValueError(f"Right boundary of road {self.id} has become negative at time {t}!")
         # if self.rho[-self.pad] > 1:
         #     raise ValueError(f"Right boundary of road {self.id} has become too big at time {t}!")
-        
-    def update_left_boundary(self, outgoing_flux, dt, t = 0):
+
+    def update_left_boundary_old(self, outgoing_flux, dt, t = 0):
         # right is internal cell, middle is first boundary cell
         right, middle = self.rho[self.pad], self.rho[self.pad-1]
         # Calculate Rusanov flux:
@@ -242,6 +244,34 @@ class Road:
         #     raise ValueError(f"Left boundary of road {self.id} has become negative at time {t}!")
         # if self.rho[self.pad-1] > 1:
         #     raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
+
+    def update_right_boundary(self, incoming_flux, dt, t = 0):
+        # The boundary cells are updated using a first order scheme
+        # Calculate the rusanov flux between the last internal cell and the first boundary
+        # cell. If there are more boundary cells, calculate the flux between the boundary
+        # cells
+
+        left = self.rho[-self.pad-1:-1]
+        right = self.rho[-self.pad:]
+
+        F = torch.zeros(self.pad + 1)
+        F[:-1] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[-1] = incoming_flux.clone()
+
+        self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
+        
+    def update_left_boundary(self, outgoing_flux, dt, t = 0):
+        # Update boundary cells using a first order rusanov scheme
+        # The leftmost flux is coming from either a regular junction or a roundabout junction
+
+        left = self.rho[:self.pad]
+        right = self.rho[1:self.pad+1]
+
+        F = torch.zeros(self.pad+1)
+        F[1:] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[0] = outgoing_flux.clone()
+
+        self.left_boundary = self.left_boundary - dt / self.dx * (F[1:] - F[:-1])
 
     def max_dt(self):
         '''
@@ -422,6 +452,12 @@ class Road:
                         # Update density according to flux in
                         self.update_left_boundary(gamma_in, dt)
 
+    def update_boundaries(self):
+        if not self.periodic:
+            self.rho[:self.pad] = self.left_boundary.clone()
+            self.rho[-self.pad:] = self.right_boundary.clone() 
+
+
     def update_index(self, t):
         '''
         Find out which time interval we are in given time t. The time interval gives the
@@ -447,7 +483,6 @@ class Road:
                 # (i+1)th time interval
                 self.idx = i
                 return self.control_points[i]
-
 
     def get_gamma(self, t):
         if len(self.control_points) == 0:

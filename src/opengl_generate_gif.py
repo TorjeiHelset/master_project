@@ -880,7 +880,7 @@ def update_e18_bool():
     global with_e18
     with_e18 = False
 if __name__ == "__main__":
-    scenario = 6
+    scenario = 14
     
     match scenario:
         case 0:
@@ -1103,7 +1103,6 @@ if __name__ == "__main__":
                                     densities, old_busses, old_lengths, output_name="comparing_500_w_stops_test.gif",
                                     background_img="background_imgs/blurred_kvadraturen_w_stops.png")
             
-
         case 7:
             import json
             import bus
@@ -1489,3 +1488,20 @@ if __name__ == "__main__":
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths, densities,
                                     output_name="examples_for_presentation/gifs/roundabout.gif",
                                     background_img="background_imgs/white_background.png",interval_seconds = 0.1)
+            
+        case 14:
+            import json
+            import generate_example_networks as generate
+
+            network = generate.compare_grid_size_network(T = 100, N = 2)
+
+            print("Loading results...")
+            f = open("results/comparing_grids_N=2.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+
+
+            print("Creating animation...")
+            draw_densities(network, densities, output_name="gifs/comparing_grids_N=2.gif", 
+                           background_img="background_imgs/white_background.png", interval_seconds = 0.1)

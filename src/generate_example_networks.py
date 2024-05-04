@@ -69,17 +69,17 @@ def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0)], speed2 = [tor
     # Creating the roads:
     for i in range(3):
         outer_fw[i] = rd.Road(5, L, N, speed1, [], initial=init_fncs[0], left_pos=outer_positions[i], 
-                              right_pos=outer_positions[(i+1)%3])
+                              right_pos=outer_positions[(i+1)%3], id="outer_"+str(i+1)+"fw")
         outer_bw[i] = rd.Road(5, L, N, speed1, [], initial=init_fncs[0], left_pos=outer_positions[(i+1)%3], 
-                              right_pos=outer_positions[i])
+                              right_pos=outer_positions[i], id="outer_"+str(i+1)+"bw")
         
         inner_fw[i] = rd.Road(2, L, N, speed2, [], initial=init_fncs[1], left_pos=outer_positions[i], 
-                              right_pos=inner_positions[i])
+                              right_pos=inner_positions[i], id="inner_"+str(i+1)+"fw")
         inner_bw[i] = rd.Road(2, L, N, speed2, [], initial=init_fncs[1], left_pos=inner_positions[i], 
-                              right_pos=outer_positions[i])
+                              right_pos=outer_positions[i], id="inner_"+str(i+1)+"bw")
         
         mainlines[i] = rd.Road(1, L, N, speed3, [], initial=init_fncs[2], left_pos=inner_positions[i],
-                               right_pos=outer_positions[(i+1)%3])
+                               right_pos=inner_positions[(i+1)%3], id="mainline_"+str(i+1))
 
     # Creating the traffic lights:
     traffic_lights = [None for _ in range(3)]
@@ -148,9 +148,3 @@ if __name__ == "__main__":
         case 1: 
             network = compare_grid_size_network(T = 100, N = 2)
             densities, queues, _, _ = network.solve_cons_law()
-
-            # Wrie to json file
-
-
-    
-
