@@ -452,10 +452,41 @@ class RoadNetwork:
                     dt = torch.min(dt, road.max_dt())
             
                 t = t + dt
+                old_dt = dt.clone()
 
                 #-------------------------------------
-                # STEP 2: Update positions of busses
-                # This should be a separate function...
+                # STEP 1: Calculate fluxes across junction
+                #         Potentially update dt
+                #-------------------------------------
+                for J in self.junctions:
+                    # Apply boundary conditions to all junctions
+                    #J.apply_bc_wo_opt(dt, t)
+                    min_dt = J.apply_bc(dt,t)
+                    dt = torch.min(min_dt, dt)
+                    # J.apply_bc(dt,t)
+
+                #-------------------------------------
+                # STEP 4: Calculate fluxes across roundabout junctions
+                #         Potentially update dt
+                #-------------------------------------
+                for roundabout in self.roundabouts:
+                    # Apply boundary conditions to all roundabouts
+                    min_dt = roundabout.apply_bc(dt, t)
+                    dt = torch.min(min_dt, dt)
+                    # roundabout.apply_bc(dt, t)
+
+                if old_dt > dt:
+                    t = t - old_dt + dt
+                #-------------------------------------
+                # STEP 5: Calculate fluxes to roads with one or more edges 
+                #         not connected to junction
+                #-------------------------------------
+                for road in self.roads:
+                    # Add boundary conditions to remaining roads
+                    road.apply_bc(dt, t)
+
+                #-------------------------------------
+                # STEP 5: Update positions of busses
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
@@ -467,36 +498,13 @@ class RoadNetwork:
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
 
-                #-------------------------------------
-                # STEP 3: Apply flux conditions for each Junction
-                #-------------------------------------
-                # if t < 1000:
-                # print(t)
-                # print()
-                for J in self.junctions:
-                    # Apply boundary conditions to all junctions
-                    #J.apply_bc_wo_opt(dt, t)
-                    J.apply_bc(dt,t)
 
-                #-------------------------------------
-                # STEP 4: Apply flux conditions for each Roundabout
-                #-------------------------------------
-                # if t < 1000:
-                for roundabout in self.roundabouts:
-                    # Apply boundary conditions to all roundabouts
-                    roundabout.apply_bc(dt, t)
-
-                #-------------------------------------
-                # STEP 5: Apply BC to roads with one or more edges not connected to junction
-                #-------------------------------------
-                for road in self.roads:
-                    # Add boundary conditions to remaining roads
-                    road.apply_bc(dt, t)
-                
                 #-------------------------------------
                 # STEP 6: Solve internal system for each road
                 #-------------------------------------
                 for i, road in enumerate(self.roads):
+                    road.update_boundary_cells(dt)
+
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
                     # update boundary properly
@@ -509,19 +517,15 @@ class RoadNetwork:
                     else:
                         road.solve_internally(dt)
 
-                    ######################################
-                    # Adding a line here:
-                    ######################################
+                    #-------------------------------------
+                    # STEP 7: Update boundaries on road
+                    #-------------------------------------
+                    # road.update_boundaries(dt)
                     road.update_boundaries()
 
-                # At this point, the old internal values are not used anymore, so they can safely be 
-                # overwritten
-
                 #-------------------------------------
-                # STEP 6: Store solution after time t
-                # Maybe a bit too much to store the solution at all times
-                # If the objective function could be calculated here instead, ¨
-                # it would probably save a lot of memory...
+                # STEP 8: Store solution after time t
+                # Maybe a bit too much to store the solution at all times?
                 #-------------------------------------
                 if self.store_densities:
                     for i in range(len(self.roads)):

@@ -654,11 +654,18 @@ class Junction:
 
         # Here, for loops are necessary
         # LIST OF TENSORS
+        min_dt = dt + 1
         for i, road in enumerate(self.road_in):
-            road.update_right_boundary(fluxes_in[i] / road.max_dens, dt, t)
+            # road.update_right_boundary(fluxes_in[i] / road.max_dens, dt, t)
+            min_dt_ = road.update_right_flux(fluxes_in[i] / road.max_dens)
+            min_dt = torch.min(min_dt_, min_dt)
         
         for j, road in enumerate(self.road_out):
-            road.update_left_boundary(fluxes_out[j] / road.max_dens, dt, t)
+            # road.update_left_boundary(fluxes_out[j] / road.max_dens, dt, t)
+            min_dt_ = road.update_left_flux(fluxes_out[j] / road.max_dens)
+            min_dt = torch.min(min_dt_, min_dt)
+
+        return min_dt
     
     def get_speed(self, t, id_1, id_2):
         '''

@@ -49,7 +49,6 @@ def Rusanov_Flux(rho, gamma):
 
     return 0.5*(flux(left, gamma) + flux(right, gamma)) - 0.5 * s * (right - left)
 
-
 def Lax_Wendroff_Flux(rho, dx, dt, gamma):
     left = rho[:-1]
     right = rho[1:]
@@ -215,7 +214,6 @@ def get_right_boundary_flux(rho, dx, limiter, dt, gamma):
     F = F + 0.5 * F_Rus__
 
     return F
-
 
 def Euler_slowdown(rho, dx, limiter, dt, gamma, slowdown_factors):
     rho_new = rho + dt * L_operator_slowdown(rho, dx, limiter, gamma, slowdown_factors)

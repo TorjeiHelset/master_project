@@ -182,6 +182,9 @@ class Road:
 
         self.left_boundary = self.rho[:self.pad]
         self.right_boundary = self.rho[-self.pad:]
+        self.left_flux = torch.tensor(0.0)
+        self.right_flux = torch.tensor(0.0) 
+
         
     def calculate_gamma(self, T):
         '''
@@ -277,7 +280,17 @@ class Road:
         # print(f"Next left boundary: {self.left_boundary}")
         # print("-----------------------------------------------------\n")
 
-    def update_right_boundary(self, incoming_flux, dt, t = 0):
+    def update_right_flux(self, incoming_flux):
+        self.right_flux = incoming_flux
+        min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *incoming_flux /  self.gamma[self.idx]))
+        return min_dt
+    
+    def update_left_flux(self, outgoing_flux):
+        self.left_flux = outgoing_flux
+        min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *outgoing_flux /  self.gamma[self.idx]))
+        return min_dt
+        
+    def update_right_boundary(self, incoming_flux, dt):
         # The boundary cells are updated using a first order scheme
         # Calculate the rusanov flux between the last internal cell and the first boundary
         # cell. If there are more boundary cells, calculate the flux between the boundary
@@ -296,7 +309,7 @@ class Road:
 
         self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
         
-    def update_left_boundary(self, outgoing_flux, dt, t = 0):
+    def update_left_boundary(self, outgoing_flux, dt):
         # Update boundary cells using a first order rusanov scheme
         # The leftmost flux is coming from either a regular junction or a roundabout junction
 
@@ -338,7 +351,7 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
-        max_flux = self.gamma[self.idx]
+        # max_flux = self.gamma[self.idx]
         
         ###############
         # maximum = torch.max(max_flux, fv.d_flux(torch.tensor(0.0), self.gamma[self.idx]))
@@ -500,11 +513,16 @@ class Road:
                         # Update density according to flux in
                         self.update_left_boundary(gamma_in, dt)
 
+    def update_boundary_cells(self, dt):
+        self.update_left_boundary(self.left_flux, dt)
+        self.update_right_boundary(self.right_flux, dt)
+        self.left_flux = torch.tensor(0.0)
+        self.right_flux = torch.tensor(0.0)
+
     def update_boundaries(self):
         if not self.periodic:
             self.rho[:self.pad] = self.left_boundary.clone()
             self.rho[-self.pad:] = self.right_boundary.clone() 
-
 
     def update_index(self, t):
         '''
