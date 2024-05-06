@@ -571,7 +571,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 1
+    option = 2
     match option:
         case 0:
             # Run small example with e18

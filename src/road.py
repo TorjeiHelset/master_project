@@ -169,7 +169,7 @@ class Road:
         # Should maybe extend to limit the allowed flux that can exit road
 
         self.queue_length = torch.tensor(0.0)
-        self.index = 0
+        self.idx = 0
         self.max_dens = max_dens
 
         self.left_pos = left_pos 
@@ -282,13 +282,19 @@ class Road:
 
     def update_right_flux(self, incoming_flux):
         self.right_flux = incoming_flux
-        min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *incoming_flux /  self.gamma[self.idx]))
-        return min_dt
+        if 1 - 4 *incoming_flux /  self.gamma[self.idx] <= 0:
+            return self.max_dt()
+        else:
+            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *incoming_flux /  self.gamma[self.idx]))
+        return torch.max(min_dt, self.gamma[self.idx])
     
     def update_left_flux(self, outgoing_flux):
         self.left_flux = outgoing_flux
-        min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *outgoing_flux /  self.gamma[self.idx]))
-        return min_dt
+        if 1 - 4 *outgoing_flux /  self.gamma[self.idx] <= 0:
+            return self.max_dt()
+        else:
+            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *outgoing_flux /  self.gamma[self.idx]))
+        return torch.max(min_dt, self.gamma[self.idx])
         
     def update_right_boundary(self, incoming_flux, dt):
         # The boundary cells are updated using a first order scheme
@@ -351,6 +357,10 @@ class Road:
         # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+
+        if max_flux > self.gamma[self.idx]:
+            print(f"{self.id} has some error with the density...")
+            print(self.rho)
         # max_flux = self.gamma[self.idx]
         
         ###############
@@ -361,6 +371,7 @@ class Road:
         if torch.abs(max_flux) < 1e-5:
             max_flux = torch.tensor(0.000001)
         # return CFL * self.dx / (max_flux)
+
         
         return CFL * self.dx / (self.max_dens * max_flux)
 
@@ -481,7 +492,11 @@ class Road:
             if not self.right:
                 # INPLACE
                 # Right boundary not attached to junction - set denity equal to closest interior point
-                self.rho[-self.pad:] = self.rho[-self.pad-1]
+                # print(self.id)
+                # print(self.rho[-self.pad-1])
+                # self.right_boundary[:] = self.rho[-self.pad-1]
+
+                self.right_boundary[:] = self.rho[-self.pad-1]
 
             # For left boundary some inflow conditions are necessary       
             if not self.left:
@@ -491,7 +506,8 @@ class Road:
 
                 else:
                     f_in =  self.boundary_fnc(t)
-
+                    
+                    D = torch.tensor(0.0)
                     if self.queue_length > 0:
                         # Set the influx to the maximum possible
                         # This needs to be modified so that the queue length does not 
@@ -503,15 +519,21 @@ class Road:
                         # Set the influx to the mimum of actual and maximum
                         D = torch.min(f_in, fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()))
                 
-                        # Set influx to the mimum of actual influx and maximum capacity
-                        gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
+                    # Set influx to the mimum of actual influx and maximum capacity
+                    gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
 
-                        # Update queue length using the difference between actual and desired flux in
-                        # Potential problem: Queue length could become negative!!!
-                        self.queue_length = self.queue_length + dt * (f_in - gamma_in)
-                        
-                        # Update density according to flux in
-                        self.update_left_boundary(gamma_in, dt)
+                    # Update queue length using the difference between actual and desired flux in
+                    # Potential problem: Queue length could become negative!!!
+
+                    # Not correct!!
+                    self.queue_length = self.queue_length + dt * (f_in - gamma_in)
+                    
+                    # Update density according to flux in
+                    # self.update_left_boundary(gamma_in, dt)
+                    new_dt = self.update_left_flux(gamma_in)
+                    # print(f"Boundary condition of road dt {new_dt}")
+                    return new_dt
+        return dt
 
     def update_boundary_cells(self, dt):
         self.update_left_boundary(self.left_flux, dt)

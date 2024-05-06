@@ -447,9 +447,10 @@ class RoadNetwork:
                 # STEP 1: Find appropriate timestep
                 #-------------------------------------                
                 dt = controlpoint - t
-                
+
                 for road in self.roads:
                     dt = torch.min(dt, road.max_dt())
+                
             
                 t = t + dt
                 old_dt = dt.clone()
@@ -475,15 +476,18 @@ class RoadNetwork:
                     dt = torch.min(min_dt, dt)
                     # roundabout.apply_bc(dt, t)
 
-                if old_dt > dt:
-                    t = t - old_dt + dt
+
                 #-------------------------------------
                 # STEP 4: Calculate fluxes to roads with one or more edges 
                 #         not connected to junction
                 #-------------------------------------
                 for road in self.roads:
                     # Add boundary conditions to remaining roads
-                    road.apply_bc(dt, t)
+                    min_dt = road.apply_bc(dt, t)
+                    dt = torch.min(min_dt, dt)
+
+                if old_dt > dt:
+                    t = t - old_dt + dt
 
                 #-------------------------------------
                 # STEP 5: Update positions of busses
@@ -631,6 +635,7 @@ class RoadNetwork:
                     min_dt = J.apply_bc(dt,t)
                     dt = torch.min(min_dt, dt)
 
+
                 #-------------------------------------
                 # STEP 3: Apply flux conditions for each Roundabout
                 #-------------------------------------
@@ -640,16 +645,17 @@ class RoadNetwork:
                     # roundabout.apply_bc(dt, t)
                     min_dt = roundabout.apply_bc(dt,t)
                     dt = torch.min(min_dt, dt)
-
-                if old_dt > dt:
-                    t = t - old_dt + dt
-                    
+                
                 #-------------------------------------
                 # STEP 4: Apply BC to roads with one or more edges not connected to junction
                 #-------------------------------------
                 for road in self.roads:
                     # Add boundary conditions to remaining roads
-                    road.apply_bc(dt, t)
+                    min_dt = road.apply_bc(dt, t)
+                    dt = torch.min(min_dt, dt)
+
+                if old_dt > dt:
+                    t = t - old_dt + dt
 
                 #-------------------------------------
                 # STEP 5: Update positions of busses
@@ -784,7 +790,7 @@ class RoadNetwork:
                 
                 for road in self.roads:
                     dt = torch.min(dt, road.max_dt())
-            
+
                 t = t + dt
                 old_dt = dt.clone()
 
@@ -798,7 +804,7 @@ class RoadNetwork:
                     # J.apply_bc(dt,t)
                     min_dt = J.apply_bc(dt,t)
                     dt = torch.min(min_dt, dt)
-
+                
                 #-------------------------------------
                 # STEP 3: Apply flux conditions for each Roundabout
                 #-------------------------------------
@@ -809,16 +815,16 @@ class RoadNetwork:
                     min_dt = roundabout.apply_bc(dt, t)
                     dt = torch.min(min_dt, dt)
 
-
-                if old_dt > dt:
-                    t = t - old_dt + dt
-
                 #-------------------------------------
                 # STEP 4: Apply BC to roads with one or more edges not connected to junction
                 #-------------------------------------
                 for road in self.roads:
                     # Add boundary conditions to remaining roads
-                    road.apply_bc(dt, t)
+                    min_dt = road.apply_bc(dt, t)
+                    dt = torch.min(min_dt, dt)
+
+                if old_dt > dt:
+                    t = t - old_dt + dt
 
                 #-------------------------------------
                 # STEP 5: Update positions of busses
@@ -1096,3 +1102,44 @@ class RoadNetwork:
                 road_pos[i][key] = pos[key]
 
         return road_pos
+    
+
+if __name__ == "__main__":
+    import json
+    import generate_kvadraturen as gk
+    network_file = "kvadraturen_networks/with_e18/network_1_1.json"
+    config_file = "kvadraturen_networks/with_e18/config_1_1.json"
+
+    f = open(network_file)
+    data = json.load(f)
+    f.close()
+    T = data["T"]
+    N = data["N"]
+    speed_limits = data["speed_limits"] # Nested list
+    control_points = data["control_points"] # Nested list
+    cycle_times = data["cycle_times"] # Nested list
+
+    f = open(config_file)
+    data = json.load(f)
+    f.close()
+    config = data
+
+
+    network = gk.generate_kvadraturen_from_config_e18(50, N, speed_limits, control_points,
+                                                      cycle_times, config, track_grad=False)
+    
+    densities, _, _, _ =  network.solve_cons_law()
+    print(len(densities[0]))
+    times = list(densities[0].keys())
+    print(times)
+    min_dt = torch.tensor(1.0)
+    for road in network.roads:
+        # print(f"Road id: {road.id}")
+        # print(road.max_dt())
+        # print(road.dx)
+        # print(road.gamma[0])
+        # print(road.dx / road.gamma[0])
+        min_dt = torch.min(min_dt, road.dx / road.gamma[0])
+        # print()
+
+    print(min_dt)
