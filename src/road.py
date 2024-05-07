@@ -350,8 +350,14 @@ class Road:
         
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
+        
+        if self.gamma[self.idx] < 0:
+            print(f"{self.id} has a negative gamma!")
+            print(self.gamma[self.idx])
 
         if max_flux > self.gamma[self.idx]:
+            # print(f"{self.id} has a wrong maximum flux")
+            # print(self.rho)
             max_flux = self.gamma[self.idx]
 
         # Avoid 0 division:
