@@ -348,29 +348,15 @@ class Road:
         else:
             CFL = 1. 
         
-        # Max density must appear also here
-        
-        # Should remove list comprehension here...
-        
-        #return CFL * self.dx / (self.max_dens * torch.max(torch.tensor([torch.abs(fv.d_flux(self.rho[j], self.gamma[self.idx])) for j in range(len(self.rho))])))
-            
-        # New attempt
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
 
         if max_flux > self.gamma[self.idx]:
-            print(f"{self.id} has some error with the density...")
-            print(self.rho)
-        # max_flux = self.gamma[self.idx]
-        
-        ###############
-        # maximum = torch.max(max_flux, fv.d_flux(torch.tensor(0.0), self.gamma[self.idx]))
-        ###############
+            max_flux = self.gamma[self.idx]
 
         # Avoid 0 division:
         if torch.abs(max_flux) < 1e-5:
             max_flux = torch.tensor(0.000001)
-        # return CFL * self.dx / (max_flux)
 
         
         return CFL * self.dx / (self.max_dens * max_flux)
