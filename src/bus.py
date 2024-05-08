@@ -169,7 +169,7 @@ class Bus:
             return slowdown_factor, False, torch.tensor(0.0)
         
         # ADDING new tensor factors at each iteration - could maybe use slowdown_factor directly
-        factors = torch.ones(road.N_internal+1)
+        factors = torch.ones(road.N_full-1) # One less interface than the number of cells
         stop_factor = torch.tensor(0.0)
         for stop in self.stops:
             if stop[0] == road_id:
@@ -181,7 +181,7 @@ class Bus:
                 stop_factor = calculate_slowdown_factor(distance) * 0.8
                 self.stop_factor = torch.max(self.stop_factor, stop_factor)
                 # Update factors on the interface:
-                interface_positions = torch.arange(0, road.b + 0.00001, road.dx)
+                interface_positions = torch.arange(road.dx, road.b, road.dx)
                 # Faster by removing for loop...
                 interface_factors = calculate_slowdown_factor(length - interface_positions*road.L)
                 factors = torch.minimum(factors, 1.0 - interface_factors*stop_factor)     
@@ -213,7 +213,7 @@ class Bus:
 
         speed = (1-self.stop_factor) * speed
         '''
-        # Update the speed using the slowing factor
+        # Modify the speed using the slowing factor
         speed = (1-self.stop_factor)*speed
         self.stop_factor = torch.tensor(0.0)
         
@@ -229,21 +229,19 @@ class Bus:
                 return
 
         if self.at_stop:
-            if printing:
-                print(f"Bus is at stop!")
-
             if self.remaining_stop_time > dt:
                 # The bus is still waiting...
-                if printing:
-                    print(f"Bus should wait for {self.remaining_stop_time} seconds, more than the next time step")
-                self.remaining_stop_time = self.remaining_stop_time - dt
+                self.remaining_stop_time = torch.max(self.remaining_stop_time - dt, torch.tensor(0.0))
             else:
                 # The bus can start moving again
-                if printing:
-                    print("The bus has waited long enough!")
                 moving_dt = dt - self.remaining_stop_time
                 self.remaining_stop_time = torch.tensor(0.0)
                 self.at_stop = False
+
+                ########################################
+                # MODIFY BELOW
+                ########################################
+
                 if activation >= 0.5:
                     # The bus can cross the junction
                     # Does this actually take into account the density of the next road?
@@ -259,40 +257,14 @@ class Bus:
             # Check if the bus should stop at the next stop
             # Assume that two stops are not too close
             length_of_next_stop = self.stop_lengths[self.next_stop]
+
+            ########################################
+            # MODIFY BELOW
+            ########################################
+
             if activation >= 0.5:
                 # Bus can pass through the junction
                 if self.length_travelled + speed * dt >= length_of_next_stop:
-                    if printing:
-                        print("Bus should stop at the busstop in this time step")
-                        try:
-                            print(f"Length travelled verison: {self.length_travelled._version}")
-                        except:
-                            pass
-
-                        try:
-                            print(f"Version of timestep: {dt._version}")
-                        except:
-                            pass
-
-                        try:
-                            print(f"Version of speed: {speed._version}")
-                        except:
-                            pass
-
-                        try:
-                            print(f"Version of length: {length._version}")
-                        except:
-                            pass
-
-                        try:
-                            print(f"Version of length_of_next_stop: {length_of_next_stop._version}")
-                        except:
-                            pass
-
-                        try:
-                            print(f"Version of dt: {dt._version}")
-                        except:
-                            pass
                         
                     actual_dt = (length_of_next_stop - self.length_travelled)/speed
                     # The bus should stop at the next stop
@@ -342,8 +314,6 @@ class Bus:
                         self.length_travelled = self.length_travelled + speed * dt
 
                 else:
-                    if printing:
-                        print(f"Busshould stop at the junction!")
                     # Bus could be stopped at the junction
                     try:
                         self.length_travelled = self.length_travelled + torch.minimum(speed * dt, length)

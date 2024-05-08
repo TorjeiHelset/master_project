@@ -127,27 +127,21 @@ class RoadNetwork:
                 if len(opposite_road.rho) != len(road.rho):
                     print(f"Roads {road.id} and {opposite_road.id} are of different sizes!")
 
-                # OLD:
-                # for l in range(opposite_road.N_internal-1):
-                #     avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 2
-                #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
-                internal = torch.flip(opposite_road.rho[opposite_road.pad-1:-opposite_road.pad+1],dims=[0])
+
+                # internal = torch.flip(opposite_road.rho[opposite_road.pad-1:-opposite_road.pad+1],dims=[0])
+                internal = torch.flip(opposite_road.rho, dims=[0])
                 avg = (internal[1:] + internal[:-1]) / 2
-                slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / 2
+                slowdown_factors[i] = torch.ones(road.N_full-1) - (1. - slowdown_factors[i]) * (1. + avg) / 2
 
         else:
             # Current road has more lanes
             # use only density/flux on this road to update the slowdown
             # factors
-            # OLD:
-            # avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
-            # for l in range(len(avg)-1):
-            #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
-
+            
             n_extra_lanes = road.max_dens - 1
-            internal = torch.flip(road.rho[road.pad-1:-road.pad+1],dims=[0])
-            avg = (internal[1:] + internal[:-1]) / 2
-            slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / (2**n_extra_lanes)
+            # internal = torch.flip(road.rho[road.pad-1:-road.pad+1],dims=[0])
+            avg = (road.rho[1:] + road.rho[:-1]) / 2
+            slowdown_factors[i] = torch.ones(road.N_full-1) - (1. - slowdown_factors[i]) * (1. + avg) / (2**n_extra_lanes)
         
         #------------------------------------------------------------
         # SLOWDOWN FACTORS FINISHED
@@ -157,14 +151,15 @@ class RoadNetwork:
         # speed = road.get_speed(new_length) * road.L
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
-        speed = road.get_speed_updated(new_length, dt) * road.L * (1.0 - stop_factor)
+        speed_, road_activation = road.get_speed(new_length, dt)
+        speed = speed_ * road.L * (1.0 - stop_factor)
 
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
         # This is actually not necessary unless the bus has almost reached the end of the road
         # Add some check on the length here
-        if next_id == "" or length + speed * dt < road.L*road.b: # and length < ...
+        if next_id == "" or length + speed * dt < road.L*road.b - road.dx*road.L: # and length < ...
             # Road_id is at the last road, don't need to find the next junction
             # or bus is not close to the junction
             pass
@@ -177,23 +172,20 @@ class RoadNetwork:
                 if check:
                     activation = activ_
                     break
-            if activation >= 0.5:
-                # The bus can enter the junction, but the flux on the outgoing road should also be considered
-                # Here there is an error! 
-                # Need to use the correct junction!!!
+
+            # At this point both the activation from the distance to the junction the activation from 
+            # the traffic light at the junction is calculated
+            combined_activation = torch.max(road_activation, activation)
+
+            speed = speed * combined_activation
+
+            # Check if the density of a the next road is needed
+            if length + speed * dt >= road.L * road.b:
                 for j in self.junctions:
                     if j.check_roads_contained(road_id, next_id):
                         jnc_speed = torch.maximum((road.L*road.b - length) / dt - 0.0001,
                                                   j.get_speed(t, road_id, next_id))
-                        speed = torch.minimum(speed, jnc_speed)
-                        break
-            else:
-                # Setting speed equal to 0 means that the bus stops before the junction...
-                # Should maybe set the speed as the minimum from the get_speed
-                # and the speed that ensures the bus reaches the junction...
-                # speed = torch.tensor(0.0) # Differentiable...?
-                # put speed so that the bus almost reaches the junction
-                speed = torch.minimum(speed, (road.L*road.b - length) / dt - 0.0001) 
+                        speed = torch.min(speed, jnc_speed)
 
         relative_length = road.L*road.b - length # Remaining length
         # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
@@ -255,27 +247,18 @@ class RoadNetwork:
                 if len(opposite_road.rho) != len(road.rho):
                     print(f"Roads {road.id} and {opposite_road.id} are of different sizes!")
 
-                # OLD:
-                # for l in range(opposite_road.N_internal-1):
-                #     avg_density = (opposite_road.rho[-opposite_road.pad+1-l] + opposite_road.rho[-opposite_road.pad-l]) / 2
-                #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l])/4 + avg_density * (slowdown_factors[i][l]-1)/4
-                internal = torch.flip(opposite_road.rho[opposite_road.pad-1:-opposite_road.pad+1],dims=[0])
+                # internal = torch.flip(opposite_road.rho[opposite_road.pad-1:-opposite_road.pad+1],dims=[0])
+                internal = torch.flip(opposite_road.rho,dims=[0])
                 avg = (internal[1:] + internal[:-1]) / 2
-                slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / 2
+                slowdown_factors[i] = torch.ones(road.N_full-1) - (1. - slowdown_factors[i]) * (1. + avg) / 2
 
         else:
             # Current road has more lanes
             # use only density/flux on this road to update the slowdown
             # factors
-            # OLD:
-            # avg = (road.rho[road.pad:-road.pad+1] + road.rho[road.pad-1:-road.pad]) / 4
-            # for l in range(len(avg)-1):
-            #     slowdown_factors[i][l] = torch.tensor(1.0) - (1-slowdown_factors[i][l]) / (4**n_extra_lanes) + avg[l] * (slowdown_factors[i][l] - 1 + (1-slowdown_factors[i][l])/(2**n_extra_lanes))
-
             n_extra_lanes = road.max_dens - 1
-            internal = torch.flip(road.rho[road.pad-1:-road.pad+1],dims=[0])
-            avg = (internal[1:] + internal[:-1]) / 2
-            slowdown_factors[i] = torch.ones(road.N_internal+1) - (1. - slowdown_factors[i]) * (1. + avg) / (2**n_extra_lanes)
+            avg = (road.rho[1:] + road.rho[:-1]) / 2
+            slowdown_factors[i] = torch.ones(road.N_full-1) - (1. - slowdown_factors[i]) * (1. + avg) / (2**n_extra_lanes)
         
         #------------------------------------------------------------
         # SLOWDOWN FACTORS FINISHED
@@ -285,14 +268,15 @@ class RoadNetwork:
         # speed = road.get_speed(new_length) * road.L
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
-        speed = road.get_speed_updated(new_length, dt) * road.L * (1.0 - stop_factor)
+        speed_, road_activation = road.get_speed(new_length, dt)
+        speed = speed_ * road.L * (1.0 - stop_factor)
 
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
         # This is actually not necessary unless the bus has almost reached the end of the road
         # Add some check on the length here
-        if next_id == "" or length + speed * dt < road.L*road.b: # and length < ...
+        if next_id == "" or length + speed * dt < road.L*road.b - road.L*road.dx: # and length < ...
             # Road_id is at the last road, don't need to find the next junction
             # or bus is not close to the junction
             pass
@@ -305,23 +289,16 @@ class RoadNetwork:
                 if check:
                     activation = activ_
                     break
-            if activation >= 0.5:
-                # The bus can enter the junction, but the flux on the outgoing road should also be considered
-                # Here there is an error! 
-                # Need to use the correct junction!!!
+
+            combined_activation = torch.max(road_activation, activation)
+            speed = speed * combined_activation
+            if length + speed * dt >= road.L * road.b:
                 for j in self.junctions:
                     if j.check_roads_contained(road_id, next_id):
                         jnc_speed = torch.maximum((road.L*road.b - length) / dt - 0.0001,
                                                   j.get_speed(t, road_id, next_id))
-                        speed = torch.minimum(speed, jnc_speed)
-                        break
-            else:
-                # Setting speed equal to 0 means that the bus stops before the junction...
-                # Should maybe set the speed as the minimum from the get_speed
-                # and the speed that ensures the bus reaches the junction...
-                # speed = torch.tensor(0.0) # Differentiable...?
-                # put speed so that the bus almost reaches the junction
-                speed = torch.minimum(speed, (road.L*road.b - length) / dt - 0.0001) 
+                        speed = torch.min(speed, jnc_speed)
+
 
         relative_length = road.L*road.b - length # Remaining length
         # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
@@ -377,8 +354,8 @@ class RoadNetwork:
                 speed = torch.tensor(0.0) # Differentiable...?
         else:
             new_length = length / road.L
-            # speed = road.get_speed(new_length) * road.L # Need to multiply with L to get actual speed in m/s
-            speed = road.get_speed_updated(new_length, dt) * road.L
+            speed_, road_activation = road.get_speed(new_length, dt)
+            speed = speed_ * road.L
         # At this point the position to the bus stop on this road can be used to update the
         # speed
         # If the bus stop is close, then the speed can be reduced
@@ -494,7 +471,7 @@ class RoadNetwork:
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
-                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_factors = [torch.ones(road.N_full-1) for road in self.roads]
                 slowdown_indexes = []
                 for bus in self.busses:
                     # slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
@@ -507,7 +484,7 @@ class RoadNetwork:
                 # STEP 6: Solve internal system for each road
                 #-------------------------------------
                 for i, road in enumerate(self.roads):
-                    road.update_boundary_cells(dt)
+                    road.update_boundary_cells(dt, slowdown_factors[i])
 
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
@@ -517,7 +494,14 @@ class RoadNetwork:
                     # for each road instead of overwriting the values
                     # Update internal values later
                     if i in slowdown_indexes:
-                        road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        # Slowdown factors is the slowdown for all interfaces, but only
+                        # send in slowdowns related to internal interfaces here
+                        ######################################
+                        ######################################
+                        if road.pad == 1:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        else:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i][1:-1])
                     else:
                         road.solve_internally(dt)
 
@@ -663,7 +647,7 @@ class RoadNetwork:
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
-                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_factors = [torch.ones(road.N_full-1) for road in self.roads]
                 slowdown_indexes = []
                 for bus in self.busses:
                     # slowdown_factors, slowing_idx = self.update_position_of_bus(bus, dt.clone(), t.clone(), slowdown_factors)
@@ -678,7 +662,7 @@ class RoadNetwork:
                 # STEP 6: Solve internal system for each road
                 #-------------------------------------
                 for i, road in enumerate(self.roads):
-                    road.update_boundary_cells(dt)
+                    road.update_boundary_cells(dt, slowdown_factors[i])
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
                     # update boundary properly
@@ -687,7 +671,10 @@ class RoadNetwork:
                     # for each road instead of overwriting the values
                     # Update internal values later
                     if i in slowdown_indexes:
-                        road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        if road.pad == 1:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        else:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i][1:-1])
                     else:
                         road.solve_internally(dt)
 
@@ -832,7 +819,7 @@ class RoadNetwork:
                 #-------------------------------------
                 # Sowdown_factors is a list of how much to reduce the flux on each
                 # cell interface for each road determined by the bus
-                slowdown_factors = [torch.ones(road.N_internal+1) for road in self.roads]
+                slowdown_factors = [torch.ones(road.N_full-1) for road in self.roads]
                 slowdown_indexes = []
                 stop_reached = False
                 next_delay = []
@@ -850,7 +837,7 @@ class RoadNetwork:
                 # STEP 6: Solve internal system for each road
                 #-------------------------------------
                 for i, road in enumerate(self.roads):
-                    road.update_boundary_cells(dt)
+                    road.update_boundary_cells(dt, slowdown_factors[i])
                     # Solve internally on all roads in network
                     # Before updating internal values, values near boundary should maybe be saved to 
                     # update boundary properly
@@ -859,7 +846,10 @@ class RoadNetwork:
                     # for each road instead of overwriting the values
                     # Update internal values later
                     if i in slowdown_indexes:
-                        road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        if road.pad == 1:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i])
+                        else:
+                            road.solve_internally_slowdown(dt, slowdown_factors[i][1:-1])
                     else:
                         road.solve_internally(dt)
 
