@@ -880,7 +880,7 @@ def update_e18_bool():
     global with_e18
     with_e18 = False
 if __name__ == "__main__":
-    scenario = 14
+    scenario = 15
     
     match scenario:
         case 0:
@@ -1505,3 +1505,88 @@ if __name__ == "__main__":
             print("Creating animation...")
             draw_densities(network, densities, output_name="gifs/comparing_grids_N=2.gif", 
                            background_img="background_imgs/white_background.png", interval_seconds = 0.1)
+            
+        case 15:
+            import json
+            import json
+            import road as rd
+            import network as nw
+            import traffic_lights as tl
+            import junction as jn
+            import initial_and_bc as ibc
+            import torch
+            import bus
+
+            print("Loading results...")
+            f = open("results/test_bus_stopping.json")
+            data = json.load(f)
+            f.close()
+            densities = data[0]
+            bus_lengths = data[2]
+
+            T = 100
+            road_1 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.2,
+                        left_pos=(-1, 2), right_pos=(2.9,2),
+                        periodic=True, id = "road_1_fw")
+
+            road_2 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.2,
+                        left_pos=(3.1, 2), right_pos=(7,2),
+                        periodic=True, id = "road_2_fw")
+
+            road_3 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.4,
+                        left_pos=(-1, 4), right_pos=(2.9,4),
+                        periodic=True, id = "road_3_fw")
+
+            road_4 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.4,
+                        left_pos=(3.1, 4), right_pos=(7,4),
+                        periodic=True, id = "road_4_fw")
+
+            road_5 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.6,
+                        left_pos=(-1, 6), right_pos=(2.9,6),
+                        periodic=True, id = "road_5_fw")
+
+            road_6 = rd.Road(1, 50, 5, torch.tensor([50.0/3.6], requires_grad=True), [],
+                        initial=lambda x : torch.ones_like(x) * 0.2,
+                        left_pos=(3.1, 6), right_pos=(7,6),
+                        periodic=True, id = "road_6_fw")
+
+            traffic_light_2 = tl.TrafficLightContinous(True, [0], [1], [torch.tensor(30.),torch.tensor(30.)])
+            traffic_light_3 = tl.TrafficLightContinous(True, [0], [1], [torch.tensor(30.),torch.tensor(30.)])
+            traffic_light_1 = tl.TrafficLightContinous(True, [0], [1], [torch.tensor(30.),torch.tensor(30.)])
+            junction_1 = jn.Junction([road_1, road_2], [0], [1], [[1.0]], [traffic_light_1], [])
+            junction_2 = jn.Junction([road_3, road_4], [0], [1], [[1.0]], [traffic_light_2], [])
+            junction_3 = jn.Junction([road_5, road_6], [0], [1], [[1.0]], [traffic_light_3], [])
+
+
+            roads = [road_1, road_2, road_3, road_4, road_5, road_6]
+            junctions = [junction_1, junction_2, junction_3]
+            network = nw.RoadNetwork(roads, [], T)
+
+            ids = ["road_1_fw", "road_2_fw"]
+            stops = [("road_2_fw", 40)]
+            times = [60]
+            bus_1 = bus.Bus(ids, stops, times, network, id="bus1")
+
+            ids = ["road_3_fw", "road_4_fw"]
+            stops = [("road_4_fw", 40)]
+            times = [60]
+            bus_2 = bus.Bus(ids, stops, times, network, id="bus2")
+
+            ids = ["road_5_fw", "road_6_fw"]
+            stops = [("road_6_fw", 40)]
+            times = [60]
+            bus_3 = bus.Bus(ids, stops, times, network, id="bus3")
+
+
+            bus_network = nw.RoadNetwork(roads, junctions, T, busses=[bus_1, bus_2, bus_3])
+
+
+            draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths, densities,
+                                    output_name="gifs/test_bus_stopping.gif",
+                                    background_img="background_imgs/white_background.png",interval_seconds = 0.1)
+                    

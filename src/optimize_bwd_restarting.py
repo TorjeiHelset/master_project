@@ -448,7 +448,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
     print("Loading from file")
     T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
     if debugging:
-        T = 40
+        T = 60
 
     # 1.1 Map from speed_limits and cycle_times to one parameter list
     print("Extracting parameters")
@@ -571,7 +571,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 2
+    option = 3
     match option:
         case 0:
             # Run small example with e18
@@ -596,3 +596,10 @@ if __name__ == "__main__":
             result_file = "optimization_results/network22_config21_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
+
+        case 3:
+            network_file = "kvadraturen_networks/with_e18/network_1.json"
+            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
+            result_file = "optimization_results/network11_config11_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=True)

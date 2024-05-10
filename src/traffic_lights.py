@@ -194,7 +194,7 @@ class CoupledTrafficLightContinuous:
                 
 
                 # Add first period no matter what
-                out = full_jump(x, torch.tensor([0]), t1)
+                out = full_jump(x, torch.tensor(0.0), t1)
 
                 for i in range(1, n_periods):
                     # Start from 1 since first period already added
@@ -274,7 +274,7 @@ class CoupledTrafficLightContinuous:
                 # over a too short period
                 n_periods = int(torch.ceil( T / period_time))
                 # Add first jump no matter what
-                out = full_jump(x, torch.tensor([0]), t2)
+                out = full_jump(x, torch.tensor(0.0), t2)
 
                 for i in range(1, n_periods):
                     # Start from 1 since first period already added

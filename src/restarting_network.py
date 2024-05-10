@@ -154,7 +154,6 @@ class RestartingRoadNetwork:
         # print(self.light_grads)
         return densities, queues, bus_lengths, bus_delays, n_stops_reached, self.speed_grads, self.light_grads
 
-
 if __name__ == "__main__":
     import json
 
