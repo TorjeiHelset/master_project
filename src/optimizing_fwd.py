@@ -606,3 +606,5 @@ if __name__ == "__main__":
             result_file = "optimization_results/network22_config21_bwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
+            
+        

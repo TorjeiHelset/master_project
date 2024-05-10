@@ -324,7 +324,8 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
     bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
                                                           config, track_grad=True)
-    
+
+
     # Solve conservation law
     print("Solving the conservation law...")
     # densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
@@ -604,7 +605,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 4
+    option = 3
     match option:
         case 0:
             # Run small example with e18
@@ -636,37 +637,5 @@ if __name__ == "__main__":
             result_file = "optimization_results/network11_config11_bwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=True)
-            
-        case 4:
-            network_file = "kvadraturen_networks/with_e18/network_1.json"
-            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-
-            T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
-
-
-            bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
-                                                          config, track_grad=True)
-            
-            t = torch.tensor(9.6)
-            for junction in bus_network.junctions:
-                if "dronning_3fw" in [road.id for road in junction.roads] or True:
-                    if "lundsbro_fw" in [road.id for road in junction.roads] or True:
-                        for light in junction.trafficlights:
-                            print("regular", light.activation_func(t))
-                        for light in junction.coupled_trafficlights:
-                            print("a", light.a_activation(t))
-                            print("b", light.b_activation(t))
-                print()
-
-            t = torch.tensor(2.6)
-            for junction in bus_network.junctions:
-                if "dronning_3fw" in [road.id for road in junction.roads] or True:
-                    if "lundsbro_fw" in [road.id for road in junction.roads] or True:
-                        for light in junction.trafficlights:
-                            print("regular", light.activation_func(t))
-                        for light in junction.coupled_trafficlights:
-                            print("a", light.a_activation(t))
-                            print("b", light.b_activation(t))
-                print()
 
 

@@ -81,12 +81,6 @@ class RoadNetwork:
         
         # 1. Find the road the bus is on
         road_id, length, next_id = bus.get_road_id()
-        a = torch.tensor(0.0)
-        try:
-            a+= length
-        except:
-            print(f"Error with {bus.id}")
-            print(length)
 
         if road_id == "":
             # Bus has reached the end of the route
@@ -159,12 +153,7 @@ class RoadNetwork:
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
-        a = torch.tensor(0.0)
-        try:
-            a+= length
-        except:
-            print(f"Error with {bus.id} after slowdown factors")
-            print(length)
+
         speed = speed_ * road.L * (1.0 - stop_factor)
 
 
@@ -214,12 +203,6 @@ class RoadNetwork:
         
         # 1. Find the road the bus is on
         road_id, length, next_id = bus.get_road_id()
-        a = torch.tensor(0.0)
-        try:
-            a += length
-        except:
-            print(f"Error with {bus.id} on first call")
-            print(length, road_id, next_id)
 
         if road_id == "":
             # Bus has reached the end of the route
@@ -289,22 +272,7 @@ class RoadNetwork:
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
-        a = torch.tensor(0.0)
-        try:
-            a+= road_activation
-        except:
-            print(f"Error with road activation...")
-            print(road_activation)
-            print()
 
-
-        a = torch.tensor(0.0)
-        try:
-            a+= length
-        except:
-            print(f"Error with {bus.id}")
-            print(length)
-            print()
         speed = speed_ * road.L * (1.0 - stop_factor)
 
 
@@ -326,54 +294,16 @@ class RoadNetwork:
                     activation = activ_
                     break
 
-            a = torch.tensor(0.0)
-            try:
-                a += activation
-            except:
-                print(f"Error with the junction activation..sd.{activation}")
-                print(t)
-                print()
-
-            a = torch.tensor(0.0)
-            try:
-                a += road_activation
-            except:
-                print(f"Error with the road_activation activatioadfn...{road_activation}")
-                print(t)
-                print()
-
             combined_activation = torch.max(road_activation, activation)
-            a = torch.tensor(0.0)
-            try:
-                a += combined_activation
-            except:
-                print(f"Error with the combinated activation...{combined_activation}")
-                print(t)
-                print()
-            # Update the speed to take into account the slowing down at junction
-            a = torch.tensor(0.0)
-            try:
-                a += speed
-            except:
-                print(f"Error with speed before adding junction")
-                print(speed)
-                print()
 
             speed = speed * combined_activation
+
             if length + speed * dt >= road.L * road.b:
                 for j in self.junctions:
                     if j.check_roads_contained(road_id, next_id):
                         jnc_speed = torch.maximum((road.L*road.b - length) / dt - 0.0001,
                                                   j.get_speed(t, road_id, next_id))
                         speed = torch.min(speed, jnc_speed)
-            
-            a = torch.tensor(0.0)
-            try:
-                a += speed
-            except:
-                print(f"Error with speed after adding junction")
-                print(speed)
-                print()
 
         relative_length = road.L*road.b - length # Remaining length
         # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
@@ -430,12 +360,7 @@ class RoadNetwork:
         else:
             new_length = length / road.L
             speed_, road_activation = road.get_speed(new_length, dt)
-            a = torch.tensor(0.0)
-            try:
-                a+= length
-            except:
-                print(f"Error with {bus.id}")
-                print(length)
+
             speed = speed_ * road.L
         # At this point the position to the bus stop on this road can be used to update the
         # speed
@@ -759,9 +684,10 @@ class RoadNetwork:
                     else:
                         road.solve_internally(dt)
 
+                    road.update_boundaries()
+
                 # At this point, the old internal values are not used anymore, so they can safely be 
                 # overwritten
-                road.update_boundaries()
 
                 #-------------------------------------
                 # STEP 6: Store solution after time t

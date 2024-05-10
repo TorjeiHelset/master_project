@@ -600,6 +600,6 @@ if __name__ == "__main__":
         case 3:
             network_file = "kvadraturen_networks/with_e18/network_1.json"
             config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network11_config11_bwd.json"
+            result_file = "optimization_results/network11_config11_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=True)

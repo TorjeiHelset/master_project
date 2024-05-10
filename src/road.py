@@ -597,16 +597,5 @@ class Road:
             updated_speed = self.get_speed_at_node(updated_prev, updated_next, updated_pos)
 
         # Can also return the slowdown coming from the distance to the junction
-        a = torch.tensor(0.0)
-        try:
-            a += speed
-            a += updated_speed
-        except:
-            print(f"road {self.id}")
-            print(length)
-            print(dt)
-            print(speed)
-            print(updated_speed)
-            print()
 
         return (1.2 * speed + 0.8 * updated_speed) / 2, internal_activation

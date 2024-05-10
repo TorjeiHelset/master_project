@@ -116,6 +116,7 @@ class RestartingRoadNetwork:
     def _first_step(self):
         network = gk.generate_kvadraturen_from_config_e18(self.T, self.N, self.speed_limits, self.control_points, 
                                                           self.cycle_times, self.config, track_grad=True)
+
         densities, queues, bus_lengths, bus_delays, t, n_stops_reached = network.solve_until_stop_reached()
         # Store last of network as NetworkState object
         state = NetworkState(network)
