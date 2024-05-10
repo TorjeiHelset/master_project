@@ -595,7 +595,7 @@ if __name__ == "__main__":
             # Run larger example with e18
             network_file = "kvadraturen_networks/with_e18/network_2_1.json"
             config_file = "kvadraturen_networks/with_e18/config_2_1.json"
-            result_file = "optimization_results/network21_config21_bwd.json"
+            result_file = "optimization_results/network21_config21_fwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
             
@@ -603,8 +603,28 @@ if __name__ == "__main__":
             # Run larger example with e18
             network_file = "kvadraturen_networks/with_e18/network_2_2.json"
             config_file = "kvadraturen_networks/with_e18/config_2_1.json"
-            result_file = "optimization_results/network22_config21_bwd.json"
+            result_file = "optimization_results/network22_config21_fwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
             
-        
+        case 4:
+            # Run larger example with e18 with different starting point and different config
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_2.json"
+            result_file = "optimization_results/network22_config22_fwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 3:
+            network_file = "kvadraturen_networks/with_e18/network_3.json"
+            config_file = "kvadraturen_networks/with_e18/config_3_1.json"
+            result_file = "optimization_results/network3_config31_fwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 4:
+            network_file = "kvadraturen_networks/with_e18/network_4.json"
+            config_file = "kvadraturen_networks/with_e18/config_4_1.json"
+            result_file = "optimization_results/network4_config41_fwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)

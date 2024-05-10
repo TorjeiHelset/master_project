@@ -632,10 +632,24 @@ if __name__ == "__main__":
                              overwrite=False, debugging=False)
             
         case 3:
-            network_file = "kvadraturen_networks/with_e18/network_1.json"
-            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network11_config11_bwd.json"
+            # Run larger example with e18 with different starting point and different config
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_2.json"
+            result_file = "optimization_results/network22_config22_bwd.json"
             gradient_descent(network_file, config_file, result_file,
-                             overwrite=False, debugging=True)
-
+                             overwrite=False, debugging=False)
+            
+        case 4:
+            network_file = "kvadraturen_networks/with_e18/network_3.json"
+            config_file = "kvadraturen_networks/with_e18/config_3_1.json"
+            result_file = "optimization_results/network3_config31_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 5:
+            network_file = "kvadraturen_networks/with_e18/network_4.json"
+            config_file = "kvadraturen_networks/with_e18/config_4_1.json"
+            result_file = "optimization_results/network4_config41_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
 
