@@ -1,0 +1,48 @@
+{
+    "network_file": "optimization_cases/single_lane/network_file.json",
+    "config_file": "optimization_cases/single_lane/config_file.json",
+    "ad_method": "backward",
+    "upper_speeds": [
+        50.0
+    ],
+    "lower_speeds": [
+        20.0
+    ],
+    "upper_time": 200.0,
+    "lower_time": 10.0,
+    "n_speeds": [
+        1
+    ],
+    "last_speed_idx": 1,
+    "n_cycles": [],
+    "control_points": [
+        []
+    ],
+    "parameters": [
+        [
+            40.0
+        ],
+        [
+            50.0
+        ],
+        [
+            50.0
+        ]
+    ],
+    "gradients": [
+        [
+            -2.3487236499786377
+        ],
+        [
+            -1.5031817625098531
+        ],
+        [
+            0.0
+        ]
+    ],
+    "objectives": [
+        26.096906661987305,
+        20.87752458706292,
+        20.87752458706292
+    ]
+}

@@ -114,20 +114,6 @@ def load_bus_network(network_file, config_file):
 # Converting from list of params to nested list
 ################################
 # @memory_profiler.profile
-def create_network_from_params(T, N, params, track_grad = True):
-    speed_limits, cycle_times = get_speeds_cycles_from_params(params)
-    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
-
-    match optimize_case:
-        case 0:
-            # Optimize single bus 
-            network = generate.single_lane_network(T, N, speed_limits[0], control_points[0], track_grad=True)
-        
-        case _:
-            raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
-    
-   
-    return network
 
 def create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_grad = True):
 
@@ -136,8 +122,24 @@ def create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_gra
             # Optimize single bus 
             network = generate.single_lane_network(T, N, speed_limits[0], control_points[0], track_grad=True)
         
+        case 1:
+            # Optimize single junction both speed limits and traffic light
+            network = generate.single_junction_network(T, N, speed_limits, control_points, cycle_times[0], track_grad = True)
+        
+        case 2:
+            # Optimize single junction only traffic light
+            raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
         case _:
             raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
+    
+   
+    return network
+
+def create_network_from_params(T, N, params, track_grad = True):
+    speed_limits, cycle_times = get_speeds_cycles_from_params(params)
+    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
+
+    network = create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_grad=True)
     
    
     return network
@@ -346,11 +348,11 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     print("Creating the network...")
     # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
     bus_network = create_network_from_speeds_cycles(T, N, speed_limits, cycle_times)
-    for road in bus_network.roads:
-        print(road.id)
-        print(road.Vmax)
-        print(road.gamma)
-        print()
+    # for road in bus_network.roads:
+    #     print(road.id)
+    #     print(road.Vmax)
+    #     print(road.gamma)
+    #     print()
 
 
     # Solve conservation law
@@ -443,6 +445,12 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # gradient = scale_gradient(gradient, upper_limits, lower_limits)
         print(f"Scaling the gradient to achieve a maximum updating of {max_update}...")
         scaling_factor, scaled_grad = scale_gradient(prev_gradient, prev_params, max_update)
+        print(f"Gradient after scaling")
+        print(scaled_grad)
+        if np.linalg.norm(scaled_grad) < 1.e-6:
+            print(f"Either boundary or stationary point reached")
+            return prev_params, prev_gradient, prev_objective
+
 
         # print("New params:")
         # print(prev_params - scaled_grad)
@@ -636,11 +644,36 @@ def update_optimize_case(opt_case):
     optimize_case = opt_case
 
 if __name__ == "__main__":
-    option = 0
+    option = 2
     match option:
         case 0:
-            update_optimize_case(option)
+            update_optimize_case(0)
             network_file = "optimization_cases/single_lane/network_file.json"
             config_file = "optimization_cases/single_lane/config_file.json"
             result_file = "optimization_results/general_optimization/single_lane.json"
-            gradient_descent(network_file, config_file, result_file, overwrite=False)
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+
+        case 1:
+            update_optimize_case(0)
+            network_file = "optimization_cases/single_lane/network_file_1.json"
+            config_file = "optimization_cases/single_lane/config_file.json"
+            result_file = "optimization_results/general_optimization/single_lane_1.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+
+        case 2:
+            update_optimize_case(1)
+            network_file = "optimization_cases/single_junction/network_file.json"
+            config_file = "optimization_cases/single_junction/config_file.json"
+            result_file = "optimization_results/general_optimization/single_junction.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+
+        case 3:
+            update_optimize_case(1)
+            network_file = "optimization_cases/single_junction/network_file_1.json"
+            config_file = "optimization_cases/single_junction/config_file.json"
+            result_file = "optimization_results/general_optimization/single_junction_1.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+
+        case 4:
+            # 
+            pass

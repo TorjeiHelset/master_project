@@ -47,11 +47,78 @@ def single_lane_network(T, N , speed_limit = [torch.tensor(40.0)],
     return network
 
     
-def single_junction_network(T, N, speed1 = [torch.tensor(30.0)], control_points1 = [],
-                            speed2 = [torch.tensor(30.0)], control_points2 = [],
+def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(30.0)]], 
+                            control_points = [[], []],
                             cycle_times = [torch.tensor(60.0), torch.tensor(60.0)], 
                             track_grad = True):
-    ...
+    
+    # Creating the road:
+    # Configuration of the single lane
+    L = 50
+    N = 2
+    b = 2
+    if torch.is_tensor(speed_limits[0][0]):
+        speed_1 = [v / 3.6 for v in speed_limits[0]]
+        speed_2 = [v / 3.6 for v in speed_limits[1]]
+
+    else:
+        speed_1 = [torch.tensor(v / 3.6) for v in speed_limits[0]]
+        speed_2 = [torch.tensor(v / 3.6) for v in speed_limits[1]]
+
+    # print(speed_1, speed_2)
+    # print(control_points)
+
+        
+    for v_1, v_2 in zip(speed_1, speed_2):
+        v_1.requires_grad = track_grad
+        v_2.requires_grad = track_grad
+
+    # print("--------")
+    # print(speed_1)
+    # print(speed_2)
+
+
+    initial_fnc = lambda x : torch.ones_like(x) * 0.4
+    boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.4]),
+                                           time_jumps = [], in_speed = torch.tensor(40.0),
+                                           L = L)
+
+    road_1 = rd.Road(b, L, N, speed_1, control_points[0], max_dens=1, initial=initial_fnc,
+                   boundary_fnc=boundary_fnc, id="first_road")
+    road_2 = rd.Road(b, L, N, speed_2, control_points[1], max_dens=1, initial=initial_fnc,
+                   boundary_fnc=None, id="second_road")
+    
+
+    new_cycle = []
+    for c in cycle_times:
+        if torch.is_tensor(c):
+            c.requires_grad = True
+            new_cycle.append(c)
+        else:
+            c = torch.tensor(c, requires_grad=track_grad)
+            new_cycle.append(c)
+    
+    # Create junction with traffic light
+    light = tl.TrafficLightContinous(True, [0], [1], new_cycle)
+    junction = jn.Junction([road_1, road_2], [0], [1], [[1.0]], [light], [])
+
+
+    
+    # Creating temporary network:
+    temp_network = nw.RoadNetwork([road_1, road_2], [junction], T, [], [])
+
+    # Creating the bus:
+    ids = ["first_road", "second_road"]
+    stops = [("second_road", 50)]
+    times = [0]
+    bus_1 = bus.Bus(ids, stops, times, temp_network, id="bus_1")
+
+    # Creating the network:
+    network = nw.RoadNetwork([road_1, road_2], [junction], T, [], [bus_1])
+
+    return network
+
+
 
 
 def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0/3.6)], speed2 = [torch.tensor(50.0/3.6)],

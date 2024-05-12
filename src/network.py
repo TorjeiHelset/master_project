@@ -155,9 +155,7 @@ class RoadNetwork:
         speed_, road_activation = road.get_speed(new_length, dt)
         
         speed = speed_ * road.L * (1.0 - stop_factor)
-        # if 140 < length < 150:
-        #     print(f"Bus {bus.id} is at length {length} moving at speed {speed} at time {t} for a period of {dt}")
-
+    
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads
@@ -279,10 +277,6 @@ class RoadNetwork:
         speed_, road_activation = road.get_speed(new_length, dt)
         
         speed = speed_ * road.L * (1.0 - stop_factor)
-        if 140 < length < 150:
-            print(f"Bus {bus.id} is at length {new_length*road.L} moving at speed {speed} at time {t} for a period of {dt}")
-
-
 
         activation = torch.tensor(1.0)
         # 3. Find the the junction (and traffic light) that connects the two roads

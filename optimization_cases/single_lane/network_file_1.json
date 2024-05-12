@@ -2,7 +2,7 @@
     "T" : 60,
     "N" : 3,
     "speed_limits" : [
-        [40.0]
+        [20.0]
     ],
     "lower_speed_limit" : [
         20.0

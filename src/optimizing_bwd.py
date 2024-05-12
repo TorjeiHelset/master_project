@@ -415,6 +415,9 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # gradient = scale_gradient(gradient, upper_limits, lower_limits)
         print(f"Scaling the gradient to achieve a maximum updating of {max_update}...")
         scaling_factor, scaled_grad = scale_gradient(prev_gradient, prev_params, max_update)
+        if np.linalg.norm(scaled_grad) < 1.e-6:
+            print(f"Either boundary or stationary point reached")
+            return prev_params, prev_gradient, prev_objective
 
         # print("New params:")
         # print(prev_params - scaled_grad)
