@@ -473,6 +473,16 @@ class RoadNetwork:
                     min_dt = road.apply_bc(dt, t)
                     dt = torch.min(min_dt, dt)
 
+                # Update dt using the position of the busses
+                # To be safe, set dt equal to road.dx/(road.max_dens*road.gamma)
+                # for each road where there is a bus
+                for bus in self.busses:
+                    curr_id, _, _ = bus.get_road_id()
+                    for road in self.roads:
+                        if road.id == curr_id:
+                            dt = torch.min(dt, road.dx / (road.max_dens * road.gamma[road.idx]))
+                            break
+                        
                 if old_dt > dt:
                     t = t - old_dt + dt
 
@@ -652,6 +662,16 @@ class RoadNetwork:
                     # Add boundary conditions to remaining roads
                     min_dt = road.apply_bc(dt, t)
                     dt = torch.min(min_dt, dt)
+                
+                # Update dt using the position of the busses
+                # To be safe, set dt equal to road.dx/(road.max_dens*road.gamma)
+                # for each road where there is a bus
+                for bus in self.busses:
+                    curr_id, _, _ = bus.get_road_id()
+                    for road in self.roads:
+                        if road.id == curr_id:
+                            dt = torch.min(dt, road.dx / (road.max_dens * road.gamma[road.idx]))
+                            break
 
                 if old_dt > dt:
                     t = t - old_dt + dt
@@ -831,6 +851,16 @@ class RoadNetwork:
                     # Add boundary conditions to remaining roads
                     min_dt = road.apply_bc(dt, t)
                     dt = torch.min(min_dt, dt)
+
+                # Update dt using the position of the busses
+                # To be safe, set dt equal to road.dx/(road.max_dens*road.gamma)
+                # for each road where there is a bus
+                for bus in self.busses:
+                    curr_id, _, _ = bus.get_road_id()
+                    for road in self.roads:
+                        if road.id == curr_id:
+                            dt = torch.min(dt, road.dx / (road.max_dens * road.gamma[road.idx]))
+                            break
 
                 if old_dt > dt:
                     t = t - old_dt + dt

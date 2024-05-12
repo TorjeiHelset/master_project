@@ -280,9 +280,6 @@ class Bus:
             else:
                 self.length_travelled = self.length_travelled + speed * dt
                 
-
-
-
     def update_position_restarting(self, dt, t, speed, activation, length, printing = False):
         '''
         Calculates the next position given the current position and the speed and the
