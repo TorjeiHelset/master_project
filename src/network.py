@@ -153,8 +153,15 @@ class RoadNetwork:
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
+        
+        ########################################
+        # Trying new approach for the slowing of the bus before bus stop
+        #######################################
 
-        speed = speed_ * road.L * (1.0 - stop_factor)
+        # Old:
+        # speed = speed_ * road.L * (1.0 - stop_factor)
+        # New
+        speed = torch.min(speed_ * road.L, road.Vmax[road.idx] * road.L * (1.0 - stop_factor))
 
 
         activation = torch.tensor(1.0)
@@ -272,8 +279,14 @@ class RoadNetwork:
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
+        ########################################
+        # Trying new approach for the slowing of the bus before bus stop
+        #######################################
 
-        speed = speed_ * road.L * (1.0 - stop_factor)
+        # Old:
+        # speed = speed_ * road.L * (1.0 - stop_factor)
+        # New
+        speed = torch.min(speed_ * road.L, road.Vmax[road.idx] * road.L * (1.0 - stop_factor))
 
 
         activation = torch.tensor(1.0)
@@ -560,7 +573,7 @@ class RoadNetwork:
         
         t = torch.tensor(0.0)
         if self.store_densities:
-            rho_timesteps = {i : {0 : self.roads[i].rho} for i in range(len(self.roads))}
+            rho_timesteps = {i : {0 : self.roads[i].rho.clone()} for i in range(len(self.roads))}
             # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
             queue_timesteps = {i : {0 : self.roads[i].queue_length} for i in range(len(self.roads))}
 
@@ -601,6 +614,11 @@ class RoadNetwork:
                 print(f"Gamma parameter {road.gamma[road.idx]}")
                 
             while t < controlpoint:
+
+                # print(t)
+                # for road in self.roads:
+                #     print(road.rho)
+                # print()
                 #-------------------------------------
                 # STEP 1: Find appropriate timestep
                 #-------------------------------------                
@@ -663,7 +681,12 @@ class RoadNetwork:
 
                     if slowing_idx is not None:
                         slowdown_indexes.append(slowing_idx)
-                
+
+                # print(f"Slowdown factors:")
+                # print(slowdown_factors)
+                # print()                
+                # slowdown_factors = [torch.ones(road.N_full-1) for road in self.roads]
+
                 #-------------------------------------
                 # STEP 6: Solve internal system for each road
                 #-------------------------------------
@@ -680,6 +703,7 @@ class RoadNetwork:
                         if road.pad == 1:
                             road.solve_internally_slowdown(dt, slowdown_factors[i])
                         else:
+                            # print(slowdown_factors[i][1:-1])
                             road.solve_internally_slowdown(dt, slowdown_factors[i][1:-1])
                     else:
                         road.solve_internally(dt)

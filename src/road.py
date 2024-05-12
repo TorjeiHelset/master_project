@@ -319,7 +319,8 @@ class Road:
             max_flux = torch.tensor(0.000001)
 
         
-        return CFL * self.dx / (self.max_dens * max_flux)
+        # return CFL * self.dx / (self.max_dens * max_flux)
+        return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
