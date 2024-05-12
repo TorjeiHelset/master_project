@@ -70,7 +70,9 @@ class RoadNetwork:
         for i, road in enumerate(self.roads):
             if road.id == id:
                 return i, road
-        return None
+        print(f"Could not find road {id} in the network...")
+        print([road.id for road in self.roads])
+        return None, None
     
     def update_position_of_bus(self, bus, dt, t, slowdown_factors):
         # Also update member function of thebus that tells the bus how much it 

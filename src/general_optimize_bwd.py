@@ -128,7 +128,8 @@ def create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_gra
         
         case 2:
             # Optimize single junction only traffic light
-            raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
+            network = generate.two_two_junction(T, N, speed_limits, control_points, cycle_times[0], track_grad=True)
+        
         case _:
             raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
     
@@ -644,7 +645,7 @@ def update_optimize_case(opt_case):
     optimize_case = opt_case
 
 if __name__ == "__main__":
-    option = 2
+    option = 4
     match option:
         case 0:
             update_optimize_case(0)
@@ -675,5 +676,8 @@ if __name__ == "__main__":
             gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
 
         case 4:
-            # 
-            pass
+            update_optimize_case(2)
+            network_file = "optimization_cases/two_two_junction/network_file.json"
+            config_file = "optimization_cases/two_two_junction/config_file.json"
+            result_file = "optimization_results/general_optimization/two_two_junction.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
