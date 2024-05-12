@@ -97,7 +97,7 @@ class RoadNetwork:
 
         # 2. Use position of bus to calculate the slowdown factors
         slowdown_factors[i], bus_started, stop_factor = bus.get_slowdown_factor(slowdown_factors[i].clone(), road_id,
-                                                      length, road)
+                                                      length, road, dt)
         if bus_started:
             slowing_idx = i
         
@@ -154,14 +154,9 @@ class RoadNetwork:
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
         
-        ########################################
-        # Trying new approach for the slowing of the bus before bus stop
-        #######################################
-
-        # Old:
-        # speed = speed_ * road.L * (1.0 - stop_factor)
-        # New
-        speed = torch.min(speed_ * road.L, road.Vmax[road.idx] * road.L * (1.0 - stop_factor))
+        speed = speed_ * road.L * (1.0 - stop_factor)
+        # if 140 < length < 150:
+        #     print(f"Bus {bus.id} is at length {length} moving at speed {speed} at time {t} for a period of {dt}")
 
 
         activation = torch.tensor(1.0)
@@ -198,6 +193,9 @@ class RoadNetwork:
 
         relative_length = road.L*road.b - length # Remaining length
         # bus.update_position(t.clone(), dt.clone(), speed, activation, relative_length, printing=False)
+        # if 140 < length < 150:
+        #     print(f"Updated speed: {speed}")
+        #     print()
         bus.update_position(dt, t, speed, activation, relative_length, printing=False)
         return slowdown_factors, slowing_idx
     
@@ -226,7 +224,7 @@ class RoadNetwork:
 
         # 2. Use position of bus to calculate the slowdown factors
         slowdown_factors[i], bus_started, stop_factor = bus.get_slowdown_factor(slowdown_factors[i].clone(), road_id,
-                                                      length, road)
+                                                      length, road, dt)
         if bus_started:
             slowing_idx = i
         
@@ -279,14 +277,11 @@ class RoadNetwork:
         # Use the distance to the bus stop to calculate the slowdown
         # Also multiply by 1. - stop_factor to get the slowdown of the bus
         speed_, road_activation = road.get_speed(new_length, dt)
-        ########################################
-        # Trying new approach for the slowing of the bus before bus stop
-        #######################################
+        
+        speed = speed_ * road.L * (1.0 - stop_factor)
+        if 140 < length < 150:
+            print(f"Bus {bus.id} is at length {new_length*road.L} moving at speed {speed} at time {t} for a period of {dt}")
 
-        # Old:
-        # speed = speed_ * road.L * (1.0 - stop_factor)
-        # New
-        speed = torch.min(speed_ * road.L, road.Vmax[road.idx] * road.L * (1.0 - stop_factor))
 
 
         activation = torch.tensor(1.0)

@@ -1,7 +1,7 @@
 import torch
 
 
-def calculate_slowdown_factor(d, alpha = 0.5, beta = 2):
+def calculate_slowdown_factor(d, alpha = 0.5, beta = 1):
     '''
     The two factors alpha and beta are used to control the rate of slowing down both for the bus around the stop
     and for the flow of traffic near the bus.
@@ -147,7 +147,7 @@ class Bus:
             
         return -1, 0, -1 # Road not found
 
-    def get_slowdown_factor(self, slowdown_factor, road_id, length, road):
+    def get_slowdown_factor(self, slowdown_factor, road_id, length, road, dt):
         '''
         This function calculates the rate of slowing down of the bus. First, if the bus has not started its route yet, then 
         nothing is done. If the bus has started the route, then given the id of the current road
@@ -178,7 +178,23 @@ class Bus:
                 distance = length - stop_pos
                 # Calculate the slow down factor based on this distance:
                 # Multiply by 0.8 to always allow for some cars to cross and to avoid bus having zero speed
-                stop_factor = calculate_slowdown_factor(distance) * 0.8
+                stop_factor = calculate_slowdown_factor(distance) * 0.9
+                ####################################
+                # Trying new method for calculating the slowing of a bus
+                ####################################
+                
+                speed, _ = road.get_speed(length/road.L, dt)
+                if speed*road.L < road.Vmax[road.idx] * (1.0 - stop_factor):
+                    # No slowing down necessary because the bus is already moving slowly
+                    stop_factor = torch.tensor(0.0)
+                else:
+                    # print(length, stop_factor, road.Vmax[road.idx] * (1.0 - stop_factor), self.id)
+                    # Slow down bus so that it moves at the same speed as 
+                    # road.Vmax[road.idx] * (1.0 - stop_factor)
+                    stop_factor = 1. - (1. - stop_factor) * (road.Vmax[road.idx] / (speed*road.L)) 
+                    # print(stop_factor, speed*road.L*(1.-stop_factor), dt)
+                    # print()
+
                 self.stop_factor = torch.max(self.stop_factor, stop_factor)
                 # Update factors on the interface:
                 interface_positions = torch.arange(road.dx, road.b, road.dx)
@@ -214,7 +230,7 @@ class Bus:
         speed = (1-self.stop_factor) * speed
         '''
         # Modify the speed using the slowing factor
-        speed = (1-self.stop_factor)*speed
+        # speed = (1-self.stop_factor)*speed
         self.stop_factor = torch.tensor(0.0)
         
         if not self.active:
@@ -295,7 +311,7 @@ class Bus:
         stopping = False
         delay = torch.tensor(0.0)
         # Update the speed using the slowing factor
-        speed = (1-self.stop_factor)*speed
+        # speed = (1-self.stop_factor)*speed
         self.stop_factor = torch.tensor(0.0)
 
         if not self.active:
