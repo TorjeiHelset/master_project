@@ -451,7 +451,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             return prev_params, prev_gradient, prev_objective
 
 # @memory_profiler.profile
-def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 10, tol = 1.e-4, debugging = True):
+def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 100, tol = 1.e-4, debugging = True):
     '''
     Full method for the gradient descent algorithm. The funcion should take in a filename for 
     the initial configuration of the network. In addition the objetive type needs to be specified.

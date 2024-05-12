@@ -1491,7 +1491,7 @@ if __name__ == "__main__":
             
         case 14:
             import json
-            import generate_example_networks as generate
+            import generate_general_networks as generate
 
             network = generate.compare_grid_size_network(T = 100, N = 2)
 

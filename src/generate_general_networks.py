@@ -8,28 +8,44 @@ import roundabout as rb
 import initial_and_bc as ibc
 import bus
 
-def single_lane_network(T, N , speed_limit = [torch.tensor(30.0)], 
+def single_lane_network(T, N , speed_limit = [torch.tensor(40.0)], 
                         control_points = [], track_grad = True):
     
     # Creating the road:
     # Configuration of the single lane
-    L = 25
-    N = 5
-    b = 8
+    L = 50
+    N = 2
+    b = 4
     if torch.is_tensor(speed_limit[0]):
         speed = [v / 3.6 for v in speed_limit]
     else:
         speed = [torch.tensor(v / 3.6) for v in speed_limit]
+        
     for v in speed:
         v.requires_grad = track_grad
 
-    road = rd.Road(b, L, N, speed, control_points, max_dens=1, initial=...,
-                   boundary_fnc=...)
+    initial_fnc = lambda x : torch.ones_like(x) * 0.4
+    boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.4]),
+                                           time_jumps = [], in_speed = torch.tensor(40.0),
+                                           L = L)
+
+    road = rd.Road(b, L, N, speed, control_points, max_dens=1, initial=initial_fnc,
+                   boundary_fnc=boundary_fnc, id="road_1")
     
+    # Creating temporary network:
+    temp_network = nw.RoadNetwork([road], [], T, [], [])
+
     # Creating the bus:
-    ...
+    ids = ["road_1"]
+    stops = [("road_1", 150)]
+    times = [0]
+    bus_1 = bus.Bus(ids, stops, times, temp_network, id="bus_1")
 
     # Creating the network:
+    network = nw.RoadNetwork([road], [], T, [], [bus_1])
+
+    return network
+
     
 def single_junction_network(T, N, speed1 = [torch.tensor(30.0)], control_points1 = [],
                             speed2 = [torch.tensor(30.0)], control_points2 = [],
