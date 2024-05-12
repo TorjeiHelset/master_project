@@ -250,6 +250,10 @@ class Road:
         For the scheme to be conservative, the flux from the interface near the internal nodes needs to 
         be calculated using the scheme that is used for the internal nodes
         '''
+        # print(f"Right boundary is being updated!")
+        # print(f"Flux leaving road: {incoming_flux}")
+        # print(f"time step: {dt}")
+        # print()
         # Calculate the left flux at the rightmost node
         left = self.rho[-2]
         right = self.rho[-1]
@@ -447,7 +451,8 @@ class Road:
                 # print(self.rho[-self.pad-1])
                 # self.right_boundary[:] = self.rho[-self.pad-1]
 
-                self.right_boundary[:] = self.rho[-self.pad-1]
+                self.right_boundary[:] = self.rho[-self.pad-1].clone()
+            
 
             # For left boundary some inflow conditions are necessary       
             if not self.left:
@@ -478,7 +483,10 @@ class Road:
         # Update the boundary cells using the respective left and right fluxes
 
         self.update_left_boundary(self.left_flux, dt, slowdown_factors[:self.pad])
-        self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
+
+        if self.right:
+            self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
+            
         self.left_flux = torch.tensor(0.0)
         self.right_flux = torch.tensor(0.0)
 

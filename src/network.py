@@ -385,7 +385,7 @@ class RoadNetwork:
         
         t = torch.tensor(0.0)
         if self.store_densities:
-            rho_timesteps = {i : {0 : self.roads[i].rho} for i in range(len(self.roads))}
+            rho_timesteps = {i : {0 : self.roads[i].rho.clone()} for i in range(len(self.roads))}
             # queue_timesteps = {i : {0 : self.roads[i].queue_length.clone()} for i in range(len(self.roads))}
             queue_timesteps = {i : {0 : self.roads[i].queue_length} for i in range(len(self.roads))}
 
@@ -697,7 +697,7 @@ class RoadNetwork:
                 #-------------------------------------
                 if self.store_densities:
                     for i in range(len(self.roads)):
-                        rho_timesteps[i][t] = self.roads[i].rho
+                        rho_timesteps[i][t] = self.roads[i].rho.clone()
                         # queue_timesteps[i][t] = self.roads[i].queue_length.clone()
                         queue_timesteps[i][t] = self.roads[i].queue_length
 
