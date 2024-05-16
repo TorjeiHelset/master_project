@@ -645,7 +645,7 @@ def update_optimize_case(opt_case):
     optimize_case = opt_case
 
 if __name__ == "__main__":
-    option = 4
+    option = 3
     match option:
         case 0:
             update_optimize_case(0)

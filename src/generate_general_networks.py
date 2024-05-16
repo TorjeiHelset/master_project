@@ -14,7 +14,6 @@ def single_lane_network(T, N , speed_limit = [torch.tensor(40.0)],
     # Creating the road:
     # Configuration of the single lane
     L = 50
-    N = 2
     b = 4
     if torch.is_tensor(speed_limit[0]):
         speed = [v / 3.6 for v in speed_limit]
@@ -55,7 +54,6 @@ def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.ten
     # Creating the road:
     # Configuration of the single lane
     L = 50
-    N = 2
     b = 2
     if torch.is_tensor(speed_limits[0][0]):
         speed_1 = [v / 3.6 for v in speed_limits[0]]
@@ -80,7 +78,7 @@ def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.ten
 
     initial_fnc = lambda x : torch.ones_like(x) * 0.4
     boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.4]),
-                                           time_jumps = [], in_speed = torch.tensor(40.0),
+                                           time_jumps = [], in_speed = torch.tensor(40.0/3.6),
                                            L = L)
 
     road_1 = rd.Road(b, L, N, speed_1, control_points[0], max_dens=1, initial=initial_fnc,
@@ -92,7 +90,7 @@ def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.ten
     new_cycle = []
     for c in cycle_times:
         if torch.is_tensor(c):
-            c.requires_grad = True
+            c.requires_grad = track_grad
             new_cycle.append(c)
         else:
             c = torch.tensor(c, requires_grad=track_grad)
@@ -127,7 +125,6 @@ def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.
     # Creating the road:
     # Configuration of the single lane
     L = 50
-    N = 2
     b = 2
     if torch.is_tensor(speed_limits[0][0]):
         speed_1 = [v / 3.6 for v in speed_limits[0]]
@@ -176,7 +173,7 @@ def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.
     new_cycle = []
     for c in cycle_times:
         if torch.is_tensor(c):
-            c.requires_grad = True
+            c.requires_grad = track_grad
             new_cycle.append(c)
         else:
             c = torch.tensor(c, requires_grad=track_grad)
@@ -303,7 +300,7 @@ def compare_grid_size_network(T, N, speed1 = [torch.tensor(50.0/3.6)], speed2 = 
         
 
 if __name__ == "__main__":
-    option = 1
+    option = 0
     match option:
         case 0:
             import time

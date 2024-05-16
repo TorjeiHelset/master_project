@@ -451,6 +451,7 @@ class RoadNetwork:
                     #J.apply_bc_wo_opt(dt, t)
                     min_dt = J.apply_bc(dt,t)
                     dt = torch.min(min_dt, dt)
+                    
                     # J.apply_bc(dt,t)
 
                 #-------------------------------------

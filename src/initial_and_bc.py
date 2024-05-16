@@ -33,7 +33,7 @@ def init_density(max_dens, type):
             return lin_decr
 
 def boundary_conditions(type, max_dens = 1, densities = [0], fluxes = [0], time_jumps = [], 
-                        in_speed = 50, L = 50, amplitude = 0.3, period = 100, 
+                        in_speed = 50/3.6, L = 50, amplitude = 0.3, period = 100, 
                         flux_amplitude = 0.01):
     '''
     Returns a boundary condition of a certain type given the maximum density

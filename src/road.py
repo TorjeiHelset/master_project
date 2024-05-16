@@ -227,7 +227,7 @@ class Road:
             return self.max_dt()
         else:
             min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *incoming_flux /  self.gamma[self.idx]))
-        return torch.max(min_dt, self.gamma[self.idx])
+        return torch.max(min_dt, self.dx / (self.max_dens * self.gamma[self.idx]))
     
     def update_left_flux(self, outgoing_flux):
         '''
@@ -238,8 +238,8 @@ class Road:
         if 1 - 4 *outgoing_flux /  self.gamma[self.idx] <= 0:
             return self.max_dt()
         else:
-            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *outgoing_flux /  self.gamma[self.idx]))
-        return torch.max(min_dt, self.gamma[self.idx])
+            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 * outgoing_flux /  self.gamma[self.idx]))
+        return torch.max(min_dt, self.dx / (self.max_dens * self.gamma[self.idx]))
         
     def update_right_boundary(self, incoming_flux, dt, slowdown_factors):
         '''
@@ -320,7 +320,6 @@ class Road:
 
         # return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
         return CFL * self.dx / (self.max_dens * max_flux)
-        
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
@@ -482,11 +481,11 @@ class Road:
 
     def update_boundary_cells(self, dt, slowdown_factors):
         # Update the boundary cells using the respective left and right fluxes
+        if not self.periodic:
+            self.update_left_boundary(self.left_flux, dt, slowdown_factors[:self.pad])
 
-        self.update_left_boundary(self.left_flux, dt, slowdown_factors[:self.pad])
-
-        if self.right:
-            self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
+            if self.right:
+                self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
             
         self.left_flux = torch.tensor(0.0)
         self.right_flux = torch.tensor(0.0)
