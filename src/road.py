@@ -451,7 +451,8 @@ class Road:
                 # print(self.rho[-self.pad-1])
                 # self.right_boundary[:] = self.rho[-self.pad-1]
 
-                self.right_boundary[:] = self.rho[-self.pad-1].clone()
+                # self.right_boundary[:] = self.rho[-self.pad-1].clone()
+                self.right_boundary = self.rho[-self.pad-1].clone()
             
 
             # For left boundary some inflow conditions are necessary       
