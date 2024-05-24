@@ -132,7 +132,7 @@ def create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_gra
         
         case 3:
             # Optimize medium complex network
-            network = generate.medium_complex_network(T, N, speed_limits, control_points, cycle_times, track_grad=True)
+            network = generate.medium_complex_network(T, N, speed_limits, control_points, cycle_times, track_grad=track_grad)
             
         case _:
             raise NotImplementedError(f"Optimization case {optimize_case} not implemented yet")
@@ -339,6 +339,7 @@ def get_grad(objective, network):
     objective.backward()
     speed_limits = network.get_speed_limit_grads()
     traffic_lights = network.get_traffic_light_grads()
+    # traffic_lights = [-light for light in traffic_lights]
     gradient = speed_limits + traffic_lights
     return np.array(gradient)
 
@@ -452,7 +453,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         scaling_factor, scaled_grad = scale_gradient(prev_gradient, prev_params, max_update)
         print(f"Gradient after scaling")
         print(scaled_grad)
-        if np.linalg.norm(scaled_grad) < 1.e-6:
+        if np.linalg.norm(scaled_grad) < 1.e-8:
             print(f"Either boundary or stationary point reached")
             return prev_params, prev_gradient, prev_objective
 
@@ -649,7 +650,7 @@ def update_optimize_case(opt_case):
     optimize_case = opt_case
 
 if __name__ == "__main__":
-    option = 3
+    option = 4
     match option:
         case 0:
             update_optimize_case(0)
@@ -677,18 +678,83 @@ if __name__ == "__main__":
             network_file = "optimization_cases/single_junction/network_file_1.json"
             config_file = "optimization_cases/single_junction/config_file.json"
             result_file = "optimization_results/general_optimization/single_junction_1.json"
-            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
 
         case 4:
             update_optimize_case(2)
             network_file = "optimization_cases/two_two_junction/network_file.json"
             config_file = "optimization_cases/two_two_junction/config_file.json"
             result_file = "optimization_results/general_optimization/two_two_junction.json"
-            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
 
         case 5:
             update_optimize_case(3)
             network_file = "optimization_cases/medium_complex/network_file.json"
             config_file = "optimization_cases/medium_complex/config_file.json"
             result_file = "optimization_results/general_optimization/medium_complex.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+
+        case 6:
+            update_optimize_case(3)
+            network_file = "optimization_cases/medium_complex/network_file_1.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_1.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+        
+        case 7:
+            update_optimize_case(3)
+            network_file = "optimization_cases/medium_complex/network_file_2.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_2.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+        
+        case 8:
+            update_optimize_case(3)
+            network_file = "optimization_cases/medium_complex/network_file_3.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_3.json"
             gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+        
+        case 9:
+            import matplotlib.pyplot as plt
+            import traffic_lights as tl
+
+            update_optimize_case(3)
+            network_file = "optimization_cases/medium_complex/network_file_2.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_2.json"
+
+
+            T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
+            prev_params = extract_params(speed_limits, cycle_times)
+
+            print(prev_params)
+
+            T = 90
+            # times = torch.linspace(0, T, 200)
+            bus_network = create_network_from_speeds_cycles(T, N, speed_limits, cycle_times, track_grad=False)
+
+
+            for road in bus_network.roads:
+                print(road.id, road.Vmax, road.L, road.b, road.dx)
+
+
+            densities, queues, bus_lengths, delays, n_stops = bus_network.solve_cons_law_counting()
+
+            print(bus_lengths)
+            
+            for road in bus_network.roads:
+                if road.id == "south_one_fw":
+                    print(road.rho)
+            # # for junction in bus_network.junctions:
+            # #     for light in junction.trafficlights:
+            # #         plt.plot(light.activation_func(times))
+            # #         plt.show()
+
+            # # for light in junction.coupled_trafficlights:
+
+            # cycle = [torch.tensor(70.0), torch.tensor(70.0)]
+
+            # activation = tl.period(times, cycle[0], cycle[1])
+            # plt.plot(np.array(times), activation)
+            # plt.show()

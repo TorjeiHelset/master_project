@@ -109,7 +109,8 @@ def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.ten
     ids = ["first_road", "second_road"]
     stops = [("second_road", 50)]
     times = [0]
-    bus_1 = bus.Bus(ids, stops, times, temp_network, id="bus_1")
+    bus_1 = bus.Bus(ids, stops, times, temp_network, id="bus_1",
+                    start_time=00)
 
     # Creating the network:
     network = nw.RoadNetwork([road_1, road_2], [junction], T, [], [bus_1])
@@ -118,7 +119,7 @@ def single_junction_network(T, N, speed_limits=[[torch.tensor(50.0)], [torch.ten
 
 def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.0)],
                                          [torch.tensor(50.0)], [torch.tensor(50.0)]], 
-                    control_points = [[], []],
+                    control_points = [[], [], [], []],
                     cycle_times = [torch.tensor(60.0), torch.tensor(60.0)], 
                     track_grad = True):
     
@@ -335,6 +336,14 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
         speed_7 = [torch.tensor(v / 3.6, requires_grad=track_grad) for v in speed_limits[6]]
         speed_8 = [torch.tensor(v / 3.6, requires_grad=track_grad) for v in speed_limits[7]]
 
+    new_cycle = []
+    for c in cycle_times[0]:
+        if torch.is_tensor(c):
+            c.requires_grad = track_grad
+            new_cycle.append(c)
+        else:
+            c = torch.tensor(c, requires_grad=track_grad)
+            new_cycle.append(c)
 
     initial_fnc = lambda x : torch.ones_like(x) * 0.4
     boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.2]),
@@ -344,35 +353,35 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     # Creating the regular roads of the network
     south_fwd = [None for _ in range(4)]
     south_fwd[0] = rd.Road(1, L, N, speed_1, control_points[0], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_1fw")
+                           boundary_fnc=None, id="south_one_fw")
     south_fwd[1] = rd.Road(1, L, N, speed_2, control_points[1], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_2fw")
+                           boundary_fnc=None, id="south_two_fw")
     south_fwd[2] = rd.Road(1, L, N, speed_3, control_points[2], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_3fw")
+                           boundary_fnc=None, id="south_three_fw")
     south_fwd[3] = rd.Road(1, L, N, speed_4, control_points[3], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_4fw")
+                           boundary_fnc=None, id="south_four_fw")
     
     south_bwd = [None for _ in range(4)]
     south_bwd[0] = rd.Road(1, L, N, speed_1, control_points[0], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_1bw")
+                           boundary_fnc=None, id="south_one_bw")
     south_bwd[1] = rd.Road(1, L, N, speed_2, control_points[1], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=boundary_fnc, id="south_2bw")
+                           boundary_fnc=boundary_fnc, id="south_two_bw")
     south_bwd[2] = rd.Road(1, L, N, speed_3, control_points[2], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="south_3bw")
+                           boundary_fnc=None, id="south_three_bw")
     south_bwd[3] = rd.Road(1, L, N, speed_4, control_points[3], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=boundary_fnc, id="south_4bw")
+                           boundary_fnc=boundary_fnc, id="south_four_bw")
 
     north_fwd = [None for _ in range(2)]
     north_fwd[0] = rd.Road(1, L, N, speed_5, control_points[4], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="north_1fw")
+                           boundary_fnc=None, id="north_one_fw")
     north_fwd[1] = rd.Road(1, L, N, speed_6, control_points[5], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="north_2fw")
+                           boundary_fnc=None, id="north_two_fw")
     
     north_bwd = [None for _ in range(2)]
     north_bwd[0] = rd.Road(1, L, N, speed_5, control_points[4], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=None, id="north_1bw")
+                           boundary_fnc=None, id="north_one_bw")
     north_bwd[1] = rd.Road(1, L, N, speed_6, control_points[5], max_dens = 1, initial=initial_fnc,
-                           boundary_fnc=boundary_fnc, id="north_2bw")
+                           boundary_fnc=boundary_fnc, id="north_two_bw")
 
     middle_road = [None]
     middle_road[0] = rd.Road(1, L, N, speed_7, control_points[6], max_dens = 1, initial=initial_fnc,
@@ -380,36 +389,43 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
 
     # Creating the junctions of the network
     junctions = [None for _ in range(3)]
-    # First junction with coupled traffic light
-    distribution_1 = [[0.0, 0.6, 0.4],
-                      [0.4, 0.0, 0.6],
-                      [1.0, 0.0, 0.0]]
-    light = tl.CoupledTrafficLightContinuous(True, [0, 5], [1, 2, 4], [3], [1,4],
-                                             cycle=cycle_times[0])
-
+    # First junction with coupled traffic light - probably should have duty to give way also...
+    distribution_1 = [[0.0, 0.4, 0.6],
+                      [0.5, 0.0, 0.5],
+                      [0.6, 0.4, 0.0]]
+    priorities_1 = [[0, 1, 1],
+                    [1, 0, 2],
+                    [2, 2, 0]]
+    crossings = [[[], [], []],
+                 [[], [], []],
+                 [[], [], []]]
+    light = tl.CoupledTrafficLightContinuous(False, [0, 5], [1, 2, 4], [3], [1,2,4],
+                                             cycle=new_cycle)
+    # light = tl.TrafficLightContinous(True, [0], [2,4], cycle=new_cycle)
+    # Check this junction!!!!
     junctions[0] = jn.Junction([south_fwd[0], south_bwd[0], south_fwd[1], south_bwd[1],
                                 south_fwd[2], south_bwd[2]], [0,3,5], [1,2,4],
-                                distribution_1, [], [light], duty_to_gw=False)
+                                distribution_1, [], [light], True, priorities_1, crossings)
 
-    distribution_2 = [[0.8, 0.0, 0.2],
-                      [0.0, 0.7, 0.3]]
-    priorities_2 = [[1, 0, 2],
-                    [0, 1, 1]]
-    crossings_2 = [[[], [], [(1,1)]],
+    distribution_2 = [[0.0, 0.8, 0.2],
+                      [0.7, 0.0, 0.3]]
+    priorities_2 = [[0, 1, 2],
+                    [1, 0, 1]]
+    crossings_2 = [[[], [], [(1,0)]],
                  [[], [], []]]
     junctions[1] = jn.Junction([south_fwd[2], south_bwd[2], south_fwd[3], south_bwd[3], middle_road[0]],
                                [0, 3], [1, 2, 4], distribution_2, [], [], True, priorities_2, crossings_2)
     
-    distribution_3 = [[1.0, 0.0],
-                      [0.0, 1.0],
-                      [0.6, 0.4]]
-    priorities_3 = [[1, 0],
-                    [0, 1],
+    distribution_3 = [[0.0, 1.0],
+                      [1.0, 0.0],
+                      [0.5, 0.5]]
+    priorities_3 = [[0, 1],
+                    [1, 0],
                     [2, 2]]
     crossings_3 = [[[], []],
                    [[], []],
-                   [[], [(0,0)]]]
-    junctions[2] = jn.Junction([north_fwd[0], north_bwd[0], north_fwd[1], north_bwd[2], middle_road[0]],
+                   [[(0,1)], []]]
+    junctions[2] = jn.Junction([north_fwd[0], north_bwd[0], north_fwd[1], north_bwd[1], middle_road[0]],
                                [0, 3, 4], [1, 2], distribution_3, [], [], True, priorities_3, crossings_3)
 
     # Creating the main roads of the roundabout
@@ -422,7 +438,7 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
                         id="mainline_3fw")
 
     # Creating the secondary roads of the roundabout
-    secondary_in = rb.RoundaboutRoad(boundary_fnc, fv.flux(torch.tensor(0.5), mainline_roads[0].gamma[0]))
+    secondary_in = rb.RoundaboutRoad(boundary_fnc, fv.flux(torch.tensor(0.5), mainline_roads[0].Vmax[0] / L))
 
     roundabouts = [None for _ in range(3)]
     roundabouts[0] = rb.RoundaboutJunction(mainline_roads[2], mainline_roads[0], 0.5, secondary_in,
@@ -430,20 +446,24 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     roundabouts[1] = rb.RoundaboutJunction(mainline_roads[0], mainline_roads[1], 0.5, south_bwd[0],
                                            south_fwd[0], False)
     roundabouts[2] = rb.RoundaboutJunction(mainline_roads[1], mainline_roads[2], 0.5, north_bwd[0],
-                                           north_fwd[0], True)
+                                           north_fwd[0], False)
+    
+    roundabout = rb.Roundabout(mainline_roads, [secondary_in, south_bwd[0], north_bwd[0]],
+                               [None, south_fwd[0], north_fwd[0]], roundabouts)
 
     # Creating the temporary network
     roads = south_fwd + south_bwd + north_fwd + north_bwd + middle_road + mainline_roads
-    temp_network = nw.RoadNetwork(roads, junctions, T, roundabouts, busses = [])
+    temp_network = nw.RoadNetwork(roads, junctions, T, [roundabout], busses = [])
 
     # Adding busses
-    ids_1 = ["south_2bw", "south_3fw", "middle", "north_2fw"]
-    ids_2 = ["south_4bw", "south_3bw", "south_1bw", "mainline_2fw", "mainline_2fw"]
-    ids_3 = ["mainline_1fw", "mainline_2fw", "north_1fw", "north_2fw"]
+    ids_1 = ["south_two_bw", "south_three_fw", "middle", "north_two_fw"]
+    ids_1 = ["mainline_1fw", "south_one_fw", "south_three_fw", "middle", "north_two_fw"]
+    ids_2 = ["south_four_bw", "south_three_bw", "south_one_bw", "mainline_2fw", "mainline_2fw"]
+    ids_3 = ["mainline_1fw", "mainline_2fw", "north_one_fw", "north_two_fw"]
     
-    stops_1 = [("north_2fw", 25)]
-    stops_2 = [("south_1bw", 25)]
-    stops_3 = [("north_1fw", 25)]
+    stops_1 = [("north_two_fw", 25)]
+    stops_2 = [("south_one_bw", 25)]
+    stops_3 = [("north_one_fw", 25)]
 
     times_1 = [0]
     times_2 = [0]
@@ -454,7 +474,8 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     bus_3 = bus.Bus(ids_3, stops_3, times_3, temp_network, id = "bus_3", start_time=0.0)
 
     # Creating full network
-    network = nw.RoadNetwork(roads, junctions, T, roundabouts, busses = [bus_1, bus_2, bus_3])
+    network = nw.RoadNetwork(roads, junctions, T, [roundabout], busses = [bus_1, bus_2, bus_3])
+    # network = nw.RoadNetwork(roads, junctions, T, [roundabout], busses = [bus_1])
 
     return network
 
