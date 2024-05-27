@@ -23,9 +23,11 @@ import numpy as np
 import memory_profiler
 import os
 import json
+import FV_schemes as fv
 
 
 optimize_case = 0
+objective_type = 0
 
 n_speeds = []
 last_speed_idx = 0 # More accurately number of parameters related to the speed limit
@@ -330,6 +332,43 @@ def average_delay_time(bus_delays):
     # print(avg_delay)
     return avg_delay
 
+def throughput(network, densities):
+    flux_out = 0
+    times = list(densities[0].keys())
+    for i, road in enumerate(network.roads):
+        if not road.right:
+            # Outgoing road
+            for k in range(len(times)-1):
+                t1 = times[k]
+                t2 = times[k+1]
+                # Find density at the end of the road
+                end_rho1 = densities[i][t1][-1]
+                end_rho2 = densities[i][t2][-1]
+
+                flux1 =  fv.flux(end_rho1, road.gamma[0])
+                flux2 =  fv.flux(end_rho2, road.gamma[0])
+                # Minus to create a minimization problem
+                flux_out -= (t2 - t1) * (flux1 + flux2) / 2
+
+    return flux_out
+
+def travel_time(network, densities):
+    tot_int = 0
+    times = list(densities[0].keys())
+    dx = network.roads[0].dx
+
+    for i, road in enumerate(network.roads):
+        for k in range(len(times)-1):
+            t1 = times[k]
+            t2 = times[k+1]
+            # Find density at the end of the road
+            t1_int = torch.sum(densities[i][t1][1:-1]) + 0.5 * (densities[i][t1][-1] + densities[i][t1][0])
+            t2_int = torch.sum(densities[i][t2][1:-1]) + 0.5 * (densities[i][t2][-1] + densities[i][t2][0])
+
+            tot_int -= dx * (t2 - t1) * (t2_int + t1_int) / 2
+
+    return tot_int
+
 ################################
 # Gradient descent functions
 ################################
@@ -366,17 +405,22 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     # densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
     densities, queues, lengths, bus_delays, n_stops_reached = bus_network.solve_cons_law_counting()
 
-    densities = None
-    queues = None
-    lengths = None
+
 
     # Calculate objective function to minimize
     print("Calculating the objective value...")
-    if n_stops_reached > 0:
-        objective = average_delay_time(bus_delays) / n_stops_reached
-    else:
-        # In this case, bus_delays should also be zero
-        objective = average_delay_time(bus_delays) 
+    match objective_type:
+        case 0:
+            if n_stops_reached > 0:
+                objective = average_delay_time(bus_delays) / n_stops_reached
+            else:
+                # In this case, bus_delays should also be zero
+                objective = average_delay_time(bus_delays) 
+        case 1:
+            objective = throughput(bus_network, densities)
+
+        case 2:
+            objective = travel_time(bus_network, densities)
 
     objective_val = objective.detach().item()
     print(f"Objective: {objective_val}")
@@ -386,6 +430,9 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
 
     objective = None
     bus_network = None
+    densities = None
+    queues = None
+    lengths = None
 
     return gradient, objective_val
 
@@ -402,13 +449,21 @@ def create_network_and_calculate(T, N, new_params, prev_objective):
     return new_gradient, new_objective
 
 # @memory_profiler.profile
-def calculate_objective_and_grad(bus_network, prev_objective, objective_fnc = average_delay_time):
+def calculate_objective_and_grad(bus_network, prev_objective):
     # densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
     densities, queues, lengths, bus_delays, n_stops_reached = bus_network.solve_cons_law_counting()
-    if n_stops_reached > 0:
-        objective = objective_fnc(bus_delays) / n_stops_reached
-    else:
-        objective = objective_fnc(bus_delays)
+    
+    match objective_type:
+        case 0:
+            if n_stops_reached > 0:
+                objective = average_delay_time(bus_delays) / n_stops_reached
+            else:
+                objective = average_delay_time(bus_delays)
+        case 1:
+            objective = throughput(bus_network, densities)
+        case 2:
+            objective = travel_time(bus_network, densities)
+    
 
     objective_val = objective.detach().item()
     print(f"Objective: {objective_val}")
@@ -649,8 +704,12 @@ def update_optimize_case(opt_case):
     global optimize_case
     optimize_case = opt_case
 
+def update_objective(obj_type):
+    global objective_type
+    objective_type = obj_type
+
 if __name__ == "__main__":
-    option = 4
+    option = 13
     match option:
         case 0:
             update_optimize_case(0)
@@ -684,21 +743,21 @@ if __name__ == "__main__":
             update_optimize_case(2)
             network_file = "optimization_cases/two_two_junction/network_file.json"
             config_file = "optimization_cases/two_two_junction/config_file.json"
-            result_file = "optimization_results/general_optimization/two_two_junction.json"
+            result_file = "optimization_results/general_optimization/two_two_junction_alt_start.json"
             gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
 
         case 5:
             update_optimize_case(3)
             network_file = "optimization_cases/medium_complex/network_file.json"
             config_file = "optimization_cases/medium_complex/config_file.json"
-            result_file = "optimization_results/general_optimization/medium_complex.json"
+            result_file = "optimization_results/general_optimization/medium_complex_alt_start.json"
             gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
 
         case 6:
             update_optimize_case(3)
             network_file = "optimization_cases/medium_complex/network_file_1.json"
             config_file = "optimization_cases/medium_complex/config_file.json"
-            result_file = "optimization_results/general_optimization/medium_complex_1.json"
+            result_file = "optimization_results/general_optimization/medium_complex_1_alt_start.json"
             gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
         
         case 7:
@@ -758,3 +817,35 @@ if __name__ == "__main__":
             # activation = tl.period(times, cycle[0], cycle[1])
             # plt.plot(np.array(times), activation)
             # plt.show()
+        
+        case 10:
+            update_optimize_case(3)
+            update_objective(1)
+            network_file = "optimization_cases/medium_complex/network_file.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_through.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+
+        case 11:
+            update_optimize_case(3)
+            update_objective(1)
+            network_file = "optimization_cases/medium_complex/network_file_1.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_through_1.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+
+        case 12:
+            update_optimize_case(3)
+            update_objective(2)
+            network_file = "optimization_cases/medium_complex/network_file.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_travel.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=True, debugging=False)
+
+        case 13:
+            update_optimize_case(3)
+            update_objective(2)
+            network_file = "optimization_cases/medium_complex/network_file_1.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_travel_1.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)

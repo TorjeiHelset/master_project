@@ -181,7 +181,7 @@ def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.
             new_cycle.append(c)
     
     # Create junction with traffic light
-    light = tl.CoupledTrafficLightContinuous(True, [0], [1], [2], [3], new_cycle)
+    light = tl.CoupledTrafficLightContinuous(False, [0], [1], [2], [3], new_cycle)
     junction = jn.Junction(roads, [0,2], [1,3], [[1.0, 0.0],[0.0, 1.0]], [], [light])
 
 
@@ -399,6 +399,8 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     crossings = [[[], [], []],
                  [[], [], []],
                  [[], [], []]]
+    # Alt start: True
+    # Orig: False
     light = tl.CoupledTrafficLightContinuous(False, [0, 5], [1, 2, 4], [3], [1,2,4],
                                              cycle=new_cycle)
     # light = tl.TrafficLightContinous(True, [0], [2,4], cycle=new_cycle)
@@ -457,8 +459,8 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
 
     # Adding busses
     ids_1 = ["south_two_bw", "south_three_fw", "middle", "north_two_fw"]
-    ids_1 = ["mainline_1fw", "south_one_fw", "south_three_fw", "middle", "north_two_fw"]
-    ids_2 = ["south_four_bw", "south_three_bw", "south_one_bw", "mainline_2fw", "mainline_2fw"]
+    # ids_1 = ["mainline_1fw", "south_one_fw", "south_three_fw", "middle", "north_two_fw"]
+    ids_2 = ["south_four_bw", "south_three_bw", "south_one_bw", "mainline_2fw", "mainline_3fw"]
     ids_3 = ["mainline_1fw", "mainline_2fw", "north_one_fw", "north_two_fw"]
     
     stops_1 = [("north_two_fw", 25)]
