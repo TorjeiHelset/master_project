@@ -466,7 +466,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
     result_dict = {
         "network_file" : network_file,
         "config_file" : config_file,
-        "ad_method" : "backward",
+        "ad_method" : "restarting",
         "upper_speeds" : upper_speeds,
         "lower_speeds" : lower_speeds,
         "upper_time" : upper_time,
