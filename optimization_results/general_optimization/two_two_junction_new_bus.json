@@ -1,0 +1,58 @@
+{
+    "network_file": "optimization_cases/two_two_junction/network_file.json",
+    "config_file": "optimization_cases/two_two_junction/config_file.json",
+    "ad_method": "backward",
+    "upper_speeds": [
+        50.0,
+        50.0,
+        50.0,
+        50.0
+    ],
+    "lower_speeds": [
+        20.0,
+        20.0,
+        20.0,
+        20.0
+    ],
+    "upper_time": 200.0,
+    "lower_time": 10.0,
+    "n_speeds": [
+        1,
+        1,
+        1,
+        1
+    ],
+    "last_speed_idx": 4,
+    "n_cycles": [
+        2
+    ],
+    "control_points": [
+        [],
+        [],
+        [],
+        []
+    ],
+    "parameters": [
+        [
+            40.0,
+            40.0,
+            40.0,
+            40.0,
+            60.0,
+            60.0
+        ]
+    ],
+    "gradients": [
+        [
+            1.6297115087509155,
+            -2.207994222640991,
+            6.916820049285889,
+            -8.336018562316895,
+            0.34747588634490967,
+            2.8851304054260254
+        ]
+    ],
+    "objectives": [
+        113.56581115722656
+    ]
+}

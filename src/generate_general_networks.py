@@ -470,7 +470,7 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     times_1 = [0]
     times_2 = [0]
     times_3 = [0]
-
+    ##################################
     bus_1 = bus.Bus(ids_1, stops_1, times_1, temp_network, id = "bus_1", start_time=0.0)
     bus_2 = bus.Bus(ids_2, stops_2, times_2, temp_network, id = "bus_2", start_time=0.0)
     bus_3 = bus.Bus(ids_3, stops_3, times_3, temp_network, id = "bus_3", start_time=0.0)
