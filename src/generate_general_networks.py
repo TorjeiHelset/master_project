@@ -181,7 +181,7 @@ def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.
             new_cycle.append(c)
     
     # Create junction with traffic light
-    light = tl.CoupledTrafficLightContinuous(False, [0], [1], [2], [3], new_cycle)
+    light = tl.CoupledTrafficLightContinuous(True, [0], [1], [2], [3], new_cycle)
     junction = jn.Junction(roads, [0,2], [1,3], [[1.0, 0.0],[0.0, 1.0]], [], [light])
 
 

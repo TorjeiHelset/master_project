@@ -880,7 +880,7 @@ def update_e18_bool():
     global with_e18
     with_e18 = False
 if __name__ == "__main__":
-    scenario = 15
+    scenario = 19
     
     match scenario:
         case 0:
@@ -1589,4 +1589,282 @@ if __name__ == "__main__":
             draw_busses_w_densities(bus_network, bus_network.busses, bus_lengths, densities,
                                     output_name="gifs/test_bus_stopping.gif",
                                     background_img="background_imgs/white_background.png",interval_seconds = 0.1)
-                    
+            
+        case 16:
+            import json
+            import torch
+            import generate_general_networks as generate
+
+            # Compare optimal and non-optimal solutions on a single lane
+            f = open("optimization_results/general_optimization/single_lane.json")
+            results = json.load(f)
+            f.close()
+
+            network_file = results['network_file']
+            f = open(network_file)
+            network_config = json.load(f)
+            f.close()
+
+            T = network_config['T']
+            N = network_config['N']
+            controls = network_config['control_points'][0]
+
+            # Collecting the start and final parameters
+            start = results['parameters'][0]
+            end = results['parameters'][-1]
+
+            # Create the networks
+            start_speed = [torch.tensor(v) for v in start]
+            end_speed = [torch.tensor(v) for v in end]
+
+            start_network = generate.single_lane_network(T, N, start_speed, controls, track_grad=False)
+            end_network = generate.single_lane_network(T, N, end_speed, controls, track_grad=False)
+
+            # Update positions of roads:
+            start_network.roads[0].left_pos = (-1, 3)
+            start_network.roads[0].right_pos = (7, 3)
+
+            end_network.roads[0].left_pos = (-1, 3)
+            end_network.roads[0].right_pos = (7, 3)
+
+            # Load densities
+            f = open("general_densities/single_lane_start_opt_times.json")
+            data = json.load(f)
+            f.close()
+            orig_densities = data[0]
+            orig_lengths = data[1]
+
+            f = open("general_densities/single_lane_optimal.json")
+            data_opt = json.load(f)
+            f.close()
+            opt_densities = data_opt[0]
+            opt_lengths = data_opt[1]
+
+            # Create gif:
+            draw_busses_compare_w_opt(end_network, end_network.busses, opt_lengths,
+                                    opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/single_lane.gif",
+                                    background_img="background_imgs/white_background.png")
+
+
+        case 17:
+            # Compare optimal and non-optimal solutions on a single junction
+            import json
+            import torch
+            import generate_general_networks as generate
+
+            f = open("optimization_results/general_optimization/single_junction_1.json")
+            results = json.load(f)
+            f.close()
+
+            network_file = results['network_file']
+            f = open(network_file)
+            network_config = json.load(f)
+            f.close()
+
+            T = network_config['T']
+            N = network_config['N']
+            controls = network_config['control_points']
+
+            # Collecting the start and final parameters
+            start = results['parameters'][0]
+            opt = results['parameters'][-1]
+
+            # Create the networks
+            start_speed = [[torch.tensor(start[i])] for i in range(2)]
+            opt_speed = [[torch.tensor(opt[i])] for i in range(2)]
+            start_cycle = [torch.tensor(start[2]), torch.tensor(start[3])]
+            opt_cycle = [torch.tensor(opt[2]), torch.tensor(opt[3])]
+
+            start_network = generate.single_junction_network(T, N, start_speed, controls, start_cycle, track_grad=False)
+            opt_network = generate.single_junction_network(T, N, opt_speed, controls, opt_cycle, track_grad=False)
+
+            # Update positions of roads:
+            start_network.roads[0].left_pos = (-1, 3)
+            start_network.roads[0].right_pos = (2.9, 3)
+            start_network.roads[1].left_pos = (3.1, 3)
+            start_network.roads[1].right_pos = (7, 3)
+
+            opt_network.roads[0].left_pos = (-1, 3)
+            opt_network.roads[0].right_pos = (2.9, 3)
+            opt_network.roads[1].left_pos = (3.1, 3)
+            opt_network.roads[1].right_pos = (7, 3)
+
+            # Load densities
+            f = open("general_densities/single_junction_start_opt_times.json")
+            data = json.load(f)
+            f.close()
+            orig_densities = data[0]
+            orig_lengths = data[1]
+
+            f = open("general_densities/single_junction_optimal.json")
+            data_opt = json.load(f)
+            f.close()
+            opt_densities = data_opt[0]
+            opt_lengths = data_opt[1]
+
+            # Create gif:
+            draw_busses_compare_w_opt(opt_network, opt_network.busses, opt_lengths,
+                                    opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/single_junction.gif",
+                                    background_img="background_imgs/white_background.png")
+        
+        case 18:
+            # Compare optimal and non-optimal solutions on a single junction
+            import json
+            import torch
+            import generate_general_networks as generate
+
+            f = open("optimization_results/general_optimization/two_two_junction.json")
+            results = json.load(f)
+            f.close()
+
+            network_file = results['network_file']
+            f = open(network_file)
+            network_config = json.load(f)
+            f.close()
+
+            T = network_config['T']
+            N = network_config['N']
+            controls = network_config['control_points']
+
+            # Collecting the start and final parameters
+            start = results['parameters'][0]
+            opt = results['parameters'][-1]
+
+            # Create the networks
+            start_speeds = [[torch.tensor(start[i])] for i in range(4)]
+            opt_speeds = [[torch.tensor(opt[i])] for i in range(4)]
+
+            start_cycle = [torch.tensor(start[4]), torch.tensor(start[5])]
+            opt_cycle = [torch.tensor(opt[4]), torch.tensor(opt[5])]
+
+
+            start_network = generate.two_two_junction(T, N, start_speeds, controls, start_cycle, track_grad=False)
+            opt_network = generate.two_two_junction(T, N, opt_speeds, controls, opt_cycle, track_grad=False)
+
+            # Update positions of roads:
+            start_network.roads[0].left_pos = (0, 4)
+            start_network.roads[0].right_pos = (2.9, 4)
+            start_network.roads[1].left_pos = (3.1, 4)
+            start_network.roads[1].right_pos = (6, 4)
+            start_network.roads[2].left_pos = (3, 0)
+            start_network.roads[2].right_pos = (3, 3.9)
+            start_network.roads[3].left_pos = (3, 4.1)
+            start_network.roads[3].right_pos = (3, 8)
+
+            opt_network.roads[0].left_pos = (0, 4)
+            opt_network.roads[0].right_pos = (2.9, 4)
+            opt_network.roads[1].left_pos = (3.1, 4)
+            opt_network.roads[1].right_pos = (6, 4)
+            opt_network.roads[2].left_pos = (3, 0)
+            opt_network.roads[2].right_pos = (3, 3.9)
+            opt_network.roads[3].left_pos = (3, 4.1)
+            opt_network.roads[3].right_pos = (3, 8)
+
+            # Load densities
+            f = open("general_densities/two_two_start_opt_times.json")
+            data = json.load(f)
+            f.close()
+            orig_densities = data[0]
+            orig_lengths = data[1]
+
+            f = open("general_densities/two_two_optimal.json")
+            data_opt = json.load(f)
+            f.close()
+            opt_densities = data_opt[0]
+            opt_lengths = data_opt[1]
+
+            # Create gif:
+            draw_busses_compare_w_opt(opt_network, opt_network.busses, opt_lengths,
+                                    opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/two_two.gif",
+                                    background_img="background_imgs/white_background.png")
+        
+        case 19:
+            # Compare optimal and non-optimal solutions on the medium complex network
+            # Compare optimal and non-optimal solutions on a single junction
+            import json
+            import torch
+            import generate_general_networks as generate
+
+            f = open("optimization_results/general_optimization/medium_complex_new.json")
+            results = json.load(f)
+            f.close()
+
+            network_file = results['network_file']
+            f = open(network_file)
+            network_config = json.load(f)
+            f.close()
+
+            T = network_config['T']
+            N = network_config['N']
+            controls = network_config['control_points']
+
+            # Collecting the start and final parameters
+            start = results['parameters'][0]
+            opt = results['parameters'][-1]
+
+            # Create the networks
+            start_speeds = [[torch.tensor(start[i])] for i in range(8)]
+            opt_speeds = [[torch.tensor(50.0)] for i in range(8)]
+
+            start_cycle = [torch.tensor(start[8]), torch.tensor(start[9])]
+            opt_cycle = [torch.tensor(opt[8]), torch.tensor(opt[9])]
+
+            start_network = generate.medium_complex_network(T, N, start_speeds, controls, [start_cycle], track_grad=False)
+            opt_network = generate.medium_complex_network(T, N, opt_speeds, controls, [opt_cycle], track_grad=False)
+
+            # Update positions of roads:
+            # left_positions = [(0.5, 4.69), (2, 8.18), (2, 4.81), (4, 4.91),
+            #                   (2, 4.81), (-0.5, 9), (4, 4.91), (7, 4.91),
+            #                   (0.5, 1.856), (4, 0), (4, 0), (7, 0),
+            #                   (4, 4.91), (-1, 3.27), (0.5, 4.69), (0.5, 1.856)]
+            # right_positions = [(2, 4.81), (-0.5, 9), (4, 4.91), (7, 4.91),
+            #                    (0.5, 4.69), (2, 9), (2, 9), (4, 4.91),
+            #                    (4, 0), (7, 0), (0.5, 1.856), (4, 0),
+            #                    (4, 0), (0.5, 4.69), (0.5, 1.856), (-1, 3.27)]
+            left_positions = [(1.5 - 0.07 + 0.03, -0.866 - 0.05 + 0.01732), (2.9, -3), (3, -3), (5.1, -1),
+                              (3, -3), (0.4, -3.6), (4.9, -1), (8, -1),
+                              (1.5, 0.866), (5.1, 2), (4.9, 2), (8, 2),
+                              (5, -0.9), (0, 0), (1.5, -0.866), (1.5, 0.866)]
+            right_positions = [(3 -0.07-0.03, -3 + 0.05+0.01732), (0.5, -3.5), (4.9, -1), (8, -1),
+                               (1.5, -0.866), (2.8, -3.1), (3, -3), (5.1, -1),
+                               (4.9, 2), (8, 2), (1.5, 0.866), (5.1, 2),
+                               (5, 1.9), (1.5, -0.866), (1.5, 0.866), (0, 0)]
+            
+            for i in range(16):
+                y_min = 0.1
+                y_max = 8.9
+                a_y = (y_min - y_max) / 5.5
+                b_y = y_min + 2 * (y_max - y_min) / 5.5
+
+                x_min = 0.1
+                x_max = 6.9
+                a_x = (x_max - x_min) / 8
+                b_x = x_min
+
+                start_network.roads[i].left_pos = (left_positions[i][0] * a_x + b_x,
+                                                   left_positions[i][1] * a_y + b_y)
+                opt_network.roads[i].left_pos = (left_positions[i][0] * a_x + b_x,
+                                                   left_positions[i][1] * a_y + b_y)
+                start_network.roads[i].right_pos = (right_positions[i][0] * a_x + b_x,
+                                                   right_positions[i][1] * a_y + b_y)
+                opt_network.roads[i].right_pos = (right_positions[i][0] * a_x + b_x,
+                                                   right_positions[i][1] * a_y + b_y)
+
+
+            # Load densities
+            f = open("general_densities/medium_complex_start_opt_times.json")
+            data = json.load(f)
+            f.close()
+            orig_densities = data[0]
+            orig_lengths = data[1]
+
+            f = open("general_densities/medium_complex_optimal.json")
+            data_opt = json.load(f)
+            f.close()
+            opt_densities = data_opt[0]
+            opt_lengths = data_opt[1]
+
+            # Create gif:
+            draw_busses_compare_w_opt(opt_network, opt_network.busses, opt_lengths,
+                                    opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/medium_complex.gif",
+                                    background_img="background_imgs/white_background.png", interval_seconds=0.1)
