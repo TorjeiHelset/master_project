@@ -3,10 +3,11 @@ body {
     font-family: helvetica, arial, sans-serif;
     line-height: 1.5;
     margin: 0 auto;
-    max-width: 40em;
+    max-width: 60em;
     padding: 0 1em;
   }
   h1, h2, h3, h4, h5, h6 {
+    text-align: center;
     margin: 1.25em 0 0.5em 0;
     line-height: 1.2;
   }
@@ -111,4 +112,5 @@ body {
     th, td {
       border-color: #666;
     }
+    
   }
