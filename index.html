@@ -19,11 +19,19 @@
     <p>
         Franz Georg Fuchs, Knut-Andreas Lie, Kjetil Olsen Lye
     </p>
+    <!-- Sidebar -->
+    <div class="w3-sidebar w3-bar-block w3-border-right" style="display:none" id="mySidebar">
+        <button onclick="w3_close()" class="w3-bar-item w3-large">Close &times;</button>
+        <a href="#single-lane" class="w3-bar-item w3-button">Link 1</a>
+        <a href="#single-junction" class="w3-bar-item w3-button">Link 2</a>
+        <a href="#two-two" class="w3-bar-item w3-button">Link 3</a>
+        <a href="#larger" class="w3-bar-item w3-button">Link 3</a>
+    </div>
     <p>
         This is a repository containing the code associated with my Master Thesis. This homepage contains some animations
         showing some of the results.
     </p>
-    <h2>
+    <h2 id="single-lane">
         Single Lane Network
     </h2>
     <p>
@@ -39,7 +47,7 @@
     </video>
     </center>
 
-    <h2>
+    <h2 id="single-junction">
         Single Junction Network
     </h2>
     <p>
@@ -55,7 +63,7 @@
     </video>
     </center>
 
-    <h2>
+    <h2 id="two-two">
         Two-to-two Junction Network
     </h2>
     <p>
@@ -71,7 +79,7 @@
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/two_two.mp4">
     </video>
     </center>
-    <h2>
+    <h2 id="larger">
         Larger Network
     </h2>
     <p>
@@ -87,6 +95,14 @@
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/medium_complex.mp4">
     </video>
     </center>
-
+    <script>
+        function w3_open() {
+          document.getElementById("mySidebar").style.display = "block";
+        }
+        
+        function w3_close() {
+          document.getElementById("mySidebar").style.display = "none";
+        }
+        </script>
 </body>
 </html>
