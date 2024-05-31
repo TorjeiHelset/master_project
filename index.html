@@ -34,80 +34,110 @@
     
     <p>
         This is a repository containing the code associated with my Master Thesis. This homepage contains some animations
-        showing some of the results.
+        showing some of the results. For all the examples considered, the densities on each road is represented by a red
+        color scale. A white color means that there is no traffic, and a darker red color means that there is heavy traffic.
+        The exmples compare how efficiently buses are able to drive through different traffic-flow networks for different choices
+        of control parameters. In all cases we try to minimize the average delay of the buses. The traffic shown in the network as well
+        is the traffic from the simulation when optimal control parameters was chosen. The green squares show the positions of the buses for 
+        optimal control parameters. In order to compare this with the non-optimal control parameters the optimizaiton algorithm was started from
+        we also show the corresponding positions of the buses at the same times when non-optimal control paramters was chosen. These buses are
+        visualized by the blue squares. These are added just to compare the different choices. We do not show the corresponding traffic on the roads
+        for non-optimal control parameters. We also show the locations of the bus stops by a bus stop icon. We note that the positions of these icons
+        might not match perfectly with the actual locations of the stops.
+    </p>
+    <p>
     </p>
     <center>
         <h2 id="single-lane">
             Single Lane Network
         </h2>
     </center>
-    
     <p>
-        The video below shows the results for the single lane network. The blue square represents the bus with 
-        non-optimal control parameters, and the green square represents the bus with optimal control parameters.
-        The amount of traffic is represented by a red color scale. White means there is no traffic, and full ref 
-        means the road is congested. The density on the road is the density from the simulation with optimal control
-        parameters.
+        The first example we consider is a network consisting of only one road. The starting speed limit was chosen as 
+        20 km/h, and the best speed limit found was 50 km/h.
     </p>
     <center>
     <video width="600" height="450" controls loop="" muted = "" autoplay="">
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/single_lane_with_stop.mp4">
     </video>
     </center>
+    <p>
+    </p>
     <center>
         <h2 id="single-junction">
             Single Junction Network
         </h2>
     </center>
     <p>
-        The video below shows the results for the single junction network. The blue square represents the bus with 
-        non-optimal control parameters, and the green square represents the bus with optimal control parameters.
-        The amount of traffic is represented by a red color scale. White means there is no traffic, and full ref 
-        means the road is congested. The density on the road is the density from the simulation with optimal control
-        parameters.
+        The second example we consider is a traffic-flow network consisting of two roads connected in a junction. The 
+        traffic across this junction is controlled by a traffic light. In this case we need to determine good speed limits,
+        as well as good settings for the traffic lights. A comparison of the initial guess for the control parameters and the 
+        best choice of control parameters can be seen in the video below.
     </p>
     <center>
     <video width="600" height="450" controls loop="" muted = "" autoplay="">
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/single_junction_with_stop.mp4">
     </video>
     </center>
-
+    <p>
+    </p>
     <center>
         <h2 id="two-two">
             Two-to-two Junction Network
         </h2>
     </center>
     <p>
-        The video below shows the results for the two-to-two junction network. The two blue squares represents the buses with 
-        non-optimal control parameters, and the green squares represents the buses with optimal control parameters.
-        The amount of traffic is represented by a red color scale. White means there is no traffic, and full ref 
-        means the road is congested. The density on the road is the density from the simulation with optimal control
-        parameters. In this network we assume that all of the traffic from the left road enters the right road, and that
-        all of the traffic from the top road enters the bottom road. The junction is controlled by a traffic light.
+        We now consider a traffic-flow network consisting of four roads connected in a 2-to-2 junction.
+        The traffic crossing the junction is controlled by a traffic light. In this example we consider two
+        different bus lines.
     </p>
     <center>
     <video width="600" height="450" controls loop="" muted = "" autoplay="">
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/two_two_with_stop.mp4">
     </video>
     </center>
+    <p>
+    </p>
     <center>
         <h2 id="larger">
             Larger Network
         </h2>
     </center>
     <p>
-        The video below shows the results for a larger traffic-flow network. The blue squares represents the buses with 
-        non-optimal control parameters, and the green squares represents the buses with optimal control parameters.
-        The amount of traffic is represented by a red color scale. White means there is no traffic, and full ref 
-        means the road is congested. The density on the road is the density from the simulation with optimal control
-        parameters. In this network we assume that all of the traffic from the left road enters the right road, and that
-        all of the traffic from the top road enters the bottom road. The junction is controlled by a traffic light.
+        We increase the complexity by adding a roundabout, as well as more roads and junctions. We also increase the number of
+        bus lines adding a thirds bus line. The bottom left junction is controlled by a traffic light, while the traffic crossing
+        the two other junctions are determined only using yielding rules.
     </p>
     <center>
     <video width="600" height="450" controls loop="" muted = "" autoplay="">
         <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/medium_complex_with_stops.mp4">
     </video>
     </center>
+    <p>
+    </p>
+    <center>
+        <h2 id="larger">
+            Kvadraturen        
+        </h2>
+    </center>
+    <p>
+        The most complex network we consider is a simplified approximation of Kvadraturen in Kristiandsand. We only model the roads
+        where we assume there is most traffic, as well as a portion of e18. We consider a total of six different bus lines. The simulation is 
+        performed for a total of 750 seconds. In order to get a more interesting minimization problem, we have exaggerated the number of buses
+        travelling through the network.
+    </p>
+    <center>
+        <video width="600" height="450" controls loop="" muted = "" autoplay="">
+            <source src="https://github.com/TorjeiHelset/master_project/raw/bus_cycle_dependence/general_optimization_videos/kvadraturen_cutoff.mp4">
+        </video>
+    </center>
+    <p>
+    </p>
+    <em>Contact Info::
+    </em>
+    <p>
+        torjei.helset@gmail.com
+    </p>
 </div>
 </body>
 </html>
