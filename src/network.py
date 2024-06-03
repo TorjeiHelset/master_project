@@ -179,6 +179,11 @@ class RoadNetwork:
 
             # At this point both the activation from the distance to the junction the activation from 
             # the traffic light at the junction is calculated
+            ###################################### 
+            # BELOW IS WRONG!!!!!!!!!!!!!!!!!!!!!
+            ######################################
+            # activation_new = 1. - torch.sigmoid(20 * (activation - 0.5))
+            # combined_activation = torch.max(road_activation, activation_new)
             combined_activation = torch.max(road_activation, activation)
 
             speed = speed * combined_activation
@@ -297,7 +302,12 @@ class RoadNetwork:
                 if check:
                     activation = activ_
                     break
-
+            
+            ###################################
+            # MODIFIED BELOW!!!!!
+            ###################################
+            # activation_new = 1. - torch.sigmoid(20 * (activation - 0.5))
+            # combined_activation = torch.max(road_activation, activation_new)
             combined_activation = torch.max(road_activation, activation)
 
             speed = speed * combined_activation

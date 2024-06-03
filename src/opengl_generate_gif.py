@@ -609,6 +609,11 @@ def draw_busses(bus_positions, color = [1.0, 0.0, 0.0]):
     # Draw the busses
     for bus_position in bus_positions:
         if bus_position != (None, None):
+            glPointSize(9.0)
+            glBegin(GL_POINTS)
+            glColor3f(0.0, 0.0, 0.0)
+            glVertex2f(bus_position[0]*iw, bus_position[1]*ih)
+            glEnd()
             glPointSize(7.0)
             glBegin(GL_POINTS)
             glColor3f(*color)
@@ -660,7 +665,7 @@ class BusDensityRenderer:
             case 1: # Red monochrome
                 # yellow and blue busses
                 color_1 = [0.0, 0.0, 1.0]
-                color_2 = [0.8, 1.0, 0.0]
+                color_2 = [0.0, 1.0, 0.0]
             case _: 
                 # 2 gray scale busses
                 color_1 = [0.2, 0.2, 0.2]
@@ -879,8 +884,91 @@ def draw_densities(network, densities, output_name='animation.gif',
 def update_e18_bool():
     global with_e18
     with_e18 = False
+
+
+
+n_speeds = []
+last_speed_idx = 0
+n_cycles = []
+control_points = []
+config = None
+
+def update_nspeeds_ncycles_controls(speed_limits, cycle_times, new_control_points):
+    global n_speeds
+    global n_cycles
+    global control_points
+    global last_speed_idx
+
+    n_speeds = []
+    n_cycles = []
+    speed_idx = 0
+    for speeds in speed_limits:
+        n_speeds.append(len(speeds))
+        speed_idx += len(speeds)
+    last_speed_idx = speed_idx
+
+    for cycles in cycle_times:
+        n_cycles.append(len(cycles))
+
+    control_points = new_control_points
+
+def update_config(config_data):
+    global config
+    config = config_data
+
+def load_bus_network(network_file, config_file):
+    '''
+    Function for initializing a bus network modelling kvadraturen
+    with initial speed limits and speed limits as specified in the file
+    filename. The grid spacing is also specified in the file
+    '''
+    f = open(network_file)
+    data = json.load(f)
+    f.close()
+    T = data["T"]
+    N = data["N"]
+    speed_limits = data["speed_limits"] # Nested list
+    control_points = data["control_points"] # Nested list
+    cycle_times = data["cycle_times"] # Nested list
+
+    update_nspeeds_ncycles_controls(speed_limits, cycle_times, control_points)
+
+    f = open(config_file)
+    data = json.load(f)
+    f.close()
+    update_config(data)
+    
+    return T, N, speed_limits, cycle_times
+
+def get_speeds_cycles_from_params(params):
+    idx = 0
+    speed_limits = []
+    cycle_times = []
+
+    for i in range(len(n_speeds)):
+        speed_limits.append([])
+        for j in range(n_speeds[i]):
+            speed_limits[i].append(params[idx])
+            idx += 1
+
+    for i in range(len(n_cycles)):
+        cycle_times.append([])
+        for j in range(n_cycles[i]):
+            cycle_times[i].append(params[idx])
+            idx += 1
+
+    return speed_limits, cycle_times
+def create_network_from_params(T, N, params, track_grad = False):
+    speed_limits, cycle_times = get_speeds_cycles_from_params(params)
+    # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times,
+    #                                                           track_grad=track_grad)
+    bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points,
+                                                          cycle_times, config, track_grad=track_grad)
+    return bus_network
+
+
 if __name__ == "__main__":
-    scenario = 19
+    scenario = 20
     
     match scenario:
         case 0:
@@ -1645,7 +1733,6 @@ if __name__ == "__main__":
                                     opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/single_lane.gif",
                                     background_img="background_imgs/white_background.png")
 
-
         case 17:
             # Compare optimal and non-optimal solutions on a single junction
             import json
@@ -1708,7 +1795,7 @@ if __name__ == "__main__":
                                     background_img="background_imgs/white_background.png")
         
         case 18:
-            # Compare optimal and non-optimal solutions on a single junction
+            # Compare optimal and non-optimal solutions on a 2-2 junction
             import json
             import torch
             import generate_general_networks as generate
@@ -1723,6 +1810,7 @@ if __name__ == "__main__":
             f.close()
 
             T = network_config['T']
+            print(T)
             N = network_config['N']
             controls = network_config['control_points']
 
@@ -1821,13 +1909,13 @@ if __name__ == "__main__":
             #                    (0.5, 4.69), (2, 9), (2, 9), (4, 4.91),
             #                    (4, 0), (7, 0), (0.5, 1.856), (4, 0),
             #                    (4, 0), (0.5, 4.69), (0.5, 1.856), (-1, 3.27)]
-            left_positions = [(1.5 - 0.07 + 0.03, -0.866 - 0.05 + 0.01732), (2.9, -3), (3, -3), (5.1, -1),
-                              (3, -3), (0.4, -3.6), (4.9, -1), (8, -1),
-                              (1.5, 0.866), (5.1, 2), (4.9, 2), (8, 2),
+            left_positions = [(1.5 - 0.1, -0.866 - 0.05 + 0.01732), (2.9, -3.1), (3.25, -3.1), (5.1, -1.1),
+                              (3, -3), (0.4, -3.7), (4.85, -1.1), (8, -1),
+                              (1.5, 0.866), (5.1, 2), (4.9, 2.1), (8, 2.1),
                               (5, -0.9), (0, 0), (1.5, -0.866), (1.5, 0.866)]
-            right_positions = [(3 -0.07-0.03, -3 + 0.05+0.01732), (0.5, -3.5), (4.9, -1), (8, -1),
-                               (1.5, -0.866), (2.8, -3.1), (3, -3), (5.1, -1),
-                               (4.9, 2), (8, 2), (1.5, 0.866), (5.1, 2),
+            right_positions = [(3 -0.16, -3 + 0.05+0.01732), (0.5, -3.5), (4.9, -1.2), (8, -1.1),
+                               (1.5, -0.866), (2.8, -3.3), (3.15, -3.1), (5.1, -1),
+                               (4.9, 2), (8, 2), (1.5, 0.966), (5.1, 2.1),
                                (5, 1.9), (1.5, -0.866), (1.5, 0.866), (0, 0)]
             
             for i in range(16):
@@ -1868,3 +1956,59 @@ if __name__ == "__main__":
             draw_busses_compare_w_opt(opt_network, opt_network.busses, opt_lengths,
                                     opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/medium_complex.gif",
                                     background_img="background_imgs/white_background.png", interval_seconds=0.1)
+
+        case 20:
+            # Compare optimal and non-optimal solutions of kvadraturen
+            import json
+            import torch
+            import generate_kvadraturen as gk
+
+            # Load results from optimization
+            f = open("optimization_results/kvadraturen_optimization/network22_config22_fwd.json")
+            results = json.load(f)
+            f.close()
+
+            # Collecting network configuration
+            network_file = results['network_file']
+            config_file = results['config_file']
+            f = open(network_file)
+            network_config = json.load(f)
+            f.close()
+
+            T = network_config['T']
+            N = network_config['N']
+            controls = network_config['control_points']
+
+            # Collecting the start and final parameters
+            start = results['parameters'][0]
+            opt = results['parameters'][-1]
+
+            T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
+
+
+
+
+            start_network = create_network_from_params(T, N, start, track_grad=False)
+            opt_network = create_network_from_params(T, N, opt, track_grad=False)
+
+
+
+
+            # Load densities
+            f = open("general_densities/kvadraturen_start_opt_times.json")
+            data = json.load(f)
+            f.close()
+            orig_densities = data[0]
+            orig_lengths = data[1]
+
+            f = open("general_densities/kvadraturen_optimal.json")
+            data_opt = json.load(f)
+            f.close()
+            opt_densities = data_opt[0]
+            opt_lengths = data_opt[1]
+
+            update_e18_bool()
+            # Create gif:
+            draw_busses_compare_w_opt(opt_network, opt_network.busses, opt_lengths,
+                                    opt_densities, start_network.busses, orig_lengths, output_name="general_densities/videos/kvadraturen.gif",
+                                    background_img="background_imgs/background_e18_cropped.png")

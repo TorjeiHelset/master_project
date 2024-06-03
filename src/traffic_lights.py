@@ -4,7 +4,7 @@ def period(x, c1, c2):
     '''
     Used for activation function for one period
     '''
-    return torch.sigmoid(x - (c1 + 5)) - torch.sigmoid(x - (c1 + c2 + 5))
+    return torch.sigmoid((x - c1) - 5) - torch.sigmoid((x - c1 - c2) - 5)
 
 def jump(x, start):
     return torch.sigmoid(x - (start + 5)) # Plus 5 to shift start of sigmoid to start
@@ -75,10 +75,10 @@ class TrafficLightContinous:
                 out += period(x, i*period_time + c1, c2)
 
             if self.starting_state:
-                # Starting as green
+                # Starting as red
                 return out
             else:
-                # Starting as red
+                # Starting as green
                 return 1. - out
         
         self.activation_func = full_function

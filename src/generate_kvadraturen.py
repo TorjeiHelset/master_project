@@ -1088,6 +1088,7 @@ def create_roads_w_e18_2(N = 2, v_strand_speeds = [torch.tensor(50.0)], v_strand
     e18_east_out_bw[0] = rd.Road(1, L, N, e18_e_1_speed_limit, e18_e_1_controls, left_pos=(3+9*tilt-0.16, offset-0.51), right_pos=(3+9*tilt-0.75, -2),
                                  id="e18_e_inbw", initial=initial_fncs[10], boundary_fnc=None, max_dens=1)
     # Adding roads leading into festningsgate roundabout from the east
+    # Why is this only 50 metres?? - change this
     e18_east_out_fw[1] = rd.Road(1, L, N, e18_e_2_speed_limit, e18_e_2_controls, left_pos=(3+9*tilt+0.11, offset-0.51), right_pos=(3+9*tilt+0.75, -1.5),
                                  id="e18_e_outfw", initial=initial_fncs[11], boundary_fnc=None, max_dens=1)
     e18_east_out_bw[1] = rd.Road(1, L, N, e18_e_2_speed_limit, e18_w_2_controls, left_pos=(3+9*tilt+0.75, -1.5), right_pos=(3+9*tilt+0.11, offset-0.51),
@@ -1940,6 +1941,8 @@ def create_minimal_junctions_w_params_w_18(v_strand_fw, v_strand_bw, h_w, tollbo
     for i in range(6):
         if i == 0:
             # strandgate to henrik Wergeland 4 way + traffic light
+            # Actually one more crossing than previously added but not relevant because 
+            # of traffic lights...
             distribution = [[0.7, 0.0, 0.3],
                             [0.0, 0.7, 0.3],
                             [0.3, 0.3, 0.4]]
