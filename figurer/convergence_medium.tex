@@ -1,0 +1,41 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.03,0.97)},
+  anchor=north west,
+  draw=lightgray204
+},
+log basis x={10},
+log basis y={10},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xmin=0.0187760518639622, xmax=0.184928250855932,
+xmode=log,
+xtick style={color=black},
+y grid style={darkgray176},
+ymin=0.0557862070887863, ymax=0.684532991174247,
+ymode=log,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180, mark=*, mark size=3, mark options={solid}]
+table {%
+0.16666667163372 0.610801935195923
+0.0833333358168602 0.306599587202072
+0.0416666679084301 0.142039641737938
+0.020833333954215 0.0625202655792236
+};
+\addlegendentry{p=0.6539971828460693}
+\end{axis}
+
+\end{tikzpicture}

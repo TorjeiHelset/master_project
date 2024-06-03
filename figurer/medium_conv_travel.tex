@@ -1,0 +1,47 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xlabel={Number of iterations},
+xmin=-0.4, xmax=8.4,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={Average bus delay [s]},
+ymin=944.29958209554, ymax=1179.46906286896,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180]
+table {%
+0 1168.77954101562
+1 1075.56469302754
+2 999.363858831445
+3 979.465879847203
+4 965.964669198324
+5 961.57780416826
+6 958.318976736412
+7 957.918803378923
+8 954.989103948877
+};
+\addlegendentry{Start 1}
+\addplot [semithick, darkorange25512714]
+table {%
+0 1020.87182617188
+1 1017.45442794571
+2 965.116812523622
+3 960.863157761873
+4 960.452384082066
+};
+\addlegendentry{Start 2}
+\end{axis}
+
+\end{tikzpicture}

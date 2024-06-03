@@ -60,18 +60,18 @@
         },
         {
             "type" : 1,
-            "max_dens" : 4,
+            "max_dens" : 2,
             "densities" : [
-                0.5
+                0.8
             ],
             "jumps" : [],
             "in_speed" : 80.0
         },
         {
             "type" : 1,
-            "max_dens" : 4,
+            "max_dens" : 2,
             "densities" : [
-                0.5
+                0.8
             ],
             "jumps" : [],
             "in_speed" : 80.0
@@ -160,6 +160,384 @@
             "start_time" : 670.0,
             "times" : [
                 720, 770, 820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 1200.0,
+            "times" : [
+                1203, 1310, 1380, 1430
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 1180.0,
+            "times" : [
+                1184, 1300, 1390, 1450
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 1250.0,
+            "times" : [
+                1300, 1350
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 1300.0,
+            "times" : [
+                1350, 1400
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 1200.0,
+            "times" : [
+                1250, 1300
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 1000.0,
+            "times" : [
+                1050, 1100, 1150
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 1500.0,
+            "times" : [
+                1500, 1610, 1630, 1730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 1850.0,
+            "times" : [
+                1700, 1830, 1870, 1900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 2000.0,
+            "times" : [
+                2050, 2100
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 2100.0,
+            "times" : [
+                2100, 2150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 2430.0,
+            "times" : [
+                2380, 2450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 2670.0,
+            "times" : [
+                2720, 2770, 2820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 2500.0,
+            "times" : [
+                2500, 2610, 2630, 2730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 2850.0,
+            "times" : [
+                2700, 2830, 2870, 2900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 3000.0,
+            "times" : [
+                3000, 3050
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 3100.0,
+            "times" : [
+                3100, 3150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 3430.0,
+            "times" : [
+                3380, 3450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 3270.0,
+            "times" : [
+                3720, 3770, 3820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 2500.0,
+            "times" : [
+                2500, 2610, 2630, 2730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 2850.0,
+            "times" : [
+                2700, 2830, 2870, 2900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 3000.0,
+            "times" : [
+                3050, 3100
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 2100.0,
+            "times" : [
+                3100, 3150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 3430.0,
+            "times" : [
+                3380, 3450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 3670.0,
+            "times" : [
+                3720, 3770, 3820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 3500.0,
+            "times" : [
+                3500, 3610, 3630, 3730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 3850.0,
+            "times" : [
+                3700, 3830, 3870, 3900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 4000.0,
+            "times" : [
+                4000, 4050
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 4100.0,
+            "times" : [
+                4100, 4150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 4430.0,
+            "times" : [
+                4380, 4450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 4270.0,
+            "times" : [
+                4720, 4770, 4820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 5500.0,
+            "times" : [
+                5500, 5610, 5630, 5730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 5850.0,
+            "times" : [
+                5700, 5830, 5870, 5900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 6000.0,
+            "times" : [
+                6050, 6100
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 6100.0,
+            "times" : [
+                6100, 6150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 6430.0,
+            "times" : [
+                6380, 6450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 6670.0,
+            "times" : [
+                6720, 6770, 6820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 6500.0,
+            "times" : [
+                6500, 6610, 6630, 6730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 6850.0,
+            "times" : [
+                6700, 6830, 6870, 6900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 7000.0,
+            "times" : [
+                7000, 7050
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 7100.0,
+            "times" : [
+                7100, 7150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 7430.0,
+            "times" : [
+                7380, 7450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 7270.0,
+            "times" : [
+                7720, 7770, 7820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 8500.0,
+            "times" : [
+                8500, 8610, 8630, 8730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 8850.0,
+            "times" : [
+                8700, 8830, 8870, 8900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 9000.0,
+            "times" : [
+                9050, 9100
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 9100.0,
+            "times" : [
+                9100, 9150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 9430.0,
+            "times" : [
+                9380, 9450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 9670.0,
+            "times" : [
+                9720, 9770, 9820
+            ]
+        },
+        {   
+            "busline" : "19_fw",
+            "start_time" : 9500.0,
+            "times" : [
+                9500, 9610, 9630, 9730
+            ]
+        },
+        {   
+            "busline" : "19_bw",
+            "start_time" : 9850.0,
+            "times" : [
+                9700, 9830, 9870, 9900
+            ]
+        },
+        {   
+            "busline" : "m1_fw",
+            "start_time" : 10000.0,
+            "times" : [
+                10000, 10050
+                ]
+        },
+        {   
+            "busline" : "m1_bw",
+            "start_time" : 10100.0,
+            "times" : [
+                10100, 10150
+            ]
+        },
+        {   
+            "busline" : "custom_fw",
+            "start_time" : 10430.0,
+            "times" : [
+                10380, 10450
+            ]
+        },
+        {   
+            "busline" : "custom_bw",
+            "start_time" : 10270.0,
+            "times" : [
+                10720, 10770, 10820
             ]
         }
     ],

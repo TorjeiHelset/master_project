@@ -324,7 +324,8 @@ def gradient_descent_first_step(T, N, speed_limits, cycle_times):
     # bus_network = gk.generate_kvadraturen_roundabout_w_params(T, N, speed_limits, control_points, cycle_times)
     bus_network = gk.generate_kvadraturen_from_config_e18(T, N, speed_limits, control_points, cycle_times,
                                                           config, track_grad=True)
-    
+
+
     # Solve conservation law
     print("Solving the conservation law...")
     # densities, queues, lengths, bus_delays = bus_network.solve_cons_law()
@@ -414,6 +415,9 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # gradient = scale_gradient(gradient, upper_limits, lower_limits)
         print(f"Scaling the gradient to achieve a maximum updating of {max_update}...")
         scaling_factor, scaled_grad = scale_gradient(prev_gradient, prev_params, max_update)
+        if np.linalg.norm(scaled_grad) < 1.e-6:
+            print(f"Either boundary or stationary point reached")
+            return prev_params, prev_gradient, prev_objective
 
         # print("New params:")
         # print(prev_params - scaled_grad)
@@ -450,7 +454,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             return prev_params, prev_gradient, prev_objective
 
 # @memory_profiler.profile
-def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 10, tol = 1.e-4, debugging = True):
+def gradient_descent(network_file, config_file, result_file = "optimization_results/new_result.json", overwrite = False, max_iter = 100, tol = 1.e-4, debugging = True):
     '''
     Full method for the gradient descent algorithm. The funcion should take in a filename for 
     the initial configuration of the network. In addition the objetive type needs to be specified.
@@ -480,8 +484,8 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
     # 1. Load configuration from filename
     print("Loading from file")
     T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
-    if debugging:
-        T = 40
+    # if debugging:
+    #     T = 40
 
     # 1.1 Map from speed_limits and cycle_times to one parameter list
     print("Extracting parameters")
@@ -604,7 +608,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 1
+    option = 3
     match option:
         case 0:
             # Run small example with e18
@@ -627,5 +631,27 @@ if __name__ == "__main__":
             network_file = "kvadraturen_networks/with_e18/network_2_2.json"
             config_file = "kvadraturen_networks/with_e18/config_2_1.json"
             result_file = "optimization_results/network22_config21_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 3:
+            # Run larger example with e18 with different starting point and different config
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_2.json"
+            result_file = "optimization_results/network22_config22_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 4:
+            network_file = "kvadraturen_networks/with_e18/network_3.json"
+            config_file = "kvadraturen_networks/with_e18/config_3_1.json"
+            result_file = "optimization_results/network3_config31_bwd.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 5:
+            network_file = "kvadraturen_networks/with_e18/network_4.json"
+            config_file = "kvadraturen_networks/with_e18/config_4_1.json"
+            result_file = "optimization_results/network4_config41_bwd.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)

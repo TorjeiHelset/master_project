@@ -1,0 +1,64 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{crimson2143940}{RGB}{214,39,40}
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{forestgreen4416044}{RGB}{44,160,44}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xlabel={Number of iterations},
+xmin=-0.25, xmax=5.25,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={Objective Value},
+ymin=37.7381407450197, ymax=69.0178594739165,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180]
+table {%
+0 67.5960540771484
+1 57.9775066057697
+2 46.7582808773956
+3 41.7895224131021
+4 39.1599461417877
+};
+\addlegendentry{Start 1}
+\addplot [semithick, darkorange25512714]
+table {%
+0 67.5960540771484
+1 57.6983404286389
+2 46.8254192041126
+3 41.7633979782261
+4 39.1698490562153
+};
+\addlegendentry{Start 2}
+\addplot [semithick, forestgreen4416044]
+table {%
+0 67.5960540771484
+1 58.6388481891704
+2 47.0890171167106
+3 46.55407836597
+4 41.3414946740442
+5 39.9071874948906
+};
+\addlegendentry{Start 1*}
+\addplot [semithick, crimson2143940]
+table {%
+0 67.5960540771484
+1 58.0283699035645
+2 46.9670677185059
+3 41.9025917053223
+4 39.3450050354004
+};
+\addlegendentry{Start 2*}
+\end{axis}
+
+\end{tikzpicture}

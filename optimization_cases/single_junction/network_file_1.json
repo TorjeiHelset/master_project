@@ -1,0 +1,25 @@
+{
+    "T" : 300,
+    "N" : 3,
+    "speed_limits" : [
+        [30.0],
+        [20.0]
+    ],
+    "lower_speed_limit" : [
+        20.0,
+        20.0
+    ],
+    "upper_speed_limit" : [
+        50.0,
+        50.0
+    ],
+    "control_points" : [
+        [],
+        []
+    ],
+    "cycle_times" : [
+        [60.0, 60.0]
+    ],
+    "lower_cycle_time" : 10.0,
+    "upper_cycle_time" : 200.0
+}

@@ -311,16 +311,43 @@ class Junction:
                 if in_idx in light.entering and out_idx in light.leaving:
                     activation = light.activation_func(t)
                     # print("Regular traffic light")
+
+                    a = torch.tensor(0.0)
+                    try:
+                        a += activation
+                    except:
+                        print(f"Error with traffic light {activation}")
+                        print(in_idx, out_idx)
+                        print(t)
+                        print()
                     return True, activation
 
             for light in self.coupled_trafficlights:
                 if in_idx in light.a_entering and out_idx in light.a_leaving:
                     activation = light.a_activation(t)
                     # print("Coupled traffic light, state a")
+                    a = torch.tensor(0.0)
+                    try:
+                        a += activation
+                    except:
+                        print(f"Error with traffic light a {activation}")
+                        for road in self.roads:
+                            print(road.id)
+                        print(in_idx, out_idx)
+                        print(t)
+                        print()
                     return True, activation
 
                 if in_idx in light.b_entering and out_idx in light.b_leaving:
                     activation = light.b_activation(t)
+                    a = torch.tensor(0.0)
+                    try:
+                        a += activation
+                    except:
+                        print(f"Error with traffic light b {activation}")
+                        print(in_idx, out_idx)
+                        print(t)
+                        print()
                     return True, activation
         return True, activation
     

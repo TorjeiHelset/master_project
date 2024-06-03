@@ -378,6 +378,9 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
         # gradient = scale_gradient(gradient, upper_limits, lower_limits)
         print(f"Scaling the gradient to achieve a maximum updating of {max_update}...")
         scaling_factor, scaled_grad = scale_gradient(prev_gradient, prev_params, max_update)
+        if np.linalg.norm(scaled_grad) < 1.e-6:
+            print(f"Either boundary or stationary point reached")
+            return prev_params, prev_gradient, prev_objective
 
         # print("New params:")
         # print(prev_params - scaled_grad)
@@ -448,7 +451,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
     print("Loading from file")
     T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
     if debugging:
-        T = 40
+        T = 60
 
     # 1.1 Map from speed_limits and cycle_times to one parameter list
     print("Extracting parameters")
@@ -463,7 +466,7 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
     result_dict = {
         "network_file" : network_file,
         "config_file" : config_file,
-        "ad_method" : "backward",
+        "ad_method" : "restarting",
         "upper_speeds" : upper_speeds,
         "lower_speeds" : lower_speeds,
         "upper_time" : upper_time,
@@ -571,13 +574,13 @@ def gradient_descent(network_file, config_file, result_file = "optimization_resu
 
 
 if __name__ == "__main__":
-    option = 2
+    option = 6
     match option:
         case 0:
             # Run small example with e18
-            network_file = "kvadraturen_networks/with_e18/network_1_1.json"
+            network_file = "kvadraturen_networks/with_e18/network_1_2.json"
             config_file = "kvadraturen_networks/with_e18/config_1_1.json"
-            result_file = "optimization_results/network11_config11_restart.json"
+            result_file = "optimization_results/network12_config11_restart.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)
             
@@ -594,5 +597,35 @@ if __name__ == "__main__":
             network_file = "kvadraturen_networks/with_e18/network_2_2.json"
             config_file = "kvadraturen_networks/with_e18/config_2_1.json"
             result_file = "optimization_results/network22_config21_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 3:
+            # Run larger example with e18 with different starting point and different config
+            network_file = "kvadraturen_networks/with_e18/network_2_2.json"
+            config_file = "kvadraturen_networks/with_e18/config_2_2.json"
+            result_file = "optimization_results/network22_config22_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 4:
+            network_file = "kvadraturen_networks/with_e18/network_3.json"
+            config_file = "kvadraturen_networks/with_e18/config_3_1.json"
+            result_file = "optimization_results/network3_config31_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 5:
+            network_file = "kvadraturen_networks/with_e18/network_4.json"
+            config_file = "kvadraturen_networks/with_e18/config_4_1.json"
+            result_file = "optimization_results/network4_config41_restart.json"
+            gradient_descent(network_file, config_file, result_file,
+                             overwrite=False, debugging=False)
+            
+        case 6:
+            # Run small example with e18
+            network_file = "kvadraturen_networks/with_e18/network_1.json"
+            config_file = "kvadraturen_networks/with_e18/config_1_1.json"
+            result_file = "optimization_results/network1_config11_restart_new.json"
             gradient_descent(network_file, config_file, result_file,
                              overwrite=False, debugging=False)

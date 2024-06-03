@@ -6,7 +6,7 @@ import FV_schemes as fv
 # LIST OF TENSORS
 # CLONING
 # ADDING 0-TENSOR
-# INPLACE 
+# INPLACE
 
 class Road:
     '''
@@ -24,7 +24,7 @@ class Road:
     L : float
         unit length of road given in meters
     Vmax : torch tensor
-        speed limit of road, potentially 
+        speed limit of road, potentially
         parameter to do optimization over
     gamma :
     scheme :
@@ -37,7 +37,7 @@ class Road:
     control_points :
         fixed for each road - can potentially be made into a parameter to do optimization over
 
-    
+
     scheme: different FV schemes
         - 0: Lax-Friedrich
         - 1: Rusanov
@@ -47,7 +47,7 @@ class Road:
 
     Need to somehow specify boundary conditions
         - Calculate flux using distribution and priority parameters
-        - 
+        -
 
     a = 0 for all roads,
     Length of road is a part of scaling parameter alpha
@@ -86,13 +86,13 @@ class Road:
     id = ""
     boundary_fnc = None
 
-    def __init__(self, b, L, N, Vmax, control_points, scheme = 3, limiter = "minmod", 
-                 initial = lambda x: torch.zeros_like(x), max_dens=1, left_pos = (-1,0), 
+    def __init__(self, b, L, N, Vmax, control_points, scheme = 3, limiter = "minmod",
+                 initial = lambda x: torch.zeros_like(x), max_dens=1, left_pos = (-1,0),
                  right_pos = (0,1), boundary_fnc = None, periodic = False, id = ""):
-        
+
         '''
         Initializes a road given a set of parameters
-        
+
         Input:
             L:          Length unit constant for all roads in system
             N:          Number of internal nodes for a length unit - constant for all roads
@@ -101,29 +101,14 @@ class Road:
             Scheme:     Which FV scheme to be used in simulation. 0 correspond to Lax Friedrich,
                         1 - Rusanov scheme, 2 - Lax-Wendroff, 3 - SSP_RK (2.order in time and space)
                         4 - Euler (2.order in space, 1.order in time)
-            Limiter:    If the scheme is 2.order in space -> use a piecewise linear instead of 
+            Limiter:    If the scheme is 2.order in space -> use a piecewise linear instead of
                         piecewise constant reconstruction. Limiter defines how reconstruction is
                         built
             initial:    Initial density of cars
             inflow:     BC on left edge of roads leading in to system
 
         '''
-        self.b = b
-        self.L = L 
-        self.dx = torch.tensor(1 / N) # Should be the same for all roads
-        # Denominator = 1 since x goes from 0 to b (0 to 1 on a unit length)
-
-        # Vmax is parameter that optimization should done wrt.
-        # Therefore we set requires_grad to True
-        if len(Vmax) != len(control_points) +1:
-            print(len(Vmax))
-            print(len(control_points))
-        assert(len(Vmax) == len(control_points)+1)
-        #self.Vmax = [torch.tensor(float(v / 3.6), requires_grad=True) for v in Vmax]
-        self.Vmax = Vmax#[v / 3.6 for v in Vmax]
-        self.control_points = control_points
-    
-        # Depending on the order of scheme, the padding might differ
+        # Depending on the order of scheme, the number of boundary cells might differ
         match scheme:
             case 0 | 1 | 2:
                 self.pad = 1
@@ -135,22 +120,42 @@ class Road:
                 self.pad = 2
                 self.scheme = 3
 
+
+        self.b = b
+        self.L = L
+        self.dx = torch.tensor(1 / (N + 2*self.pad)) # Should be the same for all roads
+        # Denominator = 1 since x goes from 0 to b (0 to 1 on a unit length)
+
+        if len(Vmax) != len(control_points) +1:
+            print(len(Vmax))
+            print(len(control_points))
+        assert(len(Vmax) == len(control_points)+1)
+
+        # The speed must be given in m/s and whether or not it should track gradient must be specified in advance
+        self.Vmax = Vmax #[v / 3.6 for v in Vmax]
+        self.control_points = control_points
+
+
         # When order of scheme is determined, the grid can be defined
-        # For each length unit we have N internal nodes
-        # We also have 2*self.pad boundary nodes.
-        # Finally we have b-1 connecting nodes between each length unit of road
+        # For each unit length we have N internal nodes
+        # We also have 2*self.pad boundary nodes on each unit length
+        # Finally the total length is divided into b different segments, each of length L
 
         # In total we have
-        self.N_internal = N*b
-        N_full = self.N_internal +  2*self.pad
-        # Maybe not 100% correct, but very close...
-        j = torch.arange(-self.pad, self.N_internal + self.pad, 1)
+        self.N_full = b * (N + 2*self.pad)
+
+
+        # self.N_internal = N*b
+        # N_full = self.N_internal +  2*self.pad
+
+
+        j = torch.arange(0, self.N_full, 1)
         # If first order, x goes from -.dx to bL + dx
         # If higher order x goes from -dx*order * order to bL + dx*order
         # Defining the system in such a way means that all internal points in actual
         # road correspond to internal nodes in FV scheme
-        x =  (j + 1/2) * self.dx 
-        
+        x =  (j + 1/2) * self.dx
+
         # Determine initial denisty according to some density function
         # Note that x < 0 at some points for higher order schemes
         self.rho = initial(x)
@@ -172,7 +177,7 @@ class Road:
         self.idx = 0
         self.max_dens = max_dens
 
-        self.left_pos = left_pos 
+        self.left_pos = left_pos
         self.right_pos = right_pos
 
         self.periodic = periodic
@@ -183,15 +188,15 @@ class Road:
         self.left_boundary = self.rho[:self.pad]
         self.right_boundary = self.rho[-self.pad:]
         self.left_flux = torch.tensor(0.0)
-        self.right_flux = torch.tensor(0.0) 
+        self.right_flux = torch.tensor(0.0)
 
-        
+
     def calculate_gamma(self, T):
         '''
-        Calculate dimensionless parameter gamma using total 
+        Calculate dimensionless parameter gamma using total
         time of simulation
-        This parameter does not depend on the length of the road, only the length of a 
-        unit. 
+        This parameter does not depend on the length of the road, only the length of a
+        unit.
         This is useful for determining the flux across a junction
         For now T is not in the variable
         Instead let t go from 0 to T to easier compare with traffic ligths
@@ -199,123 +204,72 @@ class Road:
         # LIST OF TENSORS
         self.gamma = [v / self.L for v in self.Vmax]
 
+    def activation_fnc(self, length):
+        return 1. - torch.sigmoid(10/self.dx * (length - (self.b - 3/2 *self.dx)) - 5)
+
     def demand(self):
         # clone needed?
-        # CLONING
         return self.max_dens * fv.D(self.rho[-1].clone(), self.gamma[self.idx])
 
     def supply(self):
         # Clone needed?
-        # CLONING
-        # return self.max_dens * fv.S(self.rho[-1].clone(), self.gamma[self.idx])
         return self.max_dens * fv.S(self.rho[0].clone(), self.gamma[self.idx])
 
-    def update_right_boundary_old(self, incoming_flux, dt, t = 0):
-        # left is internal cell, middle is first boundary cell
-        left, middle = self.rho[-self.pad-1], self.rho[-self.pad]
-        # Calculate rusanov flux:
-        left_flux = fv.Rusanov_Flux_2(left.clone(), middle.clone(), self.gamma[self.idx])
-
-        # Update density on boundary cell(s)
-        # Inplace operation below!
-        self.rho[-self.pad] = self.rho[-self.pad] - dt/self.dx * (incoming_flux - left_flux)
-        if self.pad > 1:
-            # More than one boundary cell -> put all other boundary cells equal to this one
-            for i in range(self.pad - 1):
-                self.rho[-self.pad+i+1] = self.rho[-self.pad]
-
-        # if self.rho[-self.pad] < 0:
-        #     raise ValueError(f"Right boundary of road {self.id} has become negative at time {t}!")
-        # if self.rho[-self.pad] > 1:
-        #     raise ValueError(f"Right boundary of road {self.id} has become too big at time {t}!")
-
-    def update_left_boundary_old(self, outgoing_flux, dt, t = 0):
-        # right is internal cell, middle is first boundary cell
-        right, middle = self.rho[self.pad], self.rho[self.pad-1]
-        # Calculate Rusanov flux:
-        right_flux = fv.Rusanov_Flux_2(middle.clone(), right.clone(), self.gamma[self.idx])
-
-        # Update density on boundary cell(s)
-        # Inplace operation!
-        self.rho[self.pad-1] = self.rho[self.pad-1] - dt/self.dx * (right_flux - outgoing_flux)
-        if self.pad > 1:
-            for i in range(self.pad-1):
-                self.rho[self.pad-2-i] = self.rho[self.pad-1]
-
-        # if self.rho[self.pad-1] < 0:
-        #     raise ValueError(f"Left boundary of road {self.id} has become negative at time {t}!")
-        # if self.rho[self.pad-1] > 1:
-        #     raise ValueError(f"Left boundary of road {self.id} has become too big at time {t}!")
-
-    def update_right_boundary_old_2(self, incoming_flux, dt, t = 0):
-        # The boundary cells are updated using a first order scheme
-        # Calculate the rusanov flux between the last internal cell and the first boundary
-        # cell. If there are more boundary cells, calculate the flux between the boundary
-        # cells
-
-        left = self.rho[-self.pad-1:-1]
-        right = self.rho[-self.pad:]
-
-        F = torch.zeros(self.pad + 1)
-        F[:-1] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
-        F[-1] = incoming_flux.clone()
-
-        self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
-
-    def update_left_boundary_old_2(self, outgoing_flux, dt, t = 0):
-        # Update boundary cells using a first order rusanov scheme
-        # The leftmost flux is coming from either a regular junction or a roundabout junction
-
-        left = self.rho[:self.pad]
-        right = self.rho[1:self.pad+1]
-
-        F = torch.zeros(self.pad+1)
-        F[1:] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
-        F[0] = outgoing_flux.clone()
-        # print(f"Updating left boundary of road {self.id}")
-        # print(f"Flux calculated as {F}")
-        # print(f"Previous left boundary: {self.left_boundary}")
-
-        self.left_boundary = self.left_boundary - dt / self.dx * (F[1:] - F[:-1])
-        # print(f"Next left boundary: {self.left_boundary}")
-        # print("-----------------------------------------------------\n")
-
     def update_right_flux(self, incoming_flux):
+        '''
+        Update the flux leading away from the right edge of the road
+        Also update the time step if needed to ensure stability
+        '''
         self.right_flux = incoming_flux
         if 1 - 4 *incoming_flux /  self.gamma[self.idx] <= 0:
+            # This should actually never become negative, but keep as
+            # safety for now
             return self.max_dt()
         else:
             min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *incoming_flux /  self.gamma[self.idx]))
-        return torch.max(min_dt, self.gamma[self.idx])
-    
+        return torch.max(min_dt, self.dx / (self.max_dens * self.gamma[self.idx]))
+
     def update_left_flux(self, outgoing_flux):
+        '''
+        Update the flux leading to the left edge of the road
+        Also update the time step if needed to ensure stability
+        '''
         self.left_flux = outgoing_flux
         if 1 - 4 *outgoing_flux /  self.gamma[self.idx] <= 0:
             return self.max_dt()
         else:
-            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 *outgoing_flux /  self.gamma[self.idx]))
-        return torch.max(min_dt, self.gamma[self.idx])
-        
-    def update_right_boundary(self, incoming_flux, dt):
-        # The boundary cells are updated using a first order scheme
-        # Calculate the rusanov flux between the last internal cell and the first boundary
-        # cell. If there are more boundary cells, calculate the flux between the boundary
-        # cells
+            min_dt = self.dx * 1/ ( self.gamma[self.idx] * torch.sqrt(1 - 4 * outgoing_flux /  self.gamma[self.idx]))
+        return torch.max(min_dt, self.dx / (self.max_dens * self.gamma[self.idx]))
 
+    def update_right_boundary(self, incoming_flux, dt, slowdown_factors):
+        '''
+        The boundary cells are updated using a first order Rusanov scheme
+        Calculate the rusanov flux between the last internal cell and the first boundary
+        cell. If there are more boundary cells, calculate the flux between the boundary
+        cells
+        For the scheme to be conservative, the flux from the interface near the internal nodes needs to
+        be calculated using the scheme that is used for the internal nodes
+        '''
+        # print(f"Right boundary is being updated!")
+        # print(f"Flux leaving road: {incoming_flux}")
+        # print(f"time step: {dt}")
+        # print()
+        # Calculate the left flux at the rightmost node
         left = self.rho[-2]
         right = self.rho[-1]
 
         F = torch.zeros(self.pad + 1)
 
-        F[-2] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[-2] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx]) * slowdown_factors[-1]
         F[-1] = incoming_flux.clone()
-        
+
         if self.pad > 1:
-            F[0] = fv.get_right_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt,self.gamma[self.idx])
+            # Calculate this flux using the high resolution scheme
+            F[0] = fv.get_right_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt,self.gamma[self.idx]) * slowdown_factors[-2]
 
         self.right_boundary = self.right_boundary - dt / self.dx * (F[1:] - F[:-1])
-        
-    def update_left_boundary(self, outgoing_flux, dt):
+
+    def update_left_boundary(self, outgoing_flux, dt, slowdown_factors):
         # Update boundary cells using a first order rusanov scheme
         # The leftmost flux is coming from either a regular junction or a roundabout junction
 
@@ -324,11 +278,11 @@ class Road:
 
         F = torch.zeros(self.pad+1)
 
-        F[1] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx])
+        F[1] = fv.Rusanov_Flux_2(left.clone(), right.clone(), self.gamma[self.idx]) * slowdown_factors[0]
         F[0] = outgoing_flux.clone()
 
         if self.pad > 1:
-            F[2] = fv.get_left_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt, self.gamma[self.idx])
+            F[2] = fv.get_left_boundary_flux(self.rho.clone(), self.dx, self.limiter, dt, self.gamma[self.idx]) * slowdown_factors[1]
 
         self.left_boundary = self.left_boundary - dt / self.dx * (F[1:] - F[:-1])
 
@@ -346,11 +300,11 @@ class Road:
         if strict:
             CFL = 0.5
         else:
-            CFL = 1. 
-        
+            CFL = 1.
+
         max_flux = torch.abs(fv.d_flux(self.rho, self.gamma[self.idx]))
         max_flux = torch.max(max_flux)
-        
+
         if self.gamma[self.idx] < 0:
             print(f"{self.id} has a negative gamma!")
             print(self.gamma[self.idx])
@@ -364,8 +318,12 @@ class Road:
         if torch.abs(max_flux) < 1e-5:
             max_flux = torch.tensor(0.000001)
 
-        
+        # return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
+        # return CFL * self.dx / (self.max_dens * max_flux)
+        # return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
         return CFL * self.dx / (self.max_dens * max_flux)
+
+
 
     def solve_internally(self, dt):#, slowdown_factors):
         '''
@@ -385,7 +343,7 @@ class Road:
         # Don't need to care about the maximum density here, since all terms are multiplied by it
 
         match self.scheme:
-            # INPLACE 
+            # INPLACE
             case 0:
                 # Lax-Friedrich scheme
                 F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
@@ -401,7 +359,7 @@ class Road:
                 # self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 2:
                 F = fv.Lax_Wendroff_Flux(self.rho, self.dx, dt, self.gamma[self.idx])
-                
+
 
                 self.rho[self.pad:-self.pad] -= dt/self.dx * (F[self.pad:] - F[:-self.pad])
             case 3:
@@ -412,7 +370,7 @@ class Road:
                 # self.rho = fv.Euler_slowdown(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx],
                 #                              slowdown_factors)
                 self.rho = fv.Euler(self.rho, self.dx, self.limiter, dt, self.gamma[self.idx])
-    
+
     def solve_internally_slowdown(self, dt, slowdown_factors):
         '''
         Solving conservation law for internal
@@ -431,7 +389,7 @@ class Road:
         # Don't need to care about the maximum density here, since all terms are multiplied by it
 
         match self.scheme:
-            # INPLACE 
+            # INPLACE
             case 0:
                 # Lax-Friedrich scheme
                 F = fv.LxF_flux(self.rho, self.dx, dt, self.gamma[self.idx])
@@ -460,23 +418,32 @@ class Road:
 
         if self.periodic:
             # Set periodic boundary conditions
+            # Should probably update the boundary cells, and not directly the interior cells
             match self.pad:
-                # INPLACE 
+                # INPLACE
                 # CLONING
                 case 1:
                     # In condition:
-                    self.rho[0] = self.rho[-2].clone()
+                    self.left_boundary[0] = self.rho[-2].clone()
+                    # self.rho[0] = self.rho[-2].clone()
 
                     # Out condition
-                    self.rho[-1] = self.rho[1].clone()   
+                    self.right_boundary[-1] = self.rho[1].clone()
+                    # self.rho[-1] = self.rho[1].clone()
                 case _:
                     # In condition:
-                    self.rho[0] = self.rho[-4].clone()
-                    self.rho[1] = self.rho[-3].clone()
+                    self.left_boundary[0] = self.rho[-4].clone()
+                    self.left_boundary[1] = self.rho[-3].clone()
+
+                    # self.rho[0] = self.rho[-4].clone()
+                    # self.rho[1] = self.rho[-3].clone()
 
                     # Out condition
-                    self.rho[-1] = self.rho[3].clone()
-                    self.rho[-2] = self.rho[2].clone()
+                    self.right_boundary[-1] = self.rho[3].clone()
+                    self.right_boundary[-2] = self.rho[2].clone()
+
+                    # self.rho[-1] = self.rho[3].clone()
+                    # self.rho[-2] = self.rho[2].clone()
 
         else:
             # For right boundary, set boundary elements equal to closest interior
@@ -488,9 +455,17 @@ class Road:
                 # print(self.rho[-self.pad-1])
                 # self.right_boundary[:] = self.rho[-self.pad-1]
 
-                self.right_boundary[:] = self.rho[-self.pad-1]
+                ########################
+                # TODO: CHECK THIS CHANGE!!!!!
+                ########################
+                # self.right_boundary[:] = self.rho[-self.pad-1].clone()
+                # self.right_boundary = self.rho[-self.pad-1].clone()
+                # Instead
+                right_flux = fv.flux(self.rho[-1].clone(), self.gamma[self.idx])
+                self.update_right_flux(right_flux)
 
-            # For left boundary some inflow conditions are necessary       
+
+            # For left boundary some inflow conditions are necessary
             if not self.left:
                 # Set some influx to left boundary
                 if self.boundary_fnc is None:
@@ -498,45 +473,46 @@ class Road:
 
                 else:
                     f_in =  self.boundary_fnc(t)
-                    
-                    D = torch.tensor(0.0)
-                    if self.queue_length > 0:
-                        # Set the influx to the maximum possible
-                        # This needs to be modified so that the queue length does not 
-                        # become negative at any points!
-                        D = torch.min(fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()),
+                    if f_in is None:
+                        f_in = torch.tensor(0.1)
+
+                    # Ensure that the queue never becomes negative
+                    D = torch.min(fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()),
                                       f_in + self.queue_length / dt)
-                        # D = fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone())
-                    else:
-                        # Set the influx to the mimum of actual and maximum
-                        D = torch.min(f_in, fv.flux(torch.tensor(0.5), self.gamma[self.idx].clone()))
-                
+
                     # Set influx to the mimum of actual influx and maximum capacity
                     gamma_in = torch.min(D, fv.S(self.rho[self.pad-1].clone(), self.gamma[self.idx].clone())) # Actual flux in
 
                     # Update queue length using the difference between actual and desired flux in
-                    # Potential problem: Queue length could become negative!!!
-
-                    # Not correct!!
                     self.queue_length = self.queue_length + dt * (f_in - gamma_in)
-                    
+
                     # Update density according to flux in
                     # self.update_left_boundary(gamma_in, dt)
                     new_dt = self.update_left_flux(gamma_in)
-                    # print(f"Boundary condition of road dt {new_dt}")
                     return new_dt
         return dt
 
-    def update_boundary_cells(self, dt):
-        self.update_left_boundary(self.left_flux, dt)
-        self.update_right_boundary(self.right_flux, dt)
+    def update_boundary_cells(self, dt, slowdown_factors):
+        # Update the boundary cells using the respective left and right fluxes
+        if not self.periodic:
+            self.update_left_boundary(self.left_flux, dt, slowdown_factors[:self.pad])
+            ################################
+            # TODO: CHECK THIS CHANGE!!!!
+            ################################
+            
+            # if self.right:
+            #     self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
+            # Instead
+            self.update_right_boundary(self.right_flux, dt, slowdown_factors[-self.pad:])
+
         self.left_flux = torch.tensor(0.0)
         self.right_flux = torch.tensor(0.0)
 
     def update_boundaries(self):
+        # Set the boundary cells of rho equal to the artificial left boundary and right boundary
         if not self.periodic:
             self.rho[:self.pad] = self.left_boundary.clone()
-            self.rho[-self.pad:] = self.right_boundary.clone() 
+            self.rho[-self.pad:] = self.right_boundary.clone()
 
     def update_index(self, t):
         '''
@@ -547,17 +523,17 @@ class Road:
         if len(self.control_points) == 0:
             self.idx = 0
             return -1
-        
+
         if t < self.control_points[0]:
             # First time interval
             self.idx = 0
             return self.control_points[0]
-        
+
         if t >= self.control_points[-1]:
             # Last time interval
             self.idx = len(self.control_points)
             return -1 # -1 will correspond to time T
-        
+
         for i in range(1,len(self.control_points)):
             if self.control_points[i-1] <= t and self.control_points[i] > t:
                 # (i+1)th time interval
@@ -567,22 +543,25 @@ class Road:
     def get_gamma(self, t):
         if len(self.control_points) == 0:
             return self.gamma[-1]
-        
+
         if t < self.control_points[0]:
             # First time interval
             return self.gamma[0]
-        
+
         if t >= self.control_points[-1]:
             # Last time interval
             return self.gamma[len(self.control_points)] # -1 will correspond to time T
-        
+
         for i in range(1,len(self.control_points)):
             if self.control_points[i-1] <= t and self.control_points[i] > t:
                 # (i+1)th time interval
                 return self.gamma[i]
-        
+
+    # The next three functions need to be updated, taking into account that boundary cells are now
+    # placed on the road
+
     def get_node_at_length(self, length):
-        n = self.rho.shape[0] - 2*self.pad
+        n = self.rho.shape[0] # Equal to self.N_full
         a = n / self.b
         pos = a * length - 1/2
 
@@ -597,106 +576,24 @@ class Road:
             next = torch.ceil(pos)
 
         return prev, next, pos
-    
+
     def get_speed_at_node(self, prev, next, pos):
         '''
         Important: prev, next, pos refers to internal nodes
         When using actual densities need to shift by the number of boundary nodes
         '''
-        # prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)])
-        # next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)])
-        prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)+self.pad])
-        next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)+self.pad])
-        
-        if prev == next:
-            avg_speed = prev_speed
-        else:
-            # avg_speed = ((1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed) / 2
-            avg_speed = (pos - prev) * prev_speed + (next - pos) * next_speed
-
-        return avg_speed
-    
-    def get_speed(self, length, printing = False):
-        '''
-        Return the speed calculated at a given length
-        For now, just use local speed
-
-        What happens if the length is exactly on a cell midpoint?
-        '''
-        # Find which two nodes are closest to the length
-        # Then interpolate between the two nodes
-        
-        # length is between 0 and b
-        # 0 should map to node 1, b should map to node N
-        # (nodes 0 and N+1 are outside of road)
-        if length == 0:
-            length = torch.tensor(0.0)
-        # n = self.n_internal
-        n = self.rho.shape[0] - 2*self.pad
-        a = n / self.b
-        
-        pos = a * length - 1/2
-
-        # Position now relates to the internal cells of the road
-        # pos < 0 -> first cell
-        # pos = 0 -> first cell
-        # pos = 1 -> second cell
-        # ...
-        # pos = n - 1 -> last internal cell
-        # pos > n - 1 -> last internal cell
-
-        if pos < 0:
-            # Speed given by first cell
-            prev = 0
-            next = 0
-        elif pos > n - 1:
-            # Speed given by last cell
-            prev = n-1
-            next = n-1
-        else:
-            # Speed given by combination of two cells
-            prev = torch.floor(pos)
-            next = torch.ceil(pos)
-
-        if printing:
-            print(f"Position: {pos}")
-            print(f"Nodes: {prev} and {next}")
-            print(f"Closeness to nodes: {1 + prev - pos} and {1 + pos - next}")
-            print(f"Speed: {self.gamma[self.idx]}")
-        
         prev_speed = self.gamma[self.idx] * (1. - self.rho[int(prev)])
         next_speed = self.gamma[self.idx] * (1. - self.rho[int(next)])
-        
-        if printing:
-            try:
-                print(f"Version of left density: {self.rho[int(prev)]._version}, {self.rho[int(prev)]}")
-            except:
-                pass
 
-            try:
-                print(f"Version of right density: {self.rho[int(next)]._version}, {self.rho[int(next)]}")
-            except:
-                pass
-
-            print(type(self.rho[int(prev)]))
-        
-        if printing:
-            print(f"Speeds: {prev_speed} and {next_speed}")
-            print(f"Densities: {self.rho[int(prev)]} and {self.rho[int(next)]}")
-            print(f"Speed limit: {self.Vmax[self.idx]}, version {self.Vmax[self.idx]._version}")
-        
         if prev == next:
             avg_speed = prev_speed
         else:
             # avg_speed = ((1. + prev - pos) * prev_speed + (1. + pos - next) * next_speed) / 2
             avg_speed = (pos - prev) * prev_speed + (next - pos) * next_speed
-        
-        if printing:
-            print(f"Average speed: {avg_speed}")
-        
+
         return avg_speed
-    
-    def get_speed_updated(self, length, dt):
+
+    def get_speed(self, length, dt):
         '''
         Return the speed calculated at a given length
         First calculate the local speed, and then use this speed to calculate the next position
@@ -705,24 +602,26 @@ class Road:
         '''
         # Find which two nodes are closest to the length
         # Then interpolate between the two nodes
-        
-        # length is between 0 and b
-        # 0 should map to node 1, b should map to node N
-        # (nodes 0 and N+1 are outside of road)
+
         if length == 0:
             length = torch.tensor(0.0)
-        
+
+        internal_activation = self.activation_fnc(length)
+
         prev, next, pos = self.get_node_at_length(length)
         speed = self.get_speed_at_node(prev, next, pos)
-        
+
         # Update speed using the next position of the bus:
         updated_length = length + dt*speed
 
         if updated_length >= self.b:
+            # The bus will potentially move outside the junction
             updated_speed = self.gamma[self.idx] * (1. - self.rho[-1])
         else:
             # Next position is still on road
             updated_prev, updated_next, updated_pos = self.get_node_at_length(updated_length)
             updated_speed = self.get_speed_at_node(updated_prev, updated_next, updated_pos)
-        
-        return (1.2 * speed + 0.8 * updated_speed) / 2 
+
+        # Can also return the slowdown coming from the distance to the junction
+
+        return (1.2 * speed + 0.8 * updated_speed) / 2, internal_activation
