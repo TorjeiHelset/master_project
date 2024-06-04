@@ -1,0 +1,57 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{crimson2143940}{RGB}{214,39,40}
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{darkorange25512714}{RGB}{255,127,14}
+\definecolor{forestgreen4416044}{RGB}{44,160,44}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=lightgray204},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xlabel={Number of iterations},
+xmin=-0.2, xmax=4.2,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={Average bus delay [s]},
+ymin=25.611035, ymax=36.368265,
+ytick style={color=black}
+]
+\addplot [semithick, steelblue31119180]
+table {%
+0 35.8793
+1 29.7664
+2 27.3376
+3 26.8356
+4 26.1
+};
+\addlegendentry{Start 1}
+\addplot [semithick, darkorange25512714]
+table {%
+0 33.0331
+1 29.212
+2 29.1851
+};
+\addlegendentry{Start 2}
+\addplot [semithick, forestgreen4416044]
+table {%
+0 35.8793
+1 27.9131
+2 26.9191
+3 26.277
+};
+\addlegendentry{Start 1*}
+\addplot [semithick, crimson2143940]
+table {%
+0 33.0331
+1 29.0702
+};
+\addlegendentry{Start 2*}
+\end{axis}
+
+\end{tikzpicture}

@@ -10,6 +10,7 @@
     <!-- Sidebar -->
     <div class="w3-sidebar w3-light-grey w3-bar-block" style="width:25%">
         <h3 class="w3-bar-item">Menu</h3>
+        <a href="#bus-slowdown" class="w3-bar-item w3-button">Bus Arriving at Stop</a>
         <a href="#single-lane" class="w3-bar-item w3-button">Single Lane</a>
         <a href="#single-junction" class="w3-bar-item w3-button">Single Junction</a>
         <a href="#two-two" class="w3-bar-item w3-button">Two-to-Two Junction</a>
@@ -49,12 +50,35 @@
     <p>
     </p>
     <center>
+        <h2 id = "bus-slowdown">
+            Bus Stopping at Bus Stop
+        </h2>
+    </center>
+    <p> 
+        Before looking at full traffic-flow networks, we look at only how the bus slows down coming into a bus
+        stop for some different cases. The animation below shows four different cases. The topmost road is a single 
+        unidirectional road. Here, there is little space for other drivers to pass the bus, and so there is a high amount
+        of traffic buildup behind the bus. The second road is a model of a four lane road. Since there are four different 
+        lanes, the traffic is only impacted to a small degree, and so there is little buildup of traffic behind the bus.
+        In the third case we model to single lane unidirectional roads going in opposite direction. The opposing lane has
+        little traffic, and so drivers can use also this road to overtake the bus, resulting in less buildup of traffic.
+        In the final example, we again consider two lanes going in opposite directions. In this case however, there is a 
+        higher amount of traffic on the opposing lane, resulting in more buildup of traffic.
+    </p>
+    <center>
+        <video width="600" height="450" controls loop="" muted = "" autoplay="">
+            <source src="https://github.com/TorjeiHelset/master_project/raw/master/general_optimization_videos/bus_slowdown_with_stop.mp4">
+        </video>
+    </center>
+    <p>
+    </p>
+    <center>
         <h2 id="single-lane">
             Single Lane Network
         </h2>
     </center>
     <p>
-        The first example we consider is a network consisting of only one road. The starting speed limit was chosen as 
+        The first traffic-flow network we consider is a network consisting of only one road. The starting speed limit was chosen as 
         20 km/h, and the best speed limit found was 50 km/h.
     </p>
     <center>
