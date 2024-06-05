@@ -25,7 +25,7 @@ def single_lane_network(T, N , speed_limit = [torch.tensor(40.0)],
 
     initial_fnc = lambda x : torch.ones_like(x) * 0.4
     boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.4]),
-                                           time_jumps = [], in_speed = torch.tensor(40.0),
+                                           time_jumps = [], in_speed = torch.tensor(40.0 / 3.6),
                                            L = L)
 
     road = rd.Road(b, L, N, speed, control_points, max_dens=1, initial=initial_fnc,
@@ -156,7 +156,7 @@ def two_two_junction(T, N, speed_limits=[[torch.tensor(50.0)], [torch.tensor(50.
 
     initial_fnc = lambda x : torch.ones_like(x) * 0.4
     boundary_fnc = ibc.boundary_conditions(1, max_dens = 1, densities = torch.tensor([0.4]),
-                                           time_jumps = [], in_speed = torch.tensor(40.0),
+                                           time_jumps = [], in_speed = torch.tensor(40.0 / 3.6),
                                            L = L)
 
     road_1 = rd.Road(b, L, N, speed_1, control_points[0], max_dens=1, initial=initial_fnc,
@@ -482,7 +482,7 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     return network
 
 if __name__ == "__main__":
-    option = 0
+    option = 2
     match option:
         case 0:
             import time
@@ -505,3 +505,12 @@ if __name__ == "__main__":
         case 1: 
             network = compare_grid_size_network(T = 100, N = 2)
             densities, queues, _, _ = network.solve_cons_law()
+
+        case 2:
+
+            T = 40
+            N = 3
+            network = single_lane_network(T, N, [torch.tensor(40.0/3.6)])
+
+            for road in network.roads:
+                print(road.boundary_fnc(0.0))
