@@ -399,8 +399,8 @@ def medium_complex_network(T, N, speed_limits, control_points, cycle_times, trac
     crossings = [[[], [], []],
                  [[], [], []],
                  [[], [], []]]
-    # Alt start: True
-    # Orig: False
+    # Alt start: False
+    # Orig: True
     light = tl.CoupledTrafficLightContinuous(False, [0, 5], [1, 2, 4], [3], [1,2,4],
                                              cycle=new_cycle)
     # light = tl.TrafficLightContinous(True, [0], [2,4], cycle=new_cycle)

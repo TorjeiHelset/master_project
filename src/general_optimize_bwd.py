@@ -500,6 +500,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
     '''
     armijo_fails = 0
     step_taken = False
+    # max_update = 20
     max_update = 20
 
     while not step_taken:
@@ -543,7 +544,7 @@ def gradient_descent_step(prev_params, prev_gradient, prev_objective, T, N):
             armijo_fails += 1
             max_update = max_update * 0.5
 
-        if armijo_fails > 5 or max_update < 1:
+        if armijo_fails > 6 or max_update < 0.1:
             # If either the number of fails are too many or the maximum update becomes too small
             # stop iterating and return the old iterate
             return prev_params, prev_gradient, prev_objective
@@ -710,7 +711,7 @@ def update_objective(obj_type):
     objective_type = obj_type
 
 if __name__ == "__main__":
-    option = 4
+    option = 15
     match option:
         case 0:
             update_optimize_case(0)
@@ -852,3 +853,27 @@ if __name__ == "__main__":
             config_file = "optimization_cases/medium_complex/config_file.json"
             result_file = "optimization_results/general_optimization/medium_complex_travel_1.json"
             gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+
+
+        case 14:
+            update_optimize_case(3) 
+            update_objective(2)
+            network_file = "optimization_cases/medium_complex/network_file_4.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_new_attempt_from_opt.json"
+            gradient_descent(network_file, config_file, result_file, overwrite=False, debugging=False)
+
+        case 15:
+            update_optimize_case(3) 
+            network_file = "optimization_cases/medium_complex/network_file_4.json"
+            config_file = "optimization_cases/medium_complex/config_file.json"
+            result_file = "optimization_results/general_optimization/medium_complex_new_attempt_from_opt.json"
+            T, N, speed_limits, cycle_times = load_bus_network(network_file, config_file)
+            bus_network = create_network_from_speeds_cycles(T, N, speed_limits, cycle_times)
+            for road in bus_network.roads:
+                print(road.max_dt())
+                print(road.gamma[0])
+                print(road.dx)
+                print(road.Vmax[0])
+                print(road.dx / road.gamma[0])
+                print()

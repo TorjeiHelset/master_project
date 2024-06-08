@@ -321,7 +321,14 @@ class Road:
         # return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
         # return CFL * self.dx / (self.max_dens * max_flux)
         # return CFL * self.dx / (self.max_dens * self.gamma[self.idx])
+
+
+        # return CFL * self.dx / (self.max_dens * max_flux)
+
+        #return 0.5 * self.dx / (self.max_dens * self.gamma[self.idx])
+        # return 0.5 * self.dx / (self.max_dens * (41.0/3.6) / 50.0)
         return CFL * self.dx / (self.max_dens * max_flux)
+    
 
 
 

@@ -59,7 +59,31 @@ def get_throughput(network, densities):
 
     return flux_out.detach(), gradient
 
-def get_total_travel_time(network, densities):
+# def get_total_travel_time(network, densities):
+#     tot_int = 0
+#     times = list(densities[0].keys())
+#     dx = network.roads[0].dx
+
+#     for i, road in enumerate(network.roads):
+#         for k in range(len(times)-1):
+#             t1 = times[k]
+#             t2 = times[k+1]
+#             # Find density at the end of the road
+#             t1_int = torch.sum(densities[i][t1][1:-1]) + 0.5 * (densities[i][t1][-1] + densities[i][t1][0])
+#             t2_int = torch.sum(densities[i][t2][1:-1]) + 0.5 * (densities[i][t2][-1] + densities[i][t2][0])
+
+#             tot_int -= dx * (t2 - t1) * (t2_int + t1_int) / 2
+
+
+
+#     tot_int.backward()
+#     speed_grad = network.get_speed_limit_grads()
+#     light_grad = network.get_traffic_light_grads()
+#     gradient = [s/3.6 for s in speed_grad] + light_grad
+
+#     return tot_int.detach(), gradient
+
+def get_total_travel_time(network, densities, queues):
     tot_int = 0
     times = list(densities[0].keys())
     dx = network.roads[0].dx
@@ -71,10 +95,9 @@ def get_total_travel_time(network, densities):
             # Find density at the end of the road
             t1_int = torch.sum(densities[i][t1][1:-1]) + 0.5 * (densities[i][t1][-1] + densities[i][t1][0])
             t2_int = torch.sum(densities[i][t2][1:-1]) + 0.5 * (densities[i][t2][-1] + densities[i][t2][0])
-
-            tot_int -= dx * (t2 - t1) * (t2_int + t1_int) / 2
-
-
+            q1 = queues[i][t1]
+            q2 = queues[i][t2]
+            tot_int += (t2 - t1) *(dx * (t2_int + t1_int) / 2 + (q1 + q2) / 2)
 
     tot_int.backward()
     speed_grad = network.get_speed_limit_grads()
@@ -99,8 +122,8 @@ def single_lane_step(T, N, speed_limits, controls, objective_type):
 
         case 2:
             # Total travel time
-            densities, _, _, _, _ = network.solve_cons_law_counting()
-            objective, gradient = get_total_travel_time(network, densities)
+            densities, queues, _, _, _ = network.solve_cons_law_counting()
+            objective, gradient = get_total_travel_time(network, densities, queues)
     return objective, gradient
 
 def single_lane_smooth(T, N, speed_limits_in, controls, increments, objective_type=0):
@@ -137,8 +160,8 @@ def single_junction_step(T, N, speed_limits, controls, cycle, objective_type):
 
         case 2:
             # Total travel time
-            densities, _, _, _, _ = network.solve_cons_law_counting()
-            objective, gradient = get_total_travel_time(network, densities)
+            densities, queues, _, _, _ = network.solve_cons_law_counting()
+            objective, gradient = get_total_travel_time(network, densities, queues)
 
     return objective, gradient
 
@@ -182,8 +205,8 @@ def two_two_step(T, N, speed_limits, controls, cycle, objective_type):
 
         case 2:
             # Total travel time
-            densities, _, _, _, _ = network.solve_cons_law_counting()
-            objective, gradient = get_total_travel_time(network, densities)
+            densities, queues, _, _, _ = network.solve_cons_law_counting()
+            objective, gradient = get_total_travel_time(network, densities, queues)
 
     return objective, gradient
 
